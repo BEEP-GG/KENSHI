@@ -1,0 +1,5 @@
+{
+  "name": "Fantasy Map Viewer",
+  "description": "Interactive 2D fantasy map viewer using Leaflet with simple CRS for custom coordinate systems.",
+  "requestFramePermissions": []
+}
