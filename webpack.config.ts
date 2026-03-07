@@ -540,9 +540,13 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
 
       if (
         ['vue', 'vue-router'].every(key => request !== key) &&
+<<<<<<< HEAD
         ['pixi', 'react', 'vue', 'motion', 'framer-motion', 'scheduler'].some(
           key => request === key || request.includes(key),
         )
+=======
+        ['pixi', 'react', 'vue'].some(key => request.includes(key))
+>>>>>>> 5df9c1cb4c82b29727ec6b2114f822fb829e2164
       ) {
         return callback();
       }
