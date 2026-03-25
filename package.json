@@ -91,15 +91,22 @@
     "json5": "^2.2.3",
     "jsonrepair": "^3.13.3",
     "klona": "^2.0.6",
+<<<<<<< HEAD
     "leaflet": "^1.9.4",
     "lodash": "^4.17.23",
     "lucide-react": "^0.575.0",
     "motion": "^12.38.0",
+=======
+    "lodash": "^4.17.23",
+>>>>>>> b80a86e4d72312ede7f291df2c1c65bd1f7e93eb
     "pinia": "^3.0.4",
     "pixi.js": "^8.17.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
+<<<<<<< HEAD
     "react-leaflet": "^5.0.0",
+=======
+>>>>>>> b80a86e4d72312ede7f291df2c1c65bd1f7e93eb
     "toastr": "^2.1.4",
     "vue": "^3.5.30",
     "vue-final-modal": "^4.5.5",
