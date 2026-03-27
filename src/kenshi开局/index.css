@@ -1,23 +1,31 @@
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700;800;900&family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @theme {
-  --font-serif: "Cinzel", serif;
-  --font-sans: "Inter", sans-serif;
+  --font-serif: 'Cinzel', serif;
+  --font-sans: 'Inter', sans-serif;
 
-  --color-kenshi-rust: #8B4513;
-  --color-kenshi-sand: #C2B280;
-  --color-kenshi-dark: #0F0F0F;
-  --color-kenshi-metal: #2A2A2A;
+  --color-kenshi-rust: #8b4513;
+  --color-kenshi-sand: #c2b280;
+  --color-kenshi-dark: #0f0f0f;
+  --color-kenshi-metal: #2a2a2a;
   --color-kenshi-blood: #550000;
 }
 
 html,
-body,
+body {
+  width: 100%;
+  height: 100%;
+}
+
 #app {
   width: 100%;
   height: 100%;
   min-height: 100%;
+}
+
+:fullscreen #app {
+  height: 100%;
 }
 
 body {

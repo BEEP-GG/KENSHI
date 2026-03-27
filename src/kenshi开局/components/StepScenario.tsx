@@ -12,19 +12,69 @@ interface StepScenarioProps {
 
 export const StepScenario: React.FC<StepScenarioProps> = ({ data, updateData, onNext }) => {
   const scenariosPerPage = 6;
-  const totalPages = Math.max(1, Math.ceil(SCENARIOS.length / scenariosPerPage));
+  const visibleScenarios = React.useMemo(
+    () => SCENARIOS.filter(scenario => !(scenario as { hidden?: boolean }).hidden),
+    [],
+  );
+  const totalPages = Math.max(1, Math.ceil(visibleScenarios.length / scenariosPerPage));
   const [currentPage, setCurrentPage] = React.useState(1);
 
-  React.useEffect(() => {
-    if (!data.scenario && SCENARIOS.length > 0) {
-      updateData({ scenario: SCENARIOS[0].id });
+  const SCENARIO_WB_UIDS: Record<string, number> = {
+    wanderer: 558,
+    holy_sword: 559,
+    rock_bottom: 560,
+    merchant: 561,
+    officer_son: 562,
+    slave: 574,
+    male_slave: 563,
+    cannibal_hunter: 564,
+    pirate_heir: 565,
+    cannibal_unifier: 566,
+    brotherhood_prisoner: 567,
+    freedom_seekers: 568,
+    mongrel_wanderer: 569,
+    holy_commoner: 570,
+    dark_daughter: 571,
+    kral_choice: 572,
+    fish_island_refugee: 573,
+    bast_stray: 549,
+  };
+  const ALL_SCENARIO_UIDS = Object.values(SCENARIO_WB_UIDS);
+
+  const applyScenarioWorldbook = async (scenarioId: string) => {
+    const uid = SCENARIO_WB_UIDS[scenarioId];
+    if (!uid) return;
+    try {
+      const charWorldbook = getCharWorldbookNames('current');
+      const wbName = charWorldbook.primary;
+      if (!wbName) return;
+      await updateWorldbookWith(wbName, entries =>
+        entries.map(entry => {
+          if (ALL_SCENARIO_UIDS.includes(entry.uid)) {
+            return { ...entry, enabled: entry.uid === uid };
+          }
+          return entry;
+        }),
+      );
+    } catch (error) {
+      console.error('切换剧本世界书条目失败', error);
     }
-  }, [data.scenario, updateData]);
+  };
+
+  React.useEffect(() => {
+    if (!data.scenario && visibleScenarios.length > 0) {
+      updateData({ scenario: visibleScenarios[0].id });
+      return;
+    }
+    if (data.scenario) {
+      applyScenarioWorldbook(data.scenario);
+    }
+  }, [data.scenario, updateData, visibleScenarios]);
 
   const pagedScenarios = React.useMemo(() => {
     const start = (currentPage - 1) * scenariosPerPage;
-    return SCENARIOS.slice(start, start + scenariosPerPage);
-  }, [currentPage]);
+    return visibleScenarios.slice(start, start + scenariosPerPage);
+  }, [currentPage, visibleScenarios]);
 
   React.useEffect(() => {
     if (currentPage > totalPages) {
@@ -52,7 +102,10 @@ export const StepScenario: React.FC<StepScenarioProps> = ({ data, updateData, on
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: index * 0.1 }}
-              onClick={() => updateData({ scenario: scenario.id, region: '', town: '' })}
+              onClick={() => {
+                updateData({ scenario: scenario.id, region: '', town: '' });
+                applyScenarioWorldbook(scenario.id);
+              }}
               className={`
                 relative group cursor-pointer p-6 rounded-xl border transition-all duration-300
                 ${
@@ -106,14 +159,10 @@ export const StepScenario: React.FC<StepScenarioProps> = ({ data, updateData, on
               {((scenario as any).alliedFactions?.length || (scenario as any).hostileFactions?.length) && (
                 <div className="mt-3 space-y-1 text-xs">
                   {(scenario as any).alliedFactions?.length > 0 && (
-                    <div className="text-emerald-300/90">
-                      友好派系：{(scenario as any).alliedFactions.join('、')}
-                    </div>
+                    <div className="text-emerald-300/90">友好派系：{(scenario as any).alliedFactions.join('、')}</div>
                   )}
                   {(scenario as any).hostileFactions?.length > 0 && (
-                    <div className="text-red-300/90">
-                      敌对派系：{(scenario as any).hostileFactions.join('、')}
-                    </div>
+                    <div className="text-red-300/90">敌对派系：{(scenario as any).hostileFactions.join('、')}</div>
                   )}
                 </div>
               )}

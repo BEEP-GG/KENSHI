@@ -3,15 +3,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { CharacterData, INITIAL_CHARACTER } from './types';
-import { StepScenario } from './components/StepScenario';
-import { StepRegion } from './components/StepRegion';
-import { StepRace } from './components/StepRace';
-import { StepDetails } from './components/StepDetails';
+import { ChevronLeft, ChevronRight, Maximize2, Minimize2, RotateCcw } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
+import { useEffect, useState } from 'react';
 import { FinalSummary } from './components/FinalSummary';
-import { ChevronRight, ChevronLeft, RotateCcw, Maximize2, Minimize2 } from 'lucide-react';
+import { StepDetails } from './components/StepDetails';
+import { StepRace } from './components/StepRace';
+import { StepRegion } from './components/StepRegion';
+import { StepScenario } from './components/StepScenario';
+import { CharacterData, INITIAL_CHARACTER } from './types';
 
 // Steps definition
 const STEPS = [
@@ -29,9 +29,18 @@ export default function App() {
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
-    const onFullscreenChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    const onFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+      window.dispatchEvent(new Event('resize'));
+    };
     document.addEventListener('fullscreenchange', onFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
+  }, []);
+
+  useEffect(() => {
+    const triggerResize = () => window.dispatchEvent(new Event('resize'));
+    requestAnimationFrame(triggerResize);
+    setTimeout(triggerResize, 50);
   }, []);
 
   const toggleFullscreen = async () => {
@@ -82,20 +91,20 @@ export default function App() {
         <motion.div
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1.5, ease: "easeOut" }}
+          transition={{ duration: 1.5, ease: 'easeOut' }}
           className="relative z-10 text-center flex flex-col items-center"
         >
-          <h1 className="text-7xl md:text-9xl font-serif text-[#C2B280] tracking-widest mb-4 drop-shadow-lg">
-            KENSHI
-          </h1>
-          <p className="text-xl md:text-2xl text-white/60 font-serif tracking-[0.35em] mb-12">
-            终末之诗
-          </p>
+          <h1 className="text-7xl md:text-9xl font-serif text-[#C2B280] tracking-widest mb-4 drop-shadow-lg">KENSHI</h1>
+          <p className="text-xl md:text-2xl text-white/60 font-serif tracking-[0.35em] mb-12">终末之诗</p>
 
           <motion.button
             whileHover={{ scale: 1.05, backgroundColor: 'rgba(194, 178, 128, 0.1)' }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => setIsStarted(true)}
+            onClick={() => {
+              setCharacterData(INITIAL_CHARACTER);
+              setIsStarted(true);
+              setCurrentStep(0);
+            }}
             className="px-12 py-4 border border-[#C2B280] text-[#C2B280] font-serif text-xl tracking-widest uppercase rounded hover:shadow-[0_0_20px_rgba(194,178,128,0.3)] transition-all"
           >
             开始旅程
@@ -113,7 +122,7 @@ export default function App() {
 
   // Main Interface
   return (
-    <div className="relative w-full h-full min-h-full bg-[#0a0a0a] text-white overflow-hidden flex flex-col">
+    <div className="relative w-full h-full min-h-full bg-[#0a0a0a] text-white flex flex-col">
       {/* Background Texture */}
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-10 pointer-events-none" />
 
@@ -132,8 +141,13 @@ export default function App() {
               <div
                 className={`
                   flex items-center gap-2 px-3 py-1 rounded transition-all duration-500
-                  ${idx === currentStep ? 'text-[#C2B280] bg-[#C2B280]/10 border border-[#C2B280]/30' :
-                    idx < currentStep ? 'text-white/40' : 'text-white/20'}
+                  ${
+                    idx === currentStep
+                      ? 'text-[#C2B280] bg-[#C2B280]/10 border border-[#C2B280]/30'
+                      : idx < currentStep
+                        ? 'text-white/40'
+                        : 'text-white/20'
+                  }
                 `}
               >
                 <span className="text-xs font-mono">0{idx + 1}</span>
@@ -147,26 +161,26 @@ export default function App() {
         </div>
 
         <div className="flex items-center gap-3">
-           <button
-             onClick={toggleFullscreen}
-             className="inline-flex items-center gap-1 rounded border border-[#C2B280]/40 px-2 py-1 text-xs text-[#C2B280] hover:bg-[#C2B280]/10 transition-colors"
-             title={isFullscreen ? '退出全屏' : '全屏显示'}
-           >
-             {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-             <span className="hidden md:inline">{isFullscreen ? '退出全屏' : '全屏'}</span>
-           </button>
-           <button
-             onClick={() => setCharacterData(INITIAL_CHARACTER)}
-             className="p-2 text-white/40 hover:text-white transition-colors"
-             title="Reset"
-           >
-             <RotateCcw size={18} />
-           </button>
+          <button
+            onClick={toggleFullscreen}
+            className="inline-flex items-center gap-1 rounded border border-[#C2B280]/40 px-2 py-1 text-xs text-[#C2B280] hover:bg-[#C2B280]/10 transition-colors"
+            title={isFullscreen ? '退出全屏' : '全屏显示'}
+          >
+            {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+            <span className="hidden md:inline">{isFullscreen ? '退出全屏' : '全屏'}</span>
+          </button>
+          <button
+            onClick={() => setCharacterData(INITIAL_CHARACTER)}
+            className="p-2 text-white/40 hover:text-white transition-colors"
+            title="Reset"
+          >
+            <RotateCcw size={18} />
+          </button>
         </div>
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 relative overflow-hidden p-8">
+      <main className="flex-1 relative overflow-y-auto overflow-x-hidden p-8">
         <div className="max-w-7xl mx-auto h-full relative z-10">
           <AnimatePresence mode="wait">
             <motion.div
@@ -174,8 +188,8 @@ export default function App() {
               initial={{ opacity: 0, x: 20, filter: 'blur(10px)' }}
               animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
               exit={{ opacity: 0, x: -20, filter: 'blur(10px)' }}
-              transition={{ duration: 0.4, ease: "circOut" }}
-              className="h-full"
+              transition={{ duration: 0.4, ease: 'circOut' }}
+              className="min-h-full"
             >
               {currentStep === 0 && <StepScenario data={characterData} updateData={updateData} onNext={nextStep} />}
               {currentStep === 1 && <StepRegion data={characterData} updateData={updateData} />}
@@ -190,17 +204,18 @@ export default function App() {
       {/* Footer / Controls */}
       <footer className="relative z-20 h-20 border-t border-white/10 bg-black/80 backdrop-blur-md flex items-center justify-between px-8">
         <button
-          onClick={prevStep}
-          disabled={currentStep === 0}
-          className={`
-            flex items-center gap-2 px-6 py-3 rounded font-serif tracking-wider transition-all
-            ${currentStep === 0
-              ? 'opacity-0 pointer-events-none'
-              : 'text-white/60 hover:text-white hover:bg-white/5'}
-          `}
+          onClick={() => {
+            if (currentStep === 0) {
+              setIsStarted(false);
+              setCurrentStep(0);
+              return;
+            }
+            prevStep();
+          }}
+          className="flex items-center gap-2 px-6 py-3 rounded font-serif tracking-wider transition-all text-white/60 hover:text-white hover:bg-white/5"
         >
           <ChevronLeft size={18} />
-          返回
+          {currentStep === 0 ? '回到标题处' : '返回'}
         </button>
 
         {currentStep < STEPS.length - 1 ? (
@@ -218,4 +233,3 @@ export default function App() {
     </div>
   );
 }
-

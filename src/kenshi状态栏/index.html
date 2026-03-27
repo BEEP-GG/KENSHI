@@ -139,8 +139,8 @@
 
       .content-area {
         padding: 25px;
-        min-height: 650px;
-        max-height: 80vh;
+        min-height: min(85vw, 820px);
+        max-height: min(85vw, 820px);
         overflow-y: auto;
       }
       .content-area::-webkit-scrollbar {
@@ -377,7 +377,7 @@
         max-width: 1200px;
         border: 1px solid var(--accent-gold);
         padding: 40px;
-        max-height: 90vh;
+        max-height: min(90vw, 820px);
         overflow-y: auto;
         position: relative;
         box-shadow: 0 10px 50px rgba(0, 0, 0, 0.8);
@@ -536,7 +536,8 @@
       }
       #map-root {
         width: 100%;
-        height: 70vh;
+        aspect-ratio: 16 / 9;
+        max-height: min(70vw, 720px);
         border: 1px solid #444;
         background: #0c0c0f;
       }
@@ -559,16 +560,31 @@
         .top-right {
           gap: 10px;
           flex-wrap: wrap;
+          width: 100%;
+          justify-content: space-between;
+        }
+        .day-badge {
+          padding-right: 10px;
+          border-right: none;
+        }
+        .location-info {
+          width: 100%;
         }
         .nav-tabs {
           flex-wrap: wrap;
         }
         .tab-btn {
-          padding: 8px 14px;
+          padding: 8px 10px;
+          flex: 1 1 44%;
+          text-align: center;
         }
         .content-area {
           padding: 12px;
-          max-height: 70vh;
+          min-height: min(120vw, 640px);
+          max-height: min(120vw, 640px);
+        }
+        .section-box {
+          padding: 14px;
         }
         .detail-grid {
           grid-template-columns: 1fr;
@@ -576,11 +592,27 @@
         .stat-grid {
           grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
         }
+        .char-card {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 8px;
+        }
+        .status-header {
+          font-size: 0.82em;
+        }
+        .past-controls {
+          grid-template-columns: 1fr;
+        }
         .modal-content {
           padding: 20px;
+          width: 94%;
+        }
+        .map-frame-wrap {
+          padding: 6px;
         }
         #map-root {
-          height: 60vh;
+          aspect-ratio: 4 / 3;
+          max-height: min(100vw, 520px);
         }
       }
 
@@ -590,6 +622,8 @@
         }
         .content-area {
           padding: 18px;
+          min-height: min(95vw, 760px);
+          max-height: min(95vw, 760px);
         }
         .detail-grid {
           grid-template-columns: 1fr;
@@ -598,16 +632,17 @@
           grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
         }
         #map-root {
-          height: 65vh;
+          max-height: min(75vw, 680px);
         }
       }
 
       @media (min-width: 1025px) {
         .content-area {
-          max-height: 80vh;
+          min-height: min(70vw, 820px);
+          max-height: min(70vw, 820px);
         }
         #map-root {
-          height: 70vh;
+          max-height: min(70vw, 720px);
         }
       }
     </style>
@@ -684,8 +719,7 @@
         const appearance = _.get(data, '外貌', '暂无外貌描述');
         const attrPt = _.get(data, '属性点', 0);
         const traitPt = _.get(data, '特质点', 0);
-        const mindCur = _.get(data, '心智.当前', 0);
-        const mindMax = _.get(data, '心智.最大', 0);
+        const favorValue = _.get(data, '好感值', 0);
         const formatAttr = value => {
           if (value && typeof value === 'object') {
             const base = Number(value.基础 ?? 0) || 0;
@@ -754,13 +788,13 @@
         const arm = _.get(data, '护甲', {});
         const mainName = _.get(mainWep, '名字') || _.get(mainWep, '介绍') || '空手';
         const hasSubWeapon = !!(_.get(subWep, '名字') && _.get(subWep, '名字') !== '无');
-        const formatEffects = (obj) => {
+        const formatEffects = obj => {
           if (!obj || Object.keys(obj).length === 0) return '无';
           return Object.entries(obj)
             .map(([key, value]) => {
               if (Array.isArray(value)) {
                 const list = value
-                  .map((item) => (typeof item === 'object' ? JSON.stringify(item) : String(item)))
+                  .map(item => (typeof item === 'object' ? JSON.stringify(item) : String(item)))
                   .join(', ');
                 return `${key}: ${list}`;
               }
@@ -796,10 +830,7 @@
                                 <div class="status-header"><span>经验值 (EXP)</span><span>${expCur} / ${expMax}</span></div>
                                 <div class="bar-container"><div class="bar-fill bar-exp" style="width:${Math.min((expCur / expMax) * 100, 100)}%"></div></div>
                             </div>
-                            <div class="status-row">
-                                <div class="status-header"><span>心智 (Mind)</span><span>${mindCur} / ${mindMax}</span></div>
-                                <div class="bar-container"><div class="bar-fill bar-morale" style="width:${mindMax > 0 ? Math.min((mindCur / mindMax) * 100, 100) : 0}%"></div></div>
-                            </div>
+                            ${entityType === 'squad' ? `<div class="status-row"><div class="status-header"><span>好感值</span><span>${_.clamp(favorValue, -20, 100)}</span></div></div>` : ''}
                         </div>
                         <div class="section-box">
                             <div class="section-title">身体属性</div>
@@ -855,7 +886,9 @@
           $('#my-faction').text(_.get(data, '我方派系名称', '无派系'));
           const eventText = _.get(world, '当前事件', '');
           $('#world-event').text(eventText && eventText !== '' ? eventText : '当前无特殊事件');
-          $('#world-player').html(buildCharHTML(_.get(data, '当前角色'), true, 'current', _.get(data, '当前角色.id', '')));
+          $('#world-player').html(
+            buildCharHTML(_.get(data, '当前角色'), true, 'current', _.get(data, '当前角色.id', '')),
+          );
 
           const squadList = $('#squad-list').empty();
           const squadData = _.get(data, '小队成员', {});
@@ -944,7 +977,8 @@
               .map((item, index) => {
                 const rawDate = _.get(item, '日期', '');
                 const dateNumber = Number(rawDate);
-                const dateLabel = Number.isFinite(dateNumber) && rawDate !== '' ? `第 ${dateNumber} 天` : rawDate || '未标记天数';
+                const dateLabel =
+                  Number.isFinite(dateNumber) && rawDate !== '' ? `第 ${dateNumber} 天` : rawDate || '未标记天数';
                 const descText = _.get(item, '描述', '');
                 return `<div class="past-item"><div class="past-date">${dateLabel}</div><div class="past-desc">${descText}</div><button class="past-delete-btn" data-index="${index}">删除</button></div>`;
               })
@@ -1119,7 +1153,9 @@
               <div style="margin-bottom: 10px">
                 <span style="color: #888; margin-right: 10px">友方:</span><span id="intel-ally"></span>
               </div>
-              <div><span style="color: #888; margin-right: 10px">局势:</span><span id="intel-world-situation"></span></div>
+              <div>
+                <span style="color: #888; margin-right: 10px">局势:</span><span id="intel-world-situation"></span>
+              </div>
             </div>
             <div class="section-box">
               <div class="section-title">街谈巷议</div>
