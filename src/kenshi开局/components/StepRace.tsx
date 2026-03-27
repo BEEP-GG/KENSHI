@@ -11,13 +11,16 @@ interface StepRaceProps {
 
 export const StepRace: React.FC<StepRaceProps> = ({ data, updateData }) => {
   const selectedScenario = SCENARIOS.find(s => s.id === data.scenario) as
-    | { allowedRaces?: string[]; allowedSubraces?: string[] }
+    | { allowedRaces?: string[]; allowedSubraces?: string[]; forbiddenRaces?: string[] }
     | undefined;
   const allowedRaceIds = selectedScenario?.allowedRaces;
   const allowedSubraceIds = selectedScenario?.allowedSubraces;
-  const availableRaces = (allowedRaceIds ? RACES.filter(r => allowedRaceIds.includes(r.id)) : RACES).filter(
-    race => !(race as { hidden?: boolean }).hidden,
-  );
+  const forbiddenRaceIds = selectedScenario?.forbiddenRaces ?? [];
+  const scenarioForbiddenRaces = data.scenario === 'cannibal_unifier' ? [] : ['cannibal'];
+  const availableRaces = (allowedRaceIds ? RACES.filter(r => allowedRaceIds.includes(r.id)) : RACES)
+    .filter(race => !(race as { hidden?: boolean }).hidden)
+    .filter(race => !forbiddenRaceIds.includes(race.id))
+    .filter(race => !scenarioForbiddenRaces.includes(race.id));
   const selectedRace = availableRaces.find(r => r.id === data.race) || availableRaces[0];
   const selectedSubrace = selectedRace?.subraces.find(subrace => subrace.id === data.subrace);
 
@@ -33,8 +36,13 @@ export const StepRace: React.FC<StepRaceProps> = ({ data, updateData }) => {
     if (!data.race && availableRaces.length > 0) {
       const firstRace = availableRaces[0];
       updateData({ race: firstRace.id, subrace: firstRace.subraces[0]?.id ?? '' });
+      return;
     }
-  }, [data.race, availableRaces, updateData]);
+    if (data.race && forbiddenRaceIds.includes(data.race) && availableRaces.length > 0) {
+      const firstRace = availableRaces[0];
+      updateData({ race: firstRace.id, subrace: firstRace.subraces[0]?.id ?? '' });
+    }
+  }, [data.race, availableRaces, forbiddenRaceIds, updateData]);
 
   React.useEffect(() => {
     if (selectedRace && !data.subrace && selectedRace.subraces.length > 0) {

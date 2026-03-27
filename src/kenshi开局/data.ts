@@ -117,6 +117,10 @@ export const SCENARIOS = [
     equipment: ['破布衫', '奴隶项圈'],
     money: 0,
     allowedRegions: ['south_wetlands'],
+    fixedRegion: 'south_wetlands',
+    fixedTown: '斯威士之剑',
+    allowedGenders: ['male'],
+    forbiddenRaces: ['skeleton'],
     hostileFactions: ['斯威士国'],
   },
   {
@@ -151,6 +155,7 @@ export const SCENARIOS = [
     equipment: ['巨骨战斧', '兽皮披肩', '干肉'],
     money: 0,
     allowedRegions: ['dark_finger'],
+    allowedRaces: ['cannibal'],
     alliedFactions: ['肉主部落'],
     hostileFactions: ['大巫部落', '食人族猎手'],
   },
@@ -169,7 +174,7 @@ export const SCENARIOS = [
   },
   {
     id: 'freedom_seekers',
-    title: '追求自由者(测试版，可能存在bug',
+    title: '无名之辈(测试版，可能存在bug',
     description:
       '你厌倦了令人窒息的城市生活和税收，你集结了一个小队外出并找到了自己的家园基地。你已经组建了一个加上你一共五个志同道合的人组成的团队，并且已经收集了大量的建筑材料。',
     difficulty: '普通',
@@ -393,7 +398,7 @@ export const REGIONS = [
   },
   {
     id: 'south_wetlands',
-    title: '南方湿地',
+    title: '钩子海滨',
     description: '联合城与商会掌控的繁荣海滨。财富流动之余，女权主义的极端势力在此割据。',
     towns: ['漂泊终地', '斯威士之剑', '吉利之剑', '科隆斯城'],
     danger: '高',
@@ -669,17 +674,17 @@ export const RACES = [
       {
         id: 'cannibal_brute',
         title: '食人族大只佬',
-        description: '粗野巨躯的先头破阵者。初始属性修正：体质+20、智力-35、感知-15。',
+        description: '粗野巨躯的大型食人族，他的大脑相对于其他亚种更为愚蠢。初始属性修正：体质+20、智力-35、感知-15。',
       },
       {
         id: 'cannibal_warrior',
         title: '干瘦食人族',
-        description: '体态干瘦却动作迅猛的前线屠戮者。初始属性修正：敏捷+15、智力-20、体质-10。',
+        description: '体态干瘦却动作迅猛的的他们，一般属于食人族中的炮灰。初始属性修正：敏捷+15、智力-20、体质-10。',
       },
       {
         id: 'cannibal_priest',
         title: '食人族祭师',
-        description: '掌管血仪与禁忌的部族智者。初始属性修正：智力+15、体质-15。',
+        description: '食人族中最为聪明的存在，至少他们会讲人类的语言。初始属性修正：智力+15、体质-15。',
       },
     ],
   },
@@ -687,7 +692,7 @@ export const RACES = [
     id: 'skeleton',
     title: '骨人',
     description:
-      '拥有数千年历史的神秘机械种族，无惧死亡，是天生的无畏战士。种族基础生命值：50。通用特性：免疫饥饿/疾病/毒气/酸雨/天气、水下呼吸、机械之躯（需修理包或修理床恢复）、无情面容（魅力表情检定失败但免疫恐惧）。',
+      '骨人完全是个谜，没人知道他们来自哪里，又是怎么被创造出来的，但人们认为他们已经有几千岁了。他们有完整的感情，能感到悲伤，愤怒，激动，同情，震惊和快乐，但他们不能通过表情展示出来，再加上他们缺乏幽默感，总是让其他种族感到困惑，比如沙克族就认为他们善变，难以预料。他们没有偏见，无惧死亡，因此是勇敢无畏的战士。种族特质：无情面容（魅力表情检定失败但免疫恐惧）。',
     subraces: [
       {
         id: 'skeleton_mki',

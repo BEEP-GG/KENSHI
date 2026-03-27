@@ -713,8 +713,6 @@
         const bodySize = _.get(data, '体型', '1.75m');
         const status = _.get(data, '状态', '正常');
         const trauma = _.get(data, '创伤', {});
-        const traumaDesc = _.get(trauma, '描述', '无伤');
-        const traumaLv = _.get(trauma, '等级', 0);
         const atkCount = _.get(data, '攻击次数', 1);
         const appearance = _.get(data, '外貌', '暂无外貌描述');
         const attrPt = _.get(data, '属性点', 0);
@@ -791,7 +789,13 @@
         });
         let traitHTML = allTraitsHTML.join('');
 
-        let traumaDetailHTML = `<span style="color:${traumaLv > 0 ? 'var(--accent-danger)' : '#666'}">${traumaDesc}</span>`;
+        const traumaEntries = Object.entries(trauma)
+          .filter(([, value]) => value && typeof value === 'object' && _.get(value, '描述'))
+          .map(([part, value]) => {
+            const desc = _.get(value, '描述', '');
+            return `<span class="item-tag">${part}: ${desc}</span>`;
+          });
+        let traumaDetailHTML = traumaEntries.length ? traumaEntries.join('') : `<span style="color:#666">无伤</span>`;
 
         const mainWep = _.get(data, '主武器', {});
         const subWep = _.get(data, '副武器', {});

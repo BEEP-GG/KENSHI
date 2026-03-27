@@ -1983,22 +1983,36 @@ export default function App() {
     const buildStatusLabel = (unit: BattleCharacter) => {
       if (unit.escaped) return '已逃跑';
       if (unit.state === '死亡') return '死亡';
-      if (unit.state === '休克') return unit.shockTurns > 0 ? `休克(剩${unit.shockTurns}回合)` : '休克';
+      if (unit.state === '休克') return '休克';
       if (unit.state === '昏迷') return '昏迷';
       if (unit.hp <= 0) return '濒死';
-      const maxTrauma = getMaxTraumaLevel(unit);
-      if (maxTrauma >= 4) return '断肢';
-      if (maxTrauma >= 3) return '重创';
-      if (maxTrauma >= 2) return '负伤';
-      if (maxTrauma >= 1) return '擦伤';
       return '正常';
+    };
+
+    const getTraumaLabelByLevel = (level: number) => {
+      if (level >= 4) return '断肢';
+      if (level >= 3) return '重创';
+      if (level >= 2) return '负伤';
+      if (level >= 1) return '擦伤';
+      return '无伤';
+    };
+
+    const getTraumaDetailLabel = (unit: BattleCharacter) => {
+      const parts: Array<{ name: string; level: number }> = [
+        { name: '左臂', level: unit.traumaParts.左臂 },
+        { name: '右臂', level: unit.traumaParts.右臂 },
+        { name: '左腿', level: unit.traumaParts.左腿 },
+        { name: '右腿', level: unit.traumaParts.右腿 },
+      ];
+      return parts.map(part => `${part.name}${getTraumaLabelByLevel(part.level)}`).join('，');
     };
 
     const summarizeUnit = (unit: BattleCharacter) => {
       const baseHp = Number.isFinite(unit.startHp) ? unit.startHp : unit.hp;
       const damageTaken = Math.max(0, Math.round(baseHp - unit.hp));
-      const traumaSummary = `左臂${unit.traumaParts.左臂} 右臂${unit.traumaParts.右臂} 左腿${unit.traumaParts.左腿} 右腿${unit.traumaParts.右腿}`;
-      return `${unit.name}: 受到伤害${damageTaken}, 创伤(${traumaSummary}), 流血${unit.bleedLayers}, 状态${buildStatusLabel(unit)}`;
+      const currentHp = Math.max(0, Math.round(unit.hp));
+      const traumaLabel = getTraumaDetailLabel(unit);
+      return `${unit.name}: 受到伤害${damageTaken}, 当前血量${currentHp}, 创伤(${traumaLabel}), 状态${buildStatusLabel(unit)}`;
     };
 
     const friendLines = battleState.units

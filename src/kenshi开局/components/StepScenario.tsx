@@ -18,6 +18,8 @@ export const StepScenario: React.FC<StepScenarioProps> = ({ data, updateData, on
   );
   const totalPages = Math.max(1, Math.ceil(visibleScenarios.length / scenariosPerPage));
   const [currentPage, setCurrentPage] = React.useState(1);
+  const gridRef = React.useRef<HTMLDivElement | null>(null);
+  const [gridMinHeight, setGridMinHeight] = React.useState<number | null>(null);
 
   const SCENARIO_WB_UIDS: Record<string, number> = {
     wanderer: 558,
@@ -76,6 +78,11 @@ export const StepScenario: React.FC<StepScenarioProps> = ({ data, updateData, on
     return visibleScenarios.slice(start, start + scenariosPerPage);
   }, [currentPage, visibleScenarios]);
 
+  React.useLayoutEffect(() => {
+    if (!gridRef.current) return;
+    setGridMinHeight(prev => (prev ? Math.max(prev, gridRef.current!.offsetHeight) : gridRef.current!.offsetHeight));
+  }, [currentPage, totalPages, pagedScenarios.length]);
+
   React.useEffect(() => {
     if (currentPage > totalPages) {
       setCurrentPage(totalPages);
@@ -91,7 +98,11 @@ export const StepScenario: React.FC<StepScenarioProps> = ({ data, updateData, on
         </p>
       </motion.div>
 
-      <div className="flex-1 overflow-y-auto pr-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-8">
+      <div
+        ref={gridRef}
+        style={gridMinHeight ? { minHeight: `${gridMinHeight}px` } : undefined}
+        className="flex-1 overflow-y-auto pr-2 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-8"
+      >
         {pagedScenarios.map((scenario, index) => {
           const Icon = (Icons as any)[scenario.icon] || Icons.HelpCircle;
           const isSelected = data.scenario === scenario.id;
