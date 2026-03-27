@@ -758,8 +758,9 @@
           })
           .join('');
 
-        /* 修改点：整合特质、正面效果和负面效果，并用不同颜色显示 */
+        /* 修改点：整合特质、临时特质、正面效果和负面效果，并用不同颜色显示 */
         const traits = _.get(data, '特质', {});
+        const temporaryTraits = _.get(data, '临时特质', {});
         const positiveEffects = _.get(data, '正面效果', {});
         const negativeEffects = _.get(data, '负面效果', {});
         let allTraitsHTML = [];
@@ -773,6 +774,15 @@
         Object.entries(negativeEffects).forEach(([name, desc]) => {
           allTraitsHTML.push(
             `<span class="item-tag has-tooltip" style="border-color:var(--accent-danger); color:var(--accent-danger); background-color: rgba(231, 76, 60, 0.1);" data-tooltip="${name}\n\n${desc}">${name}</span>`,
+          );
+        });
+        /* 添加临时特质 (黄色) */
+        Object.entries(temporaryTraits).forEach(([name, data]) => {
+          const tempDesc = _.get(data, '描述', '');
+          const tempRemove = _.get(data, '消除', '');
+          const tempTooltip = `${name}\n\n${tempDesc}${tempRemove ? `\n\n消除: ${tempRemove}` : ''}`;
+          allTraitsHTML.push(
+            `<span class="item-tag has-tooltip" style="border-color:var(--accent-yellow); color:var(--accent-yellow); background-color: rgba(241, 196, 15, 0.12);" data-tooltip="${tempTooltip}">${name}</span>`,
           );
         });
         /* 添加普通特质 (默认色) */
@@ -1081,24 +1091,58 @@
         });
 
         const tip = $('#tooltip');
+        let tipPinned = false;
+        let tipOwner = null;
+
+        function showTip(text, x, y) {
+          if (!text) return;
+          tip.text(text).show();
+          let t = y + 15;
+          let l = x + 15;
+          if (l + tip.outerWidth() > window.innerWidth) l = x - tip.outerWidth() - 10;
+          if (t + tip.outerHeight() > window.innerHeight) t = y - tip.outerHeight() - 10;
+          tip.css({ top: t, left: l });
+        }
+
+        function hideTip() {
+          tip.hide();
+        }
+
         $(document)
           .on('mouseenter', '.has-tooltip', function (e) {
+            if (tipPinned) return;
             const text = $(this).attr('data-tooltip');
-            if (text) {
-              tip.text(text).show();
-              tip.css({ top: e.clientY + 15, left: e.clientX + 15 });
-            }
+            showTip(text, e.clientX, e.clientY);
           })
           .on('mouseleave', '.has-tooltip', function () {
-            tip.hide();
+            if (tipPinned) return;
+            hideTip();
           })
           .on('mousemove', function (e) {
-            if (tip.css('display') !== 'none') {
-              let t = e.clientY + 15,
-                l = e.clientX + 15;
-              if (l + tip.outerWidth() > window.innerWidth) l = e.clientX - tip.outerWidth() - 10;
-              if (t + tip.outerHeight() > window.innerHeight) t = e.clientY - tip.outerHeight() - 10;
-              tip.css({ top: t, left: l });
+            if (tip.css('display') !== 'none' && !tipPinned) {
+              showTip(tip.text(), e.clientX, e.clientY);
+            }
+          })
+          .on('click', '.has-tooltip', function (e) {
+            const text = $(this).attr('data-tooltip');
+            if (!text) return;
+
+            if (tipPinned && tipOwner === this) {
+              tipPinned = false;
+              tipOwner = null;
+              hideTip();
+              return;
+            }
+
+            tipPinned = true;
+            tipOwner = this;
+            showTip(text, e.clientX, e.clientY);
+          })
+          .on('click', function (e) {
+            if ($(e.target).closest('.has-tooltip').length === 0) {
+              tipPinned = false;
+              tipOwner = null;
+              hideTip();
             }
           });
       }
