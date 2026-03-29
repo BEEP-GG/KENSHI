@@ -47,6 +47,12 @@ type BattleCharacter = {
     damageDice: string;
     damageType: string;
   };
+  subWeapon: {
+    name: string;
+    type: string;
+    damageDice: string;
+    damageType: string;
+  };
   armorDR: number;
   traumaParts: Record<'左臂' | '右臂' | '左腿' | '右腿', number>;
   traumaAccumulated: Record<'左臂' | '右臂' | '左腿' | '右腿', number>;
@@ -61,6 +67,7 @@ type BattleCharacter = {
   raceName: string;
   backpackItems: Record<string, { 介绍?: string; 数量?: number; 重量?: number; 价值?: number }>;
   weaponRaw: any;
+  subWeaponRaw: any;
   armorRaw: any;
   attributesRaw: any;
   traumaRaw: any;
@@ -230,13 +237,13 @@ const WEAPON_CATEGORY_GUIDE = `武器类别详解：
 - 无视对方5点DR。
 - 攻击检定大成功（01-05）时触发“破甲”：目标DR降低10。
 
-长柄刀：
+长柄类：
 - 每次攻击时可选择最多3个敌人进行攻击检定；每多一个目标，攻击检定-5。
 
 钝器：
 - 攻击检定大成功（01-05）时，强制目标进行一次【体质】中等检定；失败则进入“骨折”，逃跑检定-25、力量/敏捷-15，直到夹板包清除。
 
-重型武器：
+大型武器：
 - 每次攻击时对2个敌人进行攻击检定。
 - 攻击检定大失败（95-100）或被对方【闪避】时，进入失衡，防御检定-15。
 
@@ -360,6 +367,13 @@ const rollDice = (dice: string) => {
   const count = Number(match[1]) || 1;
   const sides = Number(match[2]) || 6;
   return _.sum(Array.from({ length: count }, () => _.random(1, sides)));
+};
+
+const getWeaponDiceTotal = (weapon?: { damageDice?: string }) => {
+  if (!weapon) return 0;
+  const dice = weapon.damageDice || '';
+  if (!dice || dice === '0d0') return 0;
+  return Math.max(0, Math.floor(rollDice(dice)));
 };
 
 const parseDamageTypeRatio = (damageType: string): DamageRatio | null => {
@@ -592,6 +606,11 @@ const normalizeCharacter = (
   const weaponName = _.get(weapon, ['名字'], weaponType);
   const weaponDice = _.get(weapon, ['伤害骰'], '1d6');
   const weaponDamageType = _.get(weapon, ['伤害类型'], '');
+  const subWeapon = _.get(raw, ['副武器'], {});
+  const subWeaponType = _.get(subWeapon, ['种类'], '无');
+  const subWeaponName = _.get(subWeapon, ['名字'], subWeaponType);
+  const subWeaponDice = _.get(subWeapon, ['伤害骰'], '0d0');
+  const subWeaponDamageType = _.get(subWeapon, ['伤害类型'], '');
   const armorRaw = _.get(raw, ['护甲'], {});
   const armorBaseDR = toNumber(_.get(armorRaw, ['防护能力(DR)']), toNumber(_.get(armorRaw, ['防护能力']), 0));
   const armorFeatureDR = toNumber(_.get(armorRaw, ['特性', 'DR']), 0);
@@ -640,6 +659,12 @@ const normalizeCharacter = (
       damageDice: weaponDice || '1d6',
       damageType: weaponDamageType || '',
     },
+    subWeapon: {
+      name: subWeaponName || subWeaponType || '无',
+      type: subWeaponType || '无',
+      damageDice: subWeaponDice || '0d0',
+      damageType: subWeaponDamageType || '',
+    },
     armorDR,
     traumaParts,
     traumaAccumulated,
@@ -654,6 +679,7 @@ const normalizeCharacter = (
     raceName,
     backpackItems,
     weaponRaw: weapon,
+    subWeaponRaw: subWeapon,
     armorRaw,
     attributesRaw: _.get(raw, ['属性'], {}),
     traumaRaw,
@@ -1098,6 +1124,7 @@ export default function App() {
   const [selectedMedicalItem, setSelectedMedicalItem] = useState<string | null>(null);
   const [roundLimit, setRoundLimit] = useState<number | null>(10);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [infoModal, setInfoModal] = useState<null | 'rules' | 'round' | 'tutorial' | 'weapon' | 'trauma'>(null);
   const [detailModal, setDetailModal] = useState<null | {
@@ -1136,6 +1163,29 @@ export default function App() {
       enemyUnits.filter(unit => unit.hp > 0 && !unit.escaped && unit.state !== '死亡' && unit.state !== '休克').length,
     [enemyUnits],
   );
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    handleFullscreenChange();
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
+  const toggleFullscreen = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen?.();
+      } else {
+        await document.exitFullscreen?.();
+      }
+    } catch (error) {
+      console.error('切换全屏失败', error);
+    }
+  };
 
   useEffect(() => {
     if (!battleState.result) {
@@ -1414,7 +1464,7 @@ export default function App() {
     const attackRoll = d100();
     const attackAttr = getAttackAttribute(attacker) + hitBonus - attackPenaltyExtra;
     const isCrit = attackRoll <= 5;
-    const isHeavyWeapon = /重型/.test(attacker.weapon.type);
+    const isHeavyWeapon = /大型/.test(attacker.weapon.type);
     const isFumble = attackRoll >= (isHeavyWeapon ? 95 : 96);
 
     if (attackRoll > attackAttr) {
@@ -1840,8 +1890,8 @@ export default function App() {
 
             workingUnits = setUnitIntent(workingUnits, actor.id, `攻击 ${target.name}`);
             const currentTarget = target;
-            const isPolearm = /长柄刀/.test(actor.weapon.type);
-            const isHeavyWeapon = /重型/.test(actor.weapon.type);
+            const isPolearm = /长柄/.test(actor.weapon.type);
+            const isHeavyWeapon = /大型/.test(actor.weapon.type);
             const explicitTargets = plannedTargetIds
               .map((id: string) => getUnit(workingUnits, id))
               .filter((unit: BattleCharacter | undefined | null): unit is BattleCharacter =>
@@ -1869,8 +1919,14 @@ export default function App() {
                       .slice(0, 1),
                   ]
                 : [poleTarget];
+              const comboCount = Math.max(
+                1,
+                Math.floor(
+                  (getWeaponDiceTotal(actor.weapon) + getWeaponDiceTotal(actor.subWeapon)) * actor.attackCount,
+                ),
+              );
               for (const targetPick of perAttackTargets) {
-                for (let i = 0; i < actor.attackCount; i += 1) {
+                for (let i = 0; i < comboCount; i += 1) {
                   const result = applyAttack(workingUnits, actor, targetPick, i, logs, extraPenalty);
                   workingUnits = result.units;
                 }
@@ -1884,8 +1940,8 @@ export default function App() {
             }
             workingUnits = setUnitIntent(workingUnits, actor.id, `攻击 ${target.name}`);
             const currentTarget = target;
-            const isPolearm = /长柄刀/.test(actor.weapon.type);
-            const isHeavyWeapon = /重型/.test(actor.weapon.type);
+            const isPolearm = /长柄/.test(actor.weapon.type);
+            const isHeavyWeapon = /大型/.test(actor.weapon.type);
             const extraTargets = isPolearm
               ? workingUnits.filter(
                   unit => unit.faction === 'enemy' && unit.id !== currentTarget.id && unit.hp > 0 && !unit.escaped,
@@ -1904,8 +1960,14 @@ export default function App() {
                       .slice(0, 1),
                   ]
                 : [poleTarget];
+              const comboCount = Math.max(
+                1,
+                Math.floor(
+                  (getWeaponDiceTotal(actor.weapon) + getWeaponDiceTotal(actor.subWeapon)) * actor.attackCount,
+                ),
+              );
               for (const targetPick of perAttackTargets) {
-                for (let i = 0; i < actor.attackCount; i += 1) {
+                for (let i = 0; i < comboCount; i += 1) {
                   const result = applyAttack(workingUnits, actor, targetPick, i, logs, extraPenalty);
                   workingUnits = result.units;
                 }
@@ -1920,8 +1982,8 @@ export default function App() {
             continue;
           }
           const currentTarget = target;
-          const isPolearm = /长柄刀/.test(actor.weapon.type);
-          const isHeavyWeapon = /重型/.test(actor.weapon.type);
+          const isPolearm = /长柄/.test(actor.weapon.type);
+          const isHeavyWeapon = /大型/.test(actor.weapon.type);
           const extraTargets = isPolearm
             ? workingUnits.filter(
                 unit => unit.faction === 'friendly' && unit.id !== currentTarget.id && unit.hp > 0 && !unit.escaped,
@@ -1940,8 +2002,12 @@ export default function App() {
                     .slice(0, 1),
                 ]
               : [poleTarget];
+            const comboCount = Math.max(
+              1,
+              Math.floor((getWeaponDiceTotal(actor.weapon) + getWeaponDiceTotal(actor.subWeapon)) * actor.attackCount),
+            );
             for (const targetPick of perAttackTargets) {
-              for (let i = 0; i < actor.attackCount; i += 1) {
+              for (let i = 0; i < comboCount; i += 1) {
                 const result = applyAttack(workingUnits, actor, targetPick, i, logs, extraPenalty);
                 workingUnits = result.units;
               }
@@ -2216,6 +2282,15 @@ export default function App() {
                   <button
                     onClick={() => {
                       setSettingsOpen(false);
+                      toggleFullscreen();
+                    }}
+                    className="block w-full text-left px-3 py-2 rounded-sm hover:bg-stone-800/60 text-stone-300"
+                  >
+                    {isFullscreen ? '退出全屏' : '进入全屏'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSettingsOpen(false);
                       setInfoModal('trauma');
                     }}
                     className="block w-full text-left px-3 py-2 rounded-sm hover:bg-stone-800/60 text-stone-300"
@@ -2454,7 +2529,7 @@ export default function App() {
                       unit.hp > 0 &&
                       !unit.escaped
                     ) {
-                      if (/长柄刀/.test(actor.weapon.type)) {
+                      if (/长柄/.test(actor.weapon.type)) {
                         setAttackSelectionIds(prev => {
                           const next = prev.includes(unit.id)
                             ? prev.filter(id => id !== unit.id)
