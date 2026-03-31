@@ -369,13 +369,6 @@ const rollDice = (dice: string) => {
   return _.sum(Array.from({ length: count }, () => _.random(1, sides)));
 };
 
-const getWeaponDiceTotal = (weapon?: { damageDice?: string }) => {
-  if (!weapon) return 0;
-  const dice = weapon.damageDice || '';
-  if (!dice || dice === '0d0') return 0;
-  return Math.max(0, Math.floor(rollDice(dice)));
-};
-
 const parseDamageTypeRatio = (damageType: string): DamageRatio | null => {
   if (!damageType) return null;
   const entries = damageType
@@ -804,6 +797,21 @@ const getEscapePenalty = (unit: BattleCharacter) => {
   const penalty = getLegPenalty(getLegTraumaLevel(unit));
   if (unit.fractured) return penalty + 25;
   return penalty;
+};
+
+const getEscapeTraumaPenalty = (unit: BattleCharacter) => {
+  const maxTrauma = getMaxTraumaLevel(unit);
+  if (maxTrauma >= 4) return 9999;
+  if (maxTrauma >= 3) return 25;
+  if (maxTrauma >= 2) return 15;
+  if (maxTrauma >= 1) return 5;
+  return 0;
+};
+
+const getEscapeStatusPenalty = (unit: BattleCharacter) => {
+  if (unit.state === '休克' || unit.state === '昏迷') return 9999;
+  if (unit.hp <= 0 && unit.state !== '死亡') return 30;
+  return 0;
 };
 
 const getAttackAttribute = (attacker: BattleCharacter) => {
@@ -1478,7 +1486,10 @@ export default function App() {
           if (ally) {
             appendLog(logs, `${attacker.name}: 大失败！误伤队友 ${ally.name}。`);
             const ratio = getDamageRatio(attacker.weapon.type, attacker.weapon.damageType);
-            const baseDamage = rollDice(attacker.weapon.damageDice) + (attacker.attributes.STR - 20) * 0.4;
+            const baseDamage =
+              rollDice(attacker.weapon.damageDice) +
+              rollDice(attacker.subWeapon.damageDice) +
+              (attacker.attributes.STR - 20) * 0.4;
             const rawDamage = Math.max(0, baseDamage);
             const finalDamage = rawDamage;
             const cutDamage = Math.round(finalDamage * ratio.cut);
@@ -1844,24 +1855,22 @@ export default function App() {
             }
 
             if (planned?.actionId === 'tactics' && planned.tactic === 'escape') {
-              const isTargeted = Object.values(enemyTargetMap).includes(actor.id);
-              if (!isTargeted) {
-                const escapePenalty = getEscapePenalty(actor);
-                if (escapePenalty >= 9999) {
-                  workingUnits = setUnitIntent(workingUnits, actor.id, '逃跑失败');
-                  appendLog(logs, `${actor.name}: 逃跑失败，无法移动。`);
-                  continue;
-                }
-                const escapeRoll = d100();
-                const escapeChance = 60 - escapePenalty;
-                if (escapeRoll <= escapeChance) {
-                  workingUnits = replaceUnit(workingUnits, { ...actor, escaped: true });
-                  workingUnits = setUnitIntent(workingUnits, actor.id, '逃跑成功');
-                  appendLog(logs, `${actor.name}: 逃跑成功，退出战斗。`);
-                } else {
-                  workingUnits = setUnitIntent(workingUnits, actor.id, '逃跑失败');
-                  appendLog(logs, `${actor.name}: 逃跑失败，被敌人锁定。`);
-                }
+              const targetedCount = Object.values(enemyTargetMap).filter(targetId => targetId === actor.id).length;
+              const escapeRoll = d100();
+              const traumaPenalty = getEscapeTraumaPenalty(actor);
+              const statusPenalty = getEscapeStatusPenalty(actor);
+              if (traumaPenalty >= 9999 || statusPenalty >= 9999) {
+                workingUnits = setUnitIntent(workingUnits, actor.id, '逃跑失败');
+                appendLog(logs, `${actor.name}: 逃跑失败，无法移动。`);
+                continue;
+              }
+              const escapePenalty = getEscapePenalty(actor) + targetedCount * 20 + traumaPenalty + statusPenalty;
+              const escapeChance = 60 - escapePenalty;
+              const criticalEscape = escapeRoll <= 5 && traumaPenalty < 25 && statusPenalty < 30;
+              if (escapeRoll <= escapeChance || criticalEscape) {
+                workingUnits = replaceUnit(workingUnits, { ...actor, escaped: true });
+                workingUnits = setUnitIntent(workingUnits, actor.id, '逃跑成功');
+                appendLog(logs, `${actor.name}: 逃跑成功，退出战斗。`);
               } else {
                 workingUnits = setUnitIntent(workingUnits, actor.id, '逃跑失败');
                 appendLog(logs, `${actor.name}: 逃跑失败，被敌人锁定。`);
@@ -1919,14 +1928,8 @@ export default function App() {
                       .slice(0, 1),
                   ]
                 : [poleTarget];
-              const comboCount = Math.max(
-                1,
-                Math.floor(
-                  (getWeaponDiceTotal(actor.weapon) + getWeaponDiceTotal(actor.subWeapon)) * actor.attackCount,
-                ),
-              );
               for (const targetPick of perAttackTargets) {
-                for (let i = 0; i < comboCount; i += 1) {
+                for (let i = 0; i < actor.attackCount; i += 1) {
                   const result = applyAttack(workingUnits, actor, targetPick, i, logs, extraPenalty);
                   workingUnits = result.units;
                 }
@@ -1960,14 +1963,8 @@ export default function App() {
                       .slice(0, 1),
                   ]
                 : [poleTarget];
-              const comboCount = Math.max(
-                1,
-                Math.floor(
-                  (getWeaponDiceTotal(actor.weapon) + getWeaponDiceTotal(actor.subWeapon)) * actor.attackCount,
-                ),
-              );
               for (const targetPick of perAttackTargets) {
-                for (let i = 0; i < comboCount; i += 1) {
+                for (let i = 0; i < actor.attackCount; i += 1) {
                   const result = applyAttack(workingUnits, actor, targetPick, i, logs, extraPenalty);
                   workingUnits = result.units;
                 }
@@ -2002,12 +1999,8 @@ export default function App() {
                     .slice(0, 1),
                 ]
               : [poleTarget];
-            const comboCount = Math.max(
-              1,
-              Math.floor((getWeaponDiceTotal(actor.weapon) + getWeaponDiceTotal(actor.subWeapon)) * actor.attackCount),
-            );
             for (const targetPick of perAttackTargets) {
-              for (let i = 0; i < comboCount; i += 1) {
+              for (let i = 0; i < actor.attackCount; i += 1) {
                 const result = applyAttack(workingUnits, actor, targetPick, i, logs, extraPenalty);
                 workingUnits = result.units;
               }

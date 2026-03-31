@@ -717,7 +717,6 @@
         const appearance = _.get(data, '外貌', '暂无外貌描述');
         const attrPt = _.get(data, '属性点', 0);
         const traitPt = _.get(data, '特质点', 0);
-        const favorValue = _.get(data, '好感值', 0);
         const formatAttr = value => {
           if (value && typeof value === 'object') {
             const base = Number(value.基础 ?? 0) || 0;
@@ -830,7 +829,7 @@
 
         return `
                 <div style="display:flex; justify-content:space-between; align-items:end; margin-bottom:15px; border-bottom:1px solid #444; padding-bottom:15px;">
-                    <div style="width:100%"><div style="font-family:var(--font-header); font-size:2.2em; color:var(--accent-gold);">${_.get(data, 'id', '未知')}</div><div style="color:var(--text-dim); margin-top:5px;">${_.get(data, '种族.名称', '人类')} | Lv.${_.get(data, '等级', 1)} | ${bodySize}<span class="has-tooltip" data-tooltip="立场 - 派系" style="margin-left:10px; background:${factionColor}; padding:2px 8px; font-size:0.8em; color:#fff; border-radius:2px;">${factionDisplay}</span></div></div></div>
+                    <div style="width:100%"><div style="font-family:var(--font-header); font-size:2.2em; color:var(--accent-gold);">${_.get(data, '名字', '未知')}</div><div style="color:var(--text-dim); margin-top:5px;">${_.get(data, '种族.名称', '人类')} | Lv.${_.get(data, '等级', 1)} | ${bodySize}<span class="has-tooltip" data-tooltip="立场 - 派系" style="margin-left:10px; background:${factionColor}; padding:2px 8px; font-size:0.8em; color:#fff; border-radius:2px;">${factionDisplay}</span></div></div></div>
                 <div class="desc-text">"${appearance}"</div>
                 <div class="detail-grid">
                     <div>
@@ -844,7 +843,6 @@
                                 <div class="status-header"><span>经验值 (EXP)</span><span>${expCur} / ${expMax}</span></div>
                                 <div class="bar-container"><div class="bar-fill bar-exp" style="width:${Math.min((expCur / expMax) * 100, 100)}%"></div></div>
                             </div>
-                            ${entityType === 'squad' ? `<div class="status-row"><div class="status-header"><span>好感值</span><span>${_.clamp(favorValue, -20, 100)}</span></div></div>` : ''}
                         </div>
                         <div class="section-box">
                             <div class="section-title">身体属性</div>
