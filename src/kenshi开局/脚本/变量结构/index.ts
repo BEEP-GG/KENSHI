@@ -184,7 +184,7 @@ const TemporaryTraitSchema = z
 
 // 角色基础“蓝图”定义 (不含好感值)
 const CharacterSchemaBase = z.object({
-  id: z.string().prefault(''),
+  名字: z.string().prefault(''),
   性别: z.string().prefault('男'),
   年龄: z.union([z.coerce.number(), z.string()]).prefault(20),
   外貌: z.string().prefault(''),
@@ -217,9 +217,8 @@ const CharacterSchemaBase = z.object({
   种族: z
     .object({
       名称: z.string().prefault('人类'),
-      基础生命值: z.coerce.number().prefault(20),
     })
-    .prefault({ 名称: '人类', 基础生命值: 20 }),
+    .prefault({ 名称: '人类' }),
   属性: z
     .record(z.string(), z.union([z.coerce.number(), AttributeDetailSchema]))
     .transform(input => {
@@ -434,9 +433,7 @@ const characterTransform = (data: any) => {
       hpTraitModifier += parseInt(match[1].replace(/\s/g, ''), 10);
     }
   });
-  data.血量.最大 = Math.floor(
-    (data.种族.基础生命值 || 20) + finalAttrs.TGH * 2 + data.等级 * 1 + bodySizeHpModifier + hpTraitModifier,
-  );
+  data.血量.最大 = Math.floor(50 + finalAttrs.TGH * 2 + data.等级 * 1 + bodySizeHpModifier + hpTraitModifier);
   const hpFixedRegex = /(?:最大生命值).*(?:固定为|设定为|就是)\s*(\d+)/i;
   for (const desc of allDescriptions) {
     if (!desc) continue;

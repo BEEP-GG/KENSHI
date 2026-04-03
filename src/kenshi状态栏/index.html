@@ -371,6 +371,48 @@
         align-items: center;
         animation: fadeIn 0.2s;
       }
+
+      .confirm-modal {
+        background: var(--bg-deep);
+        width: 90%;
+        max-width: 420px;
+        border: 1px solid var(--accent-gold);
+        padding: 24px;
+        box-shadow: 0 10px 50px rgba(0, 0, 0, 0.8);
+        text-align: center;
+      }
+      .confirm-title {
+        font-family: var(--font-header);
+        color: var(--accent-gold);
+        font-size: 1.1em;
+        margin-bottom: 12px;
+      }
+      .confirm-actions {
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        margin-top: 18px;
+      }
+      .confirm-btn {
+        background: transparent;
+        border: 1px solid var(--accent-bronze);
+        color: var(--accent-gold);
+        padding: 6px 16px;
+        cursor: pointer;
+        font-family: var(--font-header);
+        transition: 0.2s;
+      }
+      .confirm-btn:hover {
+        border-color: var(--accent-gold);
+        background: rgba(193, 163, 95, 0.1);
+      }
+      .confirm-btn.danger {
+        border-color: var(--accent-danger);
+        color: var(--accent-danger);
+      }
+      .confirm-btn.danger:hover {
+        background: rgba(231, 76, 60, 0.12);
+      }
       .modal-content {
         background: var(--bg-deep);
         width: 90%;
@@ -420,6 +462,12 @@
         margin-bottom: 15px;
         padding-bottom: 10px;
         border-bottom: 1px dashed #444;
+      }
+      .subtask-desc {
+        font-size: 0.85em;
+        color: #aaa;
+        margin: 4px 0 6px;
+        line-height: 1.4;
       }
       .mission-reward {
         font-weight: bold;
@@ -829,7 +877,7 @@
 
         return `
                 <div style="display:flex; justify-content:space-between; align-items:end; margin-bottom:15px; border-bottom:1px solid #444; padding-bottom:15px;">
-                    <div style="width:100%"><div style="font-family:var(--font-header); font-size:2.2em; color:var(--accent-gold);">${_.get(data, '名字', '未知')}</div><div style="color:var(--text-dim); margin-top:5px;">${_.get(data, '种族.名称', '人类')} | Lv.${_.get(data, '等级', 1)} | ${bodySize}<span class="has-tooltip" data-tooltip="立场 - 派系" style="margin-left:10px; background:${factionColor}; padding:2px 8px; font-size:0.8em; color:#fff; border-radius:2px;">${factionDisplay}</span></div></div></div>
+                    <div style="width:100%"><div style="font-family:var(--font-header); font-size:2.2em; color:var(--accent-gold);">${_.get(data, '名字') || _.get(data, 'id', '未知')}</div><div style="color:var(--text-dim); margin-top:5px;">${_.get(data, '种族.名称', '人类')} | Lv.${_.get(data, '等级', 1)} | ${bodySize}<span class="has-tooltip" data-tooltip="立场 - 派系" style="margin-left:10px; background:${factionColor}; padding:2px 8px; font-size:0.8em; color:#fff; border-radius:2px;">${factionDisplay}</span></div></div></div>
                 <div class="desc-text">"${appearance}"</div>
                 <div class="detail-grid">
                     <div>
@@ -964,9 +1012,11 @@
                   const current = _.get(subtaskData, '进度.当前', 0);
                   const target = _.get(subtaskData, '进度.目标', 1);
                   const status = _.get(subtaskData, '状态', '进行中');
+                  const desc = _.get(subtaskData, '描述', '');
                   const progressPercent = target > 0 ? Math.min((current / target) * 100, 100) : 0;
                   const statusClass = status === '已完成' ? 'completed' : '';
-                  subtasksHTML += `<li class="subtask-item ${statusClass}"><div class="subtask-name">${subtaskName}</div><div class="subtask-progress-container"><div class="subtask-progress-bar-container"><div class="subtask-progress-bar" style="width: ${progressPercent}%"></div></div><div class="subtask-progress-text">${current} / ${target}</div></div></li>`;
+                  const descHtml = desc ? `<div class="subtask-desc">${desc}</div>` : '';
+                  subtasksHTML += `<li class="subtask-item ${statusClass}"><div class="subtask-name">${subtaskName}</div>${descHtml}<div class="subtask-progress-container"><div class="subtask-progress-bar-container"><div class="subtask-progress-bar" style="width: ${progressPercent}%"></div></div><div class="subtask-progress-text">${current} / ${target}</div></div></li>`;
                 });
                 subtasksHTML += '</ul>';
               }
@@ -1021,6 +1071,18 @@
           update();
         }
 
+        let pendingPastDeleteIndex = null;
+
+        function openPastDeleteConfirm(index) {
+          pendingPastDeleteIndex = index;
+          $('#confirm-modal').css('display', 'flex');
+        }
+
+        function closePastDeleteConfirm() {
+          pendingPastDeleteIndex = null;
+          $('#confirm-modal').hide();
+        }
+
         async function deletePastEntry(index) {
           const option = { type: 'message', message_id: getCurrentMessageId() };
           const mvuData = Mvu.getMvuData(option);
@@ -1038,7 +1100,22 @@
         $('#past-list').on('click', '.past-delete-btn', function () {
           const index = Number($(this).attr('data-index'));
           if (!Number.isNaN(index)) {
-            deletePastEntry(index);
+            openPastDeleteConfirm(index);
+          }
+        });
+
+        $('#confirm-cancel').on('click', () => {
+          closePastDeleteConfirm();
+        });
+        $('#confirm-ok').on('click', () => {
+          if (pendingPastDeleteIndex !== null) {
+            deletePastEntry(pendingPastDeleteIndex);
+          }
+          closePastDeleteConfirm();
+        });
+        $('#confirm-modal').on('click', function (e) {
+          if (e.target === this) {
+            closePastDeleteConfirm();
           }
         });
 
@@ -1231,6 +1308,16 @@
       <div class="modal-content">
         <button class="close-btn" onclick="closeModal()">×</button>
         <div id="modal-content-inner"></div>
+      </div>
+    </div>
+    <div id="confirm-modal" class="modal-overlay">
+      <div class="confirm-modal">
+        <div class="confirm-title">确认删除</div>
+        <div>是否删除该往事记录？</div>
+        <div class="confirm-actions">
+          <button id="confirm-cancel" class="confirm-btn">取消</button>
+          <button id="confirm-ok" class="confirm-btn danger">删除</button>
+        </div>
       </div>
     </div>
     <div id="tooltip"></div>

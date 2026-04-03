@@ -218,13 +218,20 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
     updateData({ attributes: { ...presetValues, will: isSkeleton ? 100 : presetValues.will } });
   };
 
-  const toggleTrait = (traitId: string) => {
+  const toggleTrait = (traitId: string, category: 'attribute' | 'life' | 'fun') => {
     const currentTraits = data.traits;
     if (currentTraits.includes(traitId)) {
       updateData({ traits: currentTraits.filter(t => t !== traitId) });
-    } else if (currentTraits.length < 2) {
-      updateData({ traits: [...currentTraits, traitId] });
+      return;
     }
+    const selectedTraits = currentTraits
+      .map(id => [...TRAITS.attribute, ...TRAITS.life, ...TRAITS.fun].find(trait => trait.id === id))
+      .filter(Boolean) as Array<{ category: 'attribute' | 'life' | 'fun' }>;
+    const attributeCount = selectedTraits.filter(trait => trait.category === 'attribute').length;
+    const lifeCount = selectedTraits.filter(trait => trait.category === 'life').length;
+    if (category === 'attribute' && attributeCount >= 2) return;
+    if (category === 'life' && lifeCount >= 2) return;
+    updateData({ traits: [...currentTraits, traitId] });
   };
 
   const selectedRace = RACES.find(race => race.id === data.race);
@@ -299,14 +306,21 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
     });
   };
 
-  const toggleSquadMemberTrait = (index: number, traitId: string) => {
+  const toggleSquadMemberTrait = (index: number, traitId: string, category: 'attribute' | 'life' | 'fun') => {
     const member = data.squadMembers[index];
     const currentTraits = member.traits;
     if (currentTraits.includes(traitId)) {
       updateSquadMember(index, { traits: currentTraits.filter(t => t !== traitId) });
-    } else if (currentTraits.length < 2) {
-      updateSquadMember(index, { traits: [...currentTraits, traitId] });
+      return;
     }
+    const selectedTraits = currentTraits
+      .map(id => [...TRAITS.attribute, ...TRAITS.life, ...TRAITS.fun].find(trait => trait.id === id))
+      .filter(Boolean) as Array<{ category: 'attribute' | 'life' | 'fun' }>;
+    const attributeCount = selectedTraits.filter(trait => trait.category === 'attribute').length;
+    const lifeCount = selectedTraits.filter(trait => trait.category === 'life').length;
+    if (category === 'attribute' && attributeCount >= 2) return;
+    if (category === 'life' && lifeCount >= 2) return;
+    updateSquadMember(index, { traits: [...currentTraits, traitId] });
   };
 
   const resetSquadMember = (index: number) => {
@@ -319,7 +333,8 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
       attributes: { ...INITIAL_ATTRIBUTES },
       appearance: { ...INITIAL_APPEARANCE },
       traits: [],
-      customTraits: '',
+      customTraitName: '',
+      customTraitDescription: '',
     });
   };
 
@@ -458,63 +473,6 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
                 </div>
               );
             })}
-          </div>
-        </div>
-
-        {/* Race Traits Section */}
-        <div className="bg-black/40 border border-white/10 rounded-xl p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-2xl font-serif text-[#C2B280]">种族特质</h3>
-            <span className="text-xs text-white/50">来自种族/亚种描述</span>
-          </div>
-          {raceTraits.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {raceTraits.map(trait => (
-                <span key={trait} className="px-2 py-1 rounded bg-white/5 border border-white/10 text-xs text-white/70">
-                  {trait}
-                </span>
-              ))}
-            </div>
-          ) : (
-            <p className="text-xs text-white/40">当前种族暂无特质描述。</p>
-          )}
-        </div>
-
-        {/* Traits Section */}
-        <div className="bg-black/40 border border-white/10 rounded-xl p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-2xl font-serif text-[#C2B280]">特质</h3>
-            <span className="text-xs text-white/50">已选: {data.traits.length}/2</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {TRAITS.map(trait => (
-              <button
-                key={trait.id}
-                onClick={() => toggleTrait(trait.id)}
-                disabled={!data.traits.includes(trait.id) && data.traits.length >= 2}
-                className={`
-                  p-3 rounded border text-left text-sm transition-all
-                  ${
-                    data.traits.includes(trait.id)
-                      ? 'bg-[#C2B280]/20 border-[#C2B280] text-[#C2B280]'
-                      : 'bg-white/5 border-white/10 text-white/60 hover:border-white/30 disabled:opacity-30 disabled:cursor-not-allowed'
-                  }
-                `}
-              >
-                <div className="font-bold mb-1">{trait.title}</div>
-                <div className="text-[10px] opacity-70">{trait.description}</div>
-              </button>
-            ))}
-          </div>
-          <div className="mt-4">
-            <label className="block text-sm text-white/60 mb-2">自定义特质（可选）</label>
-            <textarea
-              value={data.customTraits || ''}
-              onChange={e => updateData({ customTraits: e.target.value })}
-              rows={3}
-              className="w-full resize-y rounded border border-white/20 bg-black/50 p-3 text-sm text-white focus:border-[#C2B280] focus:outline-none"
-              placeholder="例如：坚韧意念（对恐惧免疫）、机械狂热（修理速度+10%）..."
-            />
           </div>
         </div>
 
@@ -762,44 +720,114 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
                     </div>
 
                     <div className="mt-4">
-                      <div className="flex justify-between items-center mb-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                         <span className="text-xs text-white/60">特质</span>
-                        <span className="text-[10px] text-white/40">已选: {member.traits.length}/2</span>
+                        <span className="text-[10px] text-white/40">
+                          属性类 {member.traits.filter(id => TRAITS.attribute.some(t => t.id === id)).length}/2 · 生活类{' '}
+                          {member.traits.filter(id => TRAITS.life.some(t => t.id === id)).length}/2 · 整活类不限
+                        </span>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {TRAITS.map(trait => {
-                          const isAnimalCompanion = member.race === 'canine' || member.race === 'pack_beast';
-                          return (
-                            <button
-                              key={trait.id}
-                              onClick={() => toggleSquadMemberTrait(index, trait.id)}
-                              disabled={
-                                isAnimalCompanion || (!member.traits.includes(trait.id) && member.traits.length >= 2)
-                              }
-                              className={`
-                                p-2 rounded border text-left text-xs transition-all
-                                ${
-                                  member.traits.includes(trait.id)
-                                    ? 'bg-[#C2B280]/20 border-[#C2B280] text-[#C2B280]'
-                                    : 'bg-white/5 border-white/10 text-white/60 hover:border-white/30 disabled:opacity-30 disabled:cursor-not-allowed'
-                                }
-                              `}
-                            >
-                              <div className="font-bold mb-1">{trait.title}</div>
-                              <div className="text-[10px] opacity-70">{trait.description}</div>
-                            </button>
-                          );
-                        })}
+                      <div className="space-y-3">
+                        <div>
+                          <div className="text-[10px] text-white/50 mb-1">属性类（可选 2）</div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {TRAITS.attribute.map(trait => {
+                              const isAnimalCompanion = member.race === 'canine' || member.race === 'pack_beast';
+                              return (
+                                <button
+                                  key={trait.id}
+                                  onClick={() => toggleSquadMemberTrait(index, trait.id, 'attribute')}
+                                  disabled={
+                                    isAnimalCompanion ||
+                                    (!member.traits.includes(trait.id) &&
+                                      member.traits.filter(id => TRAITS.attribute.some(t => t.id === id)).length >= 2)
+                                  }
+                                  className={
+                                    `p-2 rounded border text-left text-xs transition-all ` +
+                                    (member.traits.includes(trait.id)
+                                      ? 'bg-[#C2B280]/20 border-[#C2B280] text-[#C2B280]'
+                                      : 'bg-white/5 border-white/10 text-white/60 hover:border-white/30 disabled:opacity-30 disabled:cursor-not-allowed')
+                                  }
+                                >
+                                  <div className="font-bold mb-1">{trait.title}</div>
+                                  <div className="text-[10px] opacity-70">{trait.description}</div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-[10px] text-white/50 mb-1">生活类（可选 2）</div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {TRAITS.life.map(trait => {
+                              const isAnimalCompanion = member.race === 'canine' || member.race === 'pack_beast';
+                              return (
+                                <button
+                                  key={trait.id}
+                                  onClick={() => toggleSquadMemberTrait(index, trait.id, 'life')}
+                                  disabled={
+                                    isAnimalCompanion ||
+                                    (!member.traits.includes(trait.id) &&
+                                      member.traits.filter(id => TRAITS.life.some(t => t.id === id)).length >= 2)
+                                  }
+                                  className={
+                                    `p-2 rounded border text-left text-xs transition-all ` +
+                                    (member.traits.includes(trait.id)
+                                      ? 'bg-[#C2B280]/20 border-[#C2B280] text-[#C2B280]'
+                                      : 'bg-white/5 border-white/10 text-white/60 hover:border-white/30 disabled:opacity-30 disabled:cursor-not-allowed')
+                                  }
+                                >
+                                  <div className="font-bold mb-1">{trait.title}</div>
+                                  <div className="text-[10px] opacity-70">{trait.description}</div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-[10px] text-white/50 mb-1">整活类（不限）</div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {TRAITS.fun.map(trait => {
+                              const isAnimalCompanion = member.race === 'canine' || member.race === 'pack_beast';
+                              return (
+                                <button
+                                  key={trait.id}
+                                  onClick={() => toggleSquadMemberTrait(index, trait.id, 'fun')}
+                                  disabled={isAnimalCompanion}
+                                  className={
+                                    `p-2 rounded border text-left text-xs transition-all ` +
+                                    (member.traits.includes(trait.id)
+                                      ? 'bg-[#C2B280]/20 border-[#C2B280] text-[#C2B280]'
+                                      : 'bg-white/5 border-white/10 text-white/60 hover:border-white/30 disabled:opacity-30 disabled:cursor-not-allowed')
+                                  }
+                                >
+                                  <div className="font-bold mb-1">{trait.title}</div>
+                                  <div className="text-[10px] opacity-70">{trait.description}</div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
                       </div>
                       <div className="mt-3">
-                        <label className="block text-[10px] text-white/50 mb-1">自定义特质（可选）</label>
-                        <textarea
-                          value={member.customTraits || ''}
-                          onChange={e => updateSquadMember(index, { customTraits: e.target.value })}
-                          rows={2}
-                          className="w-full resize-y rounded border border-white/20 bg-black/50 p-2 text-sm text-white focus:border-[#C2B280] focus:outline-none"
-                          disabled={member.race === 'canine' || member.race === 'pack_beast'}
-                        />
+                        <label className="block text-[10px] text-white/50 mb-1">自定义特质（仅 1 个）</label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <input
+                            value={member.customTraitName || ''}
+                            onChange={e => updateSquadMember(index, { customTraitName: e.target.value })}
+                            className="w-full rounded border border-white/20 bg-black/50 p-2 text-sm text-white focus:border-[#C2B280] focus:outline-none"
+                            placeholder="特质名称"
+                            disabled={member.race === 'canine' || member.race === 'pack_beast'}
+                          />
+                          <textarea
+                            value={member.customTraitDescription || ''}
+                            onChange={e => updateSquadMember(index, { customTraitDescription: e.target.value })}
+                            rows={2}
+                            className="w-full resize-y rounded border border-white/20 bg-black/50 p-2 text-sm text-white focus:border-[#C2B280] focus:outline-none"
+                            placeholder="特质描述"
+                            disabled={member.race === 'canine' || member.race === 'pack_beast'}
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -883,6 +911,133 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
               </div>
             </div>
           </div>
+
+          {/* Race Traits Section */}
+          <div className="bg-black/40 border border-white/10 rounded-xl p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-2xl font-serif text-[#C2B280]">种族特质</h3>
+              <span className="text-xs text-white/50">来自种族/亚种描述</span>
+            </div>
+            {raceTraits.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {raceTraits.map(trait => (
+                  <span
+                    key={trait}
+                    className="px-2 py-1 rounded bg-white/5 border border-white/10 text-xs text-white/70"
+                  >
+                    {trait}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-white/40">当前种族暂无特质描述。</p>
+            )}
+          </div>
+
+          {/* Traits Section */}
+          <div className="bg-black/40 border border-white/10 rounded-xl p-6">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+              <h3 className="text-2xl font-serif text-[#C2B280]">特质</h3>
+              <div className="text-xs text-white/50">
+                属性类已选 {data.traits.filter(id => TRAITS.attribute.some(t => t.id === id)).length}/2 · 生活类已选{' '}
+                {data.traits.filter(id => TRAITS.life.some(t => t.id === id)).length}/2 · 整活类不限
+              </div>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <div>
+                <div className="text-xs text-white/60 mb-2">属性类（可选 2）</div>
+                <div className="grid grid-cols-1 gap-3">
+                  {TRAITS.attribute.map(trait => (
+                    <button
+                      key={trait.id}
+                      onClick={() => toggleTrait(trait.id, 'attribute')}
+                      disabled={
+                        !data.traits.includes(trait.id) &&
+                        data.traits.filter(id => TRAITS.attribute.some(t => t.id === id)).length >= 2
+                      }
+                      className={`
+                        p-3 rounded border text-left text-sm transition-all
+                        ${
+                          data.traits.includes(trait.id)
+                            ? 'bg-[#C2B280]/20 border-[#C2B280] text-[#C2B280]'
+                            : 'bg-white/5 border-white/10 text-white/60 hover:border-white/30 disabled:opacity-30 disabled:cursor-not-allowed'
+                        }
+                      `}
+                    >
+                      <div className="font-bold mb-1">{trait.title}</div>
+                      <div className="text-[10px] opacity-70">{trait.description}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-white/60 mb-2">生活类（可选 2）</div>
+                <div className="grid grid-cols-1 gap-3">
+                  {TRAITS.life.map(trait => (
+                    <button
+                      key={trait.id}
+                      onClick={() => toggleTrait(trait.id, 'life')}
+                      disabled={
+                        !data.traits.includes(trait.id) &&
+                        data.traits.filter(id => TRAITS.life.some(t => t.id === id)).length >= 2
+                      }
+                      className={`
+                        p-3 rounded border text-left text-sm transition-all
+                        ${
+                          data.traits.includes(trait.id)
+                            ? 'bg-[#C2B280]/20 border-[#C2B280] text-[#C2B280]'
+                            : 'bg-white/5 border-white/10 text-white/60 hover:border-white/30 disabled:opacity-30 disabled:cursor-not-allowed'
+                        }
+                      `}
+                    >
+                      <div className="font-bold mb-1">{trait.title}</div>
+                      <div className="text-[10px] opacity-70">{trait.description}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-white/60 mb-2">整活类（不限）</div>
+                <div className="grid grid-cols-1 gap-3">
+                  {TRAITS.fun.map(trait => (
+                    <button
+                      key={trait.id}
+                      onClick={() => toggleTrait(trait.id, 'fun')}
+                      className={`
+                        p-3 rounded border text-left text-sm transition-all
+                        ${
+                          data.traits.includes(trait.id)
+                            ? 'bg-[#C2B280]/20 border-[#C2B280] text-[#C2B280]'
+                            : 'bg-white/5 border-white/10 text-white/60 hover:border-white/30'
+                        }
+                      `}
+                    >
+                      <div className="font-bold mb-1">{trait.title}</div>
+                      <div className="text-[10px] opacity-70">{trait.description}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="mt-4">
+              <label className="block text-sm text-white/60 mb-2">自定义特质（仅 1 个）</label>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                <input
+                  value={data.customTraitName || ''}
+                  onChange={e => updateData({ customTraitName: e.target.value })}
+                  className="w-full rounded border border-white/20 bg-black/50 p-3 text-sm text-white focus:border-[#C2B280] focus:outline-none"
+                  placeholder="特质名称"
+                />
+                <textarea
+                  value={data.customTraitDescription || ''}
+                  onChange={e => updateData({ customTraitDescription: e.target.value })}
+                  rows={2}
+                  className="w-full resize-y rounded border border-white/20 bg-black/50 p-3 text-sm text-white focus:border-[#C2B280] focus:outline-none"
+                  placeholder="特质描述（可含属性加成）"
+                />
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Appearance Sliders */}
@@ -917,7 +1072,7 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
                   value={data.appearance.bodyType}
                   onChange={e => updateData({ appearance: { ...data.appearance, bodyType: e.target.value } })}
                   className="w-full bg-black/50 border border-white/20 rounded p-3 text-white focus:border-[#C2B280] focus:outline-none"
-                  placeholder="例如：瘦高、健壮、魁梧"
+                  placeholder="例如：弯腰、驼背"
                 />
               </div>
               <div>

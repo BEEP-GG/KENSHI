@@ -27,7 +27,8 @@ export interface SquadMemberData {
     description: string;
   };
   traits: string[];
-  customTraits: string;
+  customTraitName: string;
+  customTraitDescription: string;
 }
 
 export interface CharacterData {
@@ -49,7 +50,8 @@ export interface CharacterData {
     description: string;
   };
   traits: string[];
-  customTraits: string;
+  customTraitName: string;
+  customTraitDescription: string;
   squadMembers: SquadMemberData[];
 }
 
@@ -81,7 +83,8 @@ export const INITIAL_SQUAD_MEMBER: SquadMemberData = {
   age: 25,
   appearance: INITIAL_APPEARANCE,
   traits: [],
-  customTraits: '',
+  customTraitName: '',
+  customTraitDescription: '',
 };
 
 const createInitialSquadMember = (): SquadMemberData => ({
@@ -110,6 +113,7 @@ export const INITIAL_CHARACTER: CharacterData = {
     description: '',
   },
   traits: [],
-  customTraits: '',
+  customTraitName: '',
+  customTraitDescription: '',
   squadMembers: Array.from({ length: 4 }, () => createInitialSquadMember()),
 };

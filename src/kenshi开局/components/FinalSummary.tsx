@@ -144,12 +144,18 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
     charisma: '魅力',
   };
 
+  const allTraits = [...TRAITS.attribute, ...TRAITS.life, ...TRAITS.fun];
+
   const traitText = data.traits
     .map(traitId => {
-      const trait = TRAITS.find(t => t.id === traitId);
+      const trait = allTraits.find(t => t.id === traitId);
       return trait ? `${trait.title}：${trait.description}` : traitId;
     })
-    .concat(data.customTraits ? [data.customTraits] : [])
+    .concat(
+      data.customTraitName && data.customTraitDescription
+        ? [`${data.customTraitName}：${data.customTraitDescription}`]
+        : [],
+    )
     .join('；');
 
   const raceTraitSource = [race?.description ?? '', subrace?.description ?? ''].join(' ');
@@ -158,13 +164,13 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
   const buildTraitsRecord = () => {
     const traits: Record<string, string> = {};
     data.traits.forEach(traitId => {
-      const trait = TRAITS.find(t => t.id === traitId);
+      const trait = allTraits.find(t => t.id === traitId);
       if (trait) {
         traits[trait.title] = trait.description;
       }
     });
-    if (data.customTraits) {
-      traits['自定义特质'] = data.customTraits;
+    if (data.customTraitName && data.customTraitDescription) {
+      traits[data.customTraitName] = data.customTraitDescription;
     }
     return traits;
   };
@@ -181,6 +187,21 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
       return '轻甲';
     };
 
+    const resolveArmorMeta = (item?: string) => {
+      if (!item || item === '无') {
+        return { type: '无甲', dr: 0, desc: '未穿戴护甲' };
+      }
+      if (/雇佣兵之甲/.test(item)) {
+        return {
+          type: '中甲',
+          dr: 14,
+          desc: '由几种不同的金属板护层制成。几片护甲被设计成肌肉外形，严密保护从肩部到胸部中部的部分。',
+        };
+      }
+      const armorType = resolveArmorType(item);
+      return { type: armorType, dr: 0, desc: `只穿戴${item}` };
+    };
+
     const resolveWeaponType = (item?: string) => {
       if (!item || item === '无') return '武术';
       if (/长柄|长枪|枪|矛|鱼矛/.test(item)) return '长柄刀类';
@@ -192,17 +213,124 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
       return '武士刀类';
     };
 
-    const armorType = resolveArmorType(armorItem);
-    const armorDescription = armorType === '无甲' ? '未穿戴护甲' : `只穿戴${armorItem}`;
-    const weaponName = weaponItem ?? '武术';
-    const weaponType = resolveWeaponType(weaponItem);
+    const resolveWeaponMeta = (item?: string) => {
+      if (!item || item === '无') {
+        return {
+          name: '武术',
+          type: '武术',
+          quality: '普通',
+          dice: '1d4',
+          damage: '钝伤:1.0',
+        };
+      }
+      if (/生锈的铁剑/.test(item)) {
+        return {
+          name: '生锈的铁剑',
+          type: '武士刀类',
+          quality: '普通',
+          dice: '1d8',
+          damage: '切割:0.8，钝伤:0.2',
+        };
+      }
+      if (/防身小刀/.test(item)) {
+        return {
+          name: '防身小刀',
+          type: '武士刀类',
+          quality: '普通',
+          dice: '1d10',
+          damage: '切割:1.0',
+        };
+      }
+      if (/长官佩刀/.test(item)) {
+        return {
+          name: '长官佩刀',
+          type: '武士刀类',
+          quality: '普通',
+          dice: '1d14',
+          damage: '切割:0.8，钝伤:0.2',
+        };
+      }
+      if (/砍刀/.test(item)) {
+        return {
+          name: '砍刀',
+          type: '砍刀类',
+          quality: '普通',
+          dice: '1d10',
+          damage: '切割:0.6，钝伤:0.4',
+        };
+      }
+      if (/弯刀/.test(item)) {
+        return {
+          name: '弯刀',
+          type: '军刀类',
+          quality: '普通',
+          dice: '1d10',
+          damage: '切割:0.8，钝伤:0.2',
+        };
+      }
+      if (/巨骨战斧/.test(item)) {
+        return {
+          name: '巨骨战斧',
+          type: '大型武器类',
+          quality: '普通',
+          dice: '1d12',
+          damage: '切割:0.6，钝伤:0.4',
+        };
+      }
+      if (/武士刀/.test(item)) {
+        return {
+          name: '武士刀',
+          type: '武士刀类',
+          quality: '普通',
+          dice: '1d14',
+          damage: '切割:0.8，钝伤:0.2',
+        };
+      }
+      if (/沙克大剑/.test(item)) {
+        return {
+          name: '沙克大剑',
+          type: '大型武器类',
+          quality: '普通',
+          dice: '1d15',
+          damage: '切割:0.7，钝伤:0.3',
+        };
+      }
+      if (/鱼矛/.test(item)) {
+        return {
+          name: '鱼矛',
+          type: '长柄刀类',
+          quality: '普通',
+          dice: '1d12',
+          damage: '切割:0.7，钝伤:0.3',
+        };
+      }
+      if (/大剑/.test(item)) {
+        return {
+          name: item.replace(/\s*\(.*?\)\s*/, ''),
+          type: '大型武器类',
+          quality: /铭刃/.test(item) ? '铭刃' : '普通',
+          dice: '1d30',
+          damage: '切割:0.2，钝伤:0.8',
+        };
+      }
+      return {
+        name: item,
+        type: resolveWeaponType(item),
+        quality: '普通',
+        dice: '1d4',
+        damage: '钝伤:1.0',
+      };
+    };
+
+    const armorMeta = resolveArmorMeta(armorItem);
+    const weaponMeta = resolveWeaponMeta(weaponItem);
 
     const mainWeapon =
       scenario?.id === 'holy_sword'
         ? {
             名字: '大剑',
-            种类: '重武器类',
-            品质: '十字',
+            种类: '大型武器类',
+            品质: '铭刃',
             介绍: '一把传奇之剑',
             伤害骰: '1d30',
             伤害类型: '切割:0.2，钝伤:0.8',
@@ -210,12 +338,12 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
             价值: 99999,
           }
         : {
-            名字: weaponName,
-            种类: weaponType,
-            品质: '普通',
+            名字: weaponMeta.name,
+            种类: weaponMeta.type,
+            品质: weaponMeta.quality,
             介绍: weaponItem ?? '',
-            伤害骰: '1d4',
-            伤害类型: '钝伤:1.0',
+            伤害骰: weaponMeta.dice,
+            伤害类型: weaponMeta.damage,
             特效: {},
             价值: 0,
           };
@@ -233,9 +361,9 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
         价值: 0,
       },
       护甲: {
-        种类: armorType,
-        '防护能力(DR)': 0,
-        介绍: armorDescription,
+        种类: armorMeta.type,
+        '防护能力(DR)': armorMeta.dr,
+        介绍: armorMeta.desc,
         特性: {},
       },
       背包物品: equipmentList.filter(item => item !== weaponItem && item !== armorItem),
@@ -292,13 +420,13 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
   const buildSquadTraitsRecord = (member: SquadMemberData) => {
     const traits: Record<string, string> = {};
     member.traits.forEach((traitId: string) => {
-      const trait = TRAITS.find(t => t.id === traitId);
+      const trait = allTraits.find(t => t.id === traitId);
       if (trait) {
         traits[trait.title] = trait.description;
       }
     });
-    if (member.customTraits) {
-      traits['自定义特质'] = member.customTraits;
+    if (member.customTraitName && member.customTraitDescription) {
+      traits[member.customTraitName] = member.customTraitDescription;
     }
     return traits;
   };
@@ -336,7 +464,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
     const mvuData = Mvu.getMvuData({ type: 'message', message_id: messageId });
     const equipment = buildEquipmentSummary();
 
-    _.set(mvuData, 'stat_data.当前角色.id', data.name || '无名氏');
+    _.set(mvuData, 'stat_data.当前角色.名字', data.name || '无名氏');
     _.set(
       mvuData,
       'stat_data.当前角色.性别',
@@ -351,6 +479,24 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
     if (data.scenario === 'rock_bottom') {
       _.set(mvuData, 'stat_data.当前角色.创伤.左臂', { 等级: 4, 描述: '断肢' });
     }
+    if (data.scenario === 'slave') {
+      _.set(mvuData, 'stat_data.当前角色.临时特质.囚犯', {
+        描述: '敏捷-30',
+        消除: '解开脚镣',
+      });
+    }
+    if (data.scenario === 'male_slave') {
+      _.set(mvuData, 'stat_data.当前角色.临时特质.奴隶项圈', {
+        描述: '敏捷-30',
+        消除: '解开项圈',
+      });
+    }
+    if (data.scenario === 'brotherhood_prisoner') {
+      _.set(mvuData, 'stat_data.当前角色.临时特质.奴隶项圈', {
+        描述: '敏捷-30',
+        消除: '解开项圈',
+      });
+    }
     _.set(mvuData, 'stat_data.当前角色.主武器', equipment.主武器);
     _.set(mvuData, 'stat_data.当前角色.副武器', equipment.副武器);
     _.set(mvuData, 'stat_data.当前角色.护甲', equipment.护甲);
@@ -358,9 +504,14 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
     if (equipment.背包物品.length > 0) {
       const backpackItems: Record<string, { 介绍: string; 数量: number; 重量: number; 价值: number }> = {};
       equipment.背包物品.forEach(item => {
+        if (data.scenario === 'merchant' && /商人的背包|驼牛/.test(item)) {
+          return;
+        }
         backpackItems[item] = { 介绍: item, 数量: 1, 重量: 0, 价值: 0 };
       });
-      _.set(mvuData, 'stat_data.当前角色.背包.物品', backpackItems);
+      if (Object.keys(backpackItems).length > 0) {
+        _.set(mvuData, 'stat_data.当前角色.背包.物品', backpackItems);
+      }
     }
 
     const hasCompanions = data.squadMembers.some(member => member.name || member.race || member.subrace);
@@ -373,7 +524,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
         const memberRace = RACES.find(r => r.id === member.race);
         const memberSubrace = memberRace?.subraces.find(s => s.id === member.subrace);
         const squadEntry: Record<string, any> = {
-          id: member.name || `队员${index + 1}`,
+          名字: member.name || `队员${index + 1}`,
           性别:
             member.race === 'skeleton'
               ? '无性别'
@@ -526,15 +677,15 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
               <span className="text-xs uppercase text-white/40 tracking-wider">主要特质</span>
               <div className="flex gap-2 mt-1 flex-wrap">
                 {data.traits.map(t => {
-                  const trait = TRAITS.find(item => item.id === t);
+                  const trait = allTraits.find(item => item.id === t);
                   return (
                     <span key={t} className="px-2 py-1 bg-white/10 rounded text-xs text-[#C2B280]">
                       {trait?.title ?? t}
                     </span>
                   );
                 })}
-                {data.customTraits && (
-                  <span className="px-2 py-1 bg-white/10 rounded text-xs text-[#C2B280]">自定义特质</span>
+                {data.customTraitName && data.customTraitDescription && (
+                  <span className="px-2 py-1 bg-white/10 rounded text-xs text-[#C2B280]">{data.customTraitName}</span>
                 )}
               </div>
             </div>

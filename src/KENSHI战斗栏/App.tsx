@@ -32,6 +32,7 @@ type Attributes = {
 type BattleCharacter = {
   id: string;
   name: string;
+  level: number;
   hp: number;
   maxHp: number;
   startHp: number;
@@ -164,9 +165,10 @@ const BATTLE_RULES = `战斗轮结构:
    - 流程: 每次攻击都需独立完成“攻击-对抗-结算”循环。
 
 攻击与对抗流程:
-第一步_命中宣告:
-  - 攻击方投掷: D100
-  - 成功判定: 投掷结果 <= 攻击方对应属性 (近战用“(力量+敏捷)/2”，远程用感知)
+第一步_闪避:
+  - 防守方闪避值: (敏捷 * 0.5) + (感知 * 0.2)，最高不超过70
+  - 进攻方投掷: D100（大型武器90-100为大失败，其余95-100为大失败）
+  - 判定: 防守方闪避值 ≤ 进攻方投掷结果
   - 结果: 失败则本次攻击落空；成功则进入【对抗防御】阶段。
 
 第二步_属性对抗防御:
@@ -195,7 +197,7 @@ const BATTLE_RULES = `战斗轮结构:
   - 逻辑: 从目标 HP 中扣除最终伤害。
   - 创伤判定 (脚本触发条件):
       条件A: 本次最终伤害 > (目标体质 * 0.4)
-      条件B: 攻击方命中检定为大成功 (01-05)
+      条件B: 攻击方命中检定为大成功 (01-07)
       满足任一条件，随机部位【创伤等级】+1，并触发相应层级的残废/减值效果。
   - 濒死判定:
       HP > 0: 继续战斗。
@@ -204,23 +206,14 @@ const BATTLE_RULES = `战斗轮结构:
 特殊规则:
 - 连击机制: 若角色拥有多次攻击次数，防御方在同一轮内防御后续攻击时，【最终防御成功率】每下累积 -10。
 - 大成功与大失败:
-    攻击大成功 (01-05): 伤害结算x1.5且无法格挡。
-    攻击大失败 (96-100): 攻击者失去平衡，下一轮无法执行格挡，且防御方可获得一次即时反击。
+    攻击大成功 (01-07): 伤害结算x1.5且无法格挡。
+    攻击大失败 (大型武器90-100，其余95-100): 攻击者失去平衡，下一轮无法执行格挡，且防御方可获得一次即时反击。
 - 濒死与韧性:
     倒地判定: 当 HP 归零时，角色需进行一次【体质】检定。
     成功: 保持清醒（可尝试爬行逃跑或装死）。
     失败: 陷入休克状态。
 
-衍生属性:
-闪避:
-  用途: 空手躲避近战攻击概率
-  换算: 闪避基础率 = (敏捷 * 0.5) + (感知 * 0.2)
-  检定流程:
-    触发: 当一个近战攻击即将命中你，且你空手即可闪避
-    掷骰: 投掷 D100
-    判定: 掷骰结果 ≤ 最终闪避率则成功，伤害为0；否则失败，承受全部伤害。
-  特殊结果:
-    大成功 (01-05): 成功闪避，且下次对该目标的攻击获得+20命中加成。`;
+`;
 
 const PANEL_TUTORIAL = `战斗面板教程：
 （待补充）`;
@@ -231,21 +224,21 @@ const WEAPON_CATEGORY_GUIDE = `武器类别详解：
 - 每次对目标造成未被DR格挡的切割伤害时，对目标施加1层“流血”。流血每回合开始时造成1点直接伤害，可叠加。
 
 军刀：
-- 装备军刀类武器时，“武器格挡”基础值+5。
+- 装备军刀类武器时，“武器格挡”基础值+7。
 
 砍刀：
 - 无视对方5点DR。
-- 攻击检定大成功（01-05）时触发“破甲”：目标DR降低10。
+- 攻击检定大成功（01-07）时触发“破甲”：目标DR降低10。
 
 长柄类：
-- 每次攻击时可选择最多3个敌人进行攻击检定；每多一个目标，攻击检定-5。
+- 每次攻击时可选择最多3个敌人进行攻击检定；每多一个目标，攻击检定-7。
 
 钝器：
-- 攻击检定大成功（01-05）时，强制目标进行一次【体质】中等检定；失败则进入“骨折”，逃跑检定-25、力量/敏捷-15，直到夹板包清除。
+- 攻击检定大成功（01-07）时，强制目标进行一次【体质】中等检定；失败则进入“骨折”，逃跑检定-25、力量/敏捷-15，直到夹板包清除。
 
 大型武器：
 - 每次攻击时对2个敌人进行攻击检定。
-- 攻击检定大失败（95-100）或被对方【闪避】时，进入失衡，防御检定-15。
+- 攻击检定大失败（90-100）或两名目标均被【闪避】时，进入失衡，防御检定-15。
 
 弩：
 - 基础效果：无视对方7点DR。
@@ -285,6 +278,8 @@ const TRAUMA_RULES = `创伤与状态详解：
 
 状态提示：
 - 失衡/流血/骨折/眩晕/休克/死亡等会在面板状态栏显示。`;
+
+const SETTLEMENT_LOG = '【结算】点击查看战斗总结';
 
 type DamageRatio = { cut: number; blunt: number };
 
@@ -592,6 +587,7 @@ const normalizeCharacter = (
 ): BattleCharacter | null => {
   if (!raw || typeof raw !== 'object') return null;
   const attributes = normalizeAttributes(raw);
+  const level = Math.max(1, toNumber(_.get(raw, ['等级']), 1));
   const hp = Math.max(0, toNumber(_.get(raw, ['血量', '当前']), 100));
   const maxHp = Math.max(1, toNumber(_.get(raw, ['血量', '最大']), hp || 100));
   const weapon = _.get(raw, ['主武器'], {});
@@ -627,7 +623,9 @@ const normalizeCharacter = (
   };
   const bleedLayers = Math.max(0, Math.floor(toNumber(_.get(raw, ['流血', '层数']), 0)));
   const shockTurns = Math.max(0, Math.floor(toNumber(_.get(raw, ['状态', '休克回合']), 0)));
-  const attackCount = Math.max(1, Math.floor(toNumber(_.get(raw, ['攻击次数']), 1)));
+  const baseAttackCount = Math.floor(toNumber(_.get(raw, ['攻击次数']), 0));
+  const isHeavyOrBlunt = /大型|钝器/.test(weaponType);
+  const attackCount = Math.max(1, (isHeavyOrBlunt ? 1 : 2) + baseAttackCount);
   const raceName = String(_.get(raw, ['种族', '名称'], ''));
   const backpackItems = (_.get(raw, ['背包', '物品'], {}) || {}) as Record<
     string,
@@ -637,6 +635,7 @@ const normalizeCharacter = (
   return {
     id: String(_.get(raw, ['id'], name) || name),
     name,
+    level,
     hp,
     maxHp,
     startHp: hp,
@@ -685,6 +684,7 @@ const buildUnitsFromStat = (stat: any) => {
 
   const pushUnit = (unit: BattleCharacter | null) => {
     if (!unit) return;
+    if (unit.hp <= 0) return;
     if (usedIds.has(unit.id)) return;
     usedIds.add(unit.id);
     units.push(unit);
@@ -759,6 +759,20 @@ const getLegPenalty = (level: number) => {
   return 0;
 };
 
+const getKillExpByLevel = (level: number) => {
+  if (level > 80) return 30 + level * 3;
+  if (level > 50) return 30 + level * 2.5;
+  return 30 + level * 2;
+};
+
+const getDownExpByLevel = (level: number) => {
+  if (level > 80) return 10 + level * 3;
+  if (level > 50) return 10 + level * 2.5;
+  return 10 + level * 2;
+};
+
+const getEscapeExpByLevel = (level: number) => getDownExpByLevel(level) * 0.3;
+
 const getMediumCheckSuccess = (tgh: number) => {
   const chance = _.clamp((tgh - 30) / 2, 0, 100);
   return d100() <= chance;
@@ -828,7 +842,7 @@ const getDefenseBase = (defender: BattleCharacter, useBlock: boolean) => {
   const str = Math.max(1, defender.attributes.STR - fracturePenalty);
   const dex = Math.max(1, defender.attributes.DEX - fracturePenalty);
   const base = useBlock ? dex * 0.5 + str * 0.2 : dex * 0.6 + defender.attributes.PER * 0.2;
-  const blockBonus = useBlock && /军刀/.test(defender.weapon.type) ? 5 : 0;
+  const blockBonus = useBlock && /军刀/.test(defender.weapon.type) ? 7 : 0;
   const penalty = getDefensePenalty(defender, useBlock);
   return base + blockBonus + (defender.defenseBonus || 0) - penalty;
 };
@@ -1154,12 +1168,18 @@ export default function App() {
   const autoSelectRef = useRef<HTMLButtonElement | null>(null);
   const outcomeTriggeredRef = useRef(false);
   const [surrenderConfirmOpen, setSurrenderConfirmOpen] = useState(false);
+  const [resultConfirmed, setResultConfirmed] = useState(false);
 
   const friendlyUnits = useMemo(
     () => battleState.units.filter(unit => unit.faction === 'friendly'),
     [battleState.units],
   );
   const enemyUnits = useMemo(() => battleState.units.filter(unit => unit.faction === 'enemy'), [battleState.units]);
+  const unitNameMap = useMemo(() => {
+    const map = new Map<string, BattleCharacter>();
+    battleState.units.forEach(unit => map.set(unit.name, unit));
+    return map;
+  }, [battleState.units]);
   const friendlyAliveCount = useMemo(
     () =>
       friendlyUnits.filter(unit => unit.hp > 0 && !unit.escaped && unit.state !== '死亡' && unit.state !== '休克')
@@ -1171,6 +1191,18 @@ export default function App() {
       enemyUnits.filter(unit => unit.hp > 0 && !unit.escaped && unit.state !== '死亡' && unit.state !== '休克').length,
     [enemyUnits],
   );
+  const getLogLineClass = (line: string) => {
+    if (line.startsWith('---')) return 'text-stone-400 mt-4';
+    if (line.startsWith(SETTLEMENT_LOG)) return 'text-amber-300';
+    const match = line.match(/^([^:：]+)[:：]/);
+    if (!match) return 'text-stone-200';
+    const unit = unitNameMap.get(match[1].trim());
+    if (!unit) return 'text-stone-200';
+    if (unit.faction === 'enemy') return 'text-red-300';
+    if (unit.faction === 'friendly' && unit.subFaction === 'squad') return 'text-sky-300';
+    if (unit.faction === 'friendly') return 'text-emerald-300';
+    return 'text-stone-200';
+  };
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -1196,7 +1228,7 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (!battleState.result) {
+    if (!battleState.result || !resultConfirmed) {
       outcomeTriggeredRef.current = false;
       return;
     }
@@ -1208,7 +1240,7 @@ export default function App() {
     }
     const uid = OUTCOME_UIDS[battleOutcome];
     if (uid) applyBattleOutcomeWorldbook(uid);
-  }, [battleOutcome, battleState.endReason, battleState.result]);
+  }, [battleOutcome, battleState.endReason, battleState.result, resultConfirmed]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1225,6 +1257,7 @@ export default function App() {
       if (cancelled) return;
       setBattleState({ round: 1, units, logs: [], result: null, endReason: 'normal' });
       setPlayerId(playerId);
+      setResultConfirmed(false);
       setSelectedActorId(playerId);
       setSelectedTargetId(units.find(unit => unit.faction === 'enemy')?.id ?? null);
       setPlannedActions({});
@@ -1454,7 +1487,12 @@ export default function App() {
     setPlannedActions(prev => ({ ...prev, ...updates }));
   };
 
-  type AttackResult = { units: BattleCharacter[]; attacker: BattleCharacter; defender: BattleCharacter };
+  type AttackResult = {
+    units: BattleCharacter[];
+    attacker: BattleCharacter;
+    defender: BattleCharacter;
+    dodged?: boolean;
+  };
 
   const applyAttack = (
     units: BattleCharacter[],
@@ -1469,55 +1507,61 @@ export default function App() {
       attacker.hitBonusAgainst[defender.id] = 0;
     }
 
-    const attackRoll = d100();
-    const attackAttr = getAttackAttribute(attacker) + hitBonus - attackPenaltyExtra;
-    const isCrit = attackRoll <= 5;
+    const rawRoll = d100();
+    const attackRoll = rawRoll + hitBonus - attackPenaltyExtra;
+    const evadeBase = defender.attributes.DEX * 0.5 + defender.attributes.PER * 0.2;
+    const evadeValue = Math.min(70, evadeBase);
+    const isCrit = rawRoll <= 7;
     const isHeavyWeapon = /大型/.test(attacker.weapon.type);
-    const isFumble = attackRoll >= (isHeavyWeapon ? 95 : 96);
+    const isFumble = rawRoll >= (isHeavyWeapon ? 90 : 95);
 
-    if (attackRoll > attackAttr) {
-      appendLog(logs, `${attacker.name}: 攻击落空 (判定 ${attackRoll} > ${attackAttr.toFixed(0)})`);
-      if (isFumble) {
-        if (/(弩|弓)/.test(attacker.weapon.type)) {
-          const allyTargets = units.filter(
-            unit => unit.faction === attacker.faction && unit.id !== attacker.id && unit.hp > 0 && !unit.escaped,
-          );
-          const ally = allyTargets.length ? allyTargets[_.random(0, allyTargets.length - 1)] : null;
-          if (ally) {
-            appendLog(logs, `${attacker.name}: 大失败！误伤队友 ${ally.name}。`);
-            const ratio = getDamageRatio(attacker.weapon.type, attacker.weapon.damageType);
-            const baseDamage =
-              rollDice(attacker.weapon.damageDice) +
-              rollDice(attacker.subWeapon.damageDice) +
-              (attacker.attributes.STR - 20) * 0.4;
-            const rawDamage = Math.max(0, baseDamage);
-            const finalDamage = rawDamage;
-            const cutDamage = Math.round(finalDamage * ratio.cut);
-            const bluntDamage = Math.round(finalDamage * ratio.blunt);
-            const drIgnore = /弩/.test(attacker.weapon.type) ? 7 : 0;
-            const effectiveDR = Math.max(0, ally.armorDR - drIgnore);
-            const cutAfterDR = Math.max(0, Math.round(cutDamage - effectiveDR));
-            const totalDamage = Math.round(cutAfterDR + bluntDamage);
-            const updatedAlly = applyDamage(ally, totalDamage);
-            appendLog(logs, `${attacker.name}: 误伤${ally.name}，造成 ${totalDamage} 伤害。`);
-            return {
-              units: replaceUnit(replaceUnit(units, attacker), updatedAlly),
-              attacker,
-              defender: updatedAlly,
-            };
-          }
-          return { units, attacker, defender };
+    if (isFumble) {
+      appendLog(logs, `${attacker.name}: 攻击检定大失败 (判定 ${rawRoll})`);
+      if (/(弩|弓)/.test(attacker.weapon.type)) {
+        const allyTargets = units.filter(
+          unit => unit.faction === attacker.faction && unit.id !== attacker.id && unit.hp > 0 && !unit.escaped,
+        );
+        const ally = allyTargets.length ? allyTargets[_.random(0, allyTargets.length - 1)] : null;
+        if (ally) {
+          appendLog(logs, `${attacker.name}: 大失败！误伤队友 ${ally.name}。`);
+          const ratio = getDamageRatio(attacker.weapon.type, attacker.weapon.damageType);
+          const baseDamage =
+            rollDice(attacker.weapon.damageDice) +
+            rollDice(attacker.subWeapon.damageDice) +
+            (attacker.attributes.STR - 20) * 0.4;
+          const rawDamage = Math.max(0, baseDamage);
+          const finalDamage = rawDamage;
+          const cutDamage = Math.round(finalDamage * ratio.cut);
+          const bluntDamage = Math.round(finalDamage * ratio.blunt);
+          const drIgnore = /弩/.test(attacker.weapon.type) ? 7 : 0;
+          const effectiveDR = Math.max(0, ally.armorDR - drIgnore);
+          const cutAfterDR = Math.max(0, Math.round(cutDamage - effectiveDR));
+          const totalDamage = Math.round(cutAfterDR + bluntDamage);
+          const updatedAlly = applyDamage(ally, totalDamage);
+          appendLog(logs, `${attacker.name}: 误伤${ally.name}，造成 ${totalDamage} 伤害。`);
+          return {
+            units: replaceUnit(replaceUnit(units, attacker), updatedAlly),
+            attacker,
+            defender: updatedAlly,
+          };
         }
-        if (isHeavyWeapon) {
-          attacker.defenseBonus -= 15;
-          appendLog(logs, `${attacker.name}: 失衡，防御检定-15。`);
-        }
-        appendLog(logs, `${attacker.name}: 大失败！下一轮无法格挡，触发${defender.name}反击。`);
-        attacker.noBlockNextRound = true;
-        return applyAttack(units, defender, attacker, 0, logs);
+        return { units, attacker, defender };
       }
-      return { units, attacker, defender };
+      if (isHeavyWeapon) {
+        attacker.defenseBonus -= 15;
+        appendLog(logs, `${attacker.name}: 失衡，防御检定-15。`);
+      }
+      appendLog(logs, `${attacker.name}: 大失败！下一轮无法格挡，触发${defender.name}反击。`);
+      attacker.noBlockNextRound = true;
+      return applyAttack(units, defender, attacker, 0, logs);
     }
+
+    if (attackRoll < evadeValue) {
+      appendLog(logs, `${attacker.name}: 攻击落空 (判定 ${attackRoll.toFixed(0)} < ${evadeValue.toFixed(0)})`);
+      return { units, attacker, defender, dodged: true };
+    }
+
+    appendLog(logs, `${attacker.name}: 通过闪避判定 (判定 ${attackRoll.toFixed(0)} >= ${evadeValue.toFixed(0)})`);
 
     if (isHeavyWeapon && attackPenaltyExtra === 0) {
       const targetPool = units.filter(unit => unit.faction === defender.faction && unit.hp > 0 && !unit.escaped);
@@ -1544,15 +1588,11 @@ export default function App() {
     if (defenseSuccess) {
       if (!useBlock) {
         appendLog(logs, `${defender.name}: 闪避成功 (判定 ${defenseRoll} <= ${defenseChance.toFixed(0)})`);
-        if (defenseRoll <= 5) {
+        if (defenseRoll <= 7) {
           defender.hitBonusAgainst[attacker.id] = 20;
           appendLog(logs, `${defender.name}: 闪避大成功，下一次攻击${attacker.name}命中+20。`);
         }
-        if (isHeavyWeapon) {
-          attacker.defenseBonus -= 15;
-          appendLog(logs, `${attacker.name}: 被闪避导致失衡，防御检定-15。`);
-        }
-        return { units, attacker, defender };
+        return { units, attacker, defender, dodged: true };
       }
       appendLog(logs, `${defender.name}: 格挡成功 (判定 ${defenseRoll} <= ${defenseChance.toFixed(0)})`);
     }
@@ -1576,7 +1616,9 @@ export default function App() {
     const totalDamage = Math.round(cutAfterDR + bluntDamage);
     const armorAbsorbed = Math.round(Math.max(0, cutDamage - cutAfterDR));
 
+    const hpBefore = defender.hp;
     const updatedDefender = applyDamage(defender, totalDamage);
+    const hpAfter = updatedDefender.hp;
     const hitPart = rollInjuryPart();
     const baseThreshold = getTraumaThresholdByLevel(defender.attributes.TGH, defender.traumaParts[hitPart] || 0);
     const currentRemaining = updatedDefender.traumaAccumulated?.[hitPart] ?? baseThreshold;
@@ -1659,7 +1701,8 @@ export default function App() {
       }
     }
 
-    if (updatedDefender.hp <= 0 && defender.hp > 0) {
+    if (hpAfter <= 0 && hpBefore > 0) {
+      appendLog(logs, `${defender.name}: HP ${hpBefore.toFixed(0)} → ${hpAfter.toFixed(0)}，触发体质检定。`);
       const toughSuccess = getMediumCheckSuccess(defender.attributes.TGH);
       if (toughSuccess) {
         updatedDefender.state = '昏迷';
@@ -1692,6 +1735,7 @@ export default function App() {
       const player = getUnit(workingUnits, playerId);
       if (!player || player.hp <= 0) {
         appendLog(logs, '玩家无法行动。');
+        appendLog(logs, SETTLEMENT_LOG);
         return { ...prev, logs: [...prev.logs, ...logs], result: 'defeat', endReason: 'normal' };
       }
 
@@ -1881,6 +1925,7 @@ export default function App() {
             if (planned?.actionId === 'surrender') {
               workingUnits = setUnitIntent(workingUnits, actor.id, '投降');
               appendLog(logs, `${actor.name}: 选择投降，战斗结束。`);
+              appendLog(logs, SETTLEMENT_LOG);
               return { ...prev, logs: [...prev.logs, ...logs], result: 'defeat', endReason: 'surrender' };
             }
 
@@ -1917,7 +1962,7 @@ export default function App() {
                 : [currentTarget, ...extraTargets.slice(0, 2)]
               : [currentTarget];
             for (const [index, poleTarget] of poleTargets.entries()) {
-              const extraPenalty = isPolearm ? index * 5 : 0;
+              const extraPenalty = isPolearm ? index * 7 : 0;
               const perAttackTargets = isHeavyWeapon
                 ? [
                     poleTarget,
@@ -1928,10 +1973,23 @@ export default function App() {
                       .slice(0, 1),
                   ]
                 : [poleTarget];
-              for (const targetPick of perAttackTargets) {
-                for (let i = 0; i < actor.attackCount; i += 1) {
+              for (let i = 0; i < actor.attackCount; i += 1) {
+                let allDodged = isHeavyWeapon;
+                for (const targetPick of perAttackTargets) {
                   const result = applyAttack(workingUnits, actor, targetPick, i, logs, extraPenalty);
                   workingUnits = result.units;
+                  if (isHeavyWeapon && !result.dodged) allDodged = false;
+                }
+                if (isHeavyWeapon && perAttackTargets.length > 0 && allDodged) {
+                  const latestActor = getUnit(workingUnits, actor.id);
+                  if (latestActor) {
+                    const updatedActor = {
+                      ...latestActor,
+                      defenseBonus: (latestActor.defenseBonus || 0) - 15,
+                    };
+                    workingUnits = replaceUnit(workingUnits, updatedActor);
+                    appendLog(logs, `${latestActor.name}: 被闪避导致失衡，防御检定-15。`);
+                  }
                 }
               }
             }
@@ -1952,7 +2010,7 @@ export default function App() {
               : [];
             const poleTargets = isPolearm ? [currentTarget, ...extraTargets.slice(0, 2)] : [currentTarget];
             for (const [index, poleTarget] of poleTargets.entries()) {
-              const extraPenalty = isPolearm ? index * 5 : 0;
+              const extraPenalty = isPolearm ? index * 7 : 0;
               const perAttackTargets = isHeavyWeapon
                 ? [
                     poleTarget,
@@ -1963,10 +2021,23 @@ export default function App() {
                       .slice(0, 1),
                   ]
                 : [poleTarget];
-              for (const targetPick of perAttackTargets) {
-                for (let i = 0; i < actor.attackCount; i += 1) {
+              for (let i = 0; i < actor.attackCount; i += 1) {
+                let allDodged = isHeavyWeapon;
+                for (const targetPick of perAttackTargets) {
                   const result = applyAttack(workingUnits, actor, targetPick, i, logs, extraPenalty);
                   workingUnits = result.units;
+                  if (isHeavyWeapon && !result.dodged) allDodged = false;
+                }
+                if (isHeavyWeapon && perAttackTargets.length > 0 && allDodged) {
+                  const latestActor = getUnit(workingUnits, actor.id);
+                  if (latestActor) {
+                    const updatedActor = {
+                      ...latestActor,
+                      defenseBonus: (latestActor.defenseBonus || 0) - 15,
+                    };
+                    workingUnits = replaceUnit(workingUnits, updatedActor);
+                    appendLog(logs, `${latestActor.name}: 被闪避导致失衡，防御检定-15。`);
+                  }
                 }
               }
             }
@@ -1988,7 +2059,7 @@ export default function App() {
             : [];
           const poleTargets = isPolearm ? [currentTarget, ...extraTargets.slice(0, 2)] : [currentTarget];
           for (const [index, poleTarget] of poleTargets.entries()) {
-            const extraPenalty = isPolearm ? index * 5 : 0;
+            const extraPenalty = isPolearm ? index * 7 : 0;
             const perAttackTargets = isHeavyWeapon
               ? [
                   poleTarget,
@@ -1999,10 +2070,23 @@ export default function App() {
                     .slice(0, 1),
                 ]
               : [poleTarget];
-            for (const targetPick of perAttackTargets) {
-              for (let i = 0; i < actor.attackCount; i += 1) {
+            for (let i = 0; i < actor.attackCount; i += 1) {
+              let allDodged = isHeavyWeapon;
+              for (const targetPick of perAttackTargets) {
                 const result = applyAttack(workingUnits, actor, targetPick, i, logs, extraPenalty);
                 workingUnits = result.units;
+                if (isHeavyWeapon && !result.dodged) allDodged = false;
+              }
+              if (isHeavyWeapon && perAttackTargets.length > 0 && allDodged) {
+                const latestActor = getUnit(workingUnits, actor.id);
+                if (latestActor) {
+                  const updatedActor = {
+                    ...latestActor,
+                    defenseBonus: (latestActor.defenseBonus || 0) - 15,
+                  };
+                  workingUnits = replaceUnit(workingUnits, updatedActor);
+                  appendLog(logs, `${latestActor.name}: 被闪避导致失衡，防御检定-15。`);
+                }
               }
             }
           }
@@ -2018,6 +2102,10 @@ export default function App() {
         if (enemyAlive && friendAlive) {
           result = 'defeat';
         }
+      }
+
+      if (result) {
+        appendLog(logs, SETTLEMENT_LOG);
       }
 
       return {
@@ -2066,12 +2154,30 @@ export default function App() {
       return parts.map(part => `${part.name}${getTraumaLabelByLevel(part.level)}`).join('，');
     };
 
+    const enemyUnits = battleState.units.filter(unit => unit.faction === 'enemy');
+    const totalExp = _.sumBy(enemyUnits, unit => {
+      if (unit.escaped) return getEscapeExpByLevel(unit.level);
+      if (unit.state === '死亡') return getKillExpByLevel(unit.level);
+      if (unit.hasDowned || unit.state === '昏迷' || unit.hp <= 0) return getDownExpByLevel(unit.level);
+      return 0;
+    });
+
+    const expReceivers = battleState.units.filter(
+      unit => unit.faction === 'friendly' && unit.subFaction === 'squad' && !unit.escaped,
+    );
+    const perMemberExp = expReceivers.length > 0 ? Math.round(totalExp / expReceivers.length) : 0;
+    const expMap = new Map<string, number>();
+    expReceivers.forEach(unit => {
+      expMap.set(unit.id, perMemberExp);
+    });
+
     const summarizeUnit = (unit: BattleCharacter) => {
       const baseHp = Number.isFinite(unit.startHp) ? unit.startHp : unit.hp;
       const damageTaken = Math.max(0, Math.round(baseHp - unit.hp));
       const currentHp = Math.max(0, Math.round(unit.hp));
       const traumaLabel = getTraumaDetailLabel(unit);
-      return `${unit.name}: 受到伤害${damageTaken}, 当前血量${currentHp}, 创伤(${traumaLabel}), 状态${buildStatusLabel(unit)}`;
+      const expText = expMap.has(unit.id) ? `，获得${expMap.get(unit.id)}经验` : '';
+      return `${unit.name}: 受到伤害${damageTaken}, 当前血量${currentHp}, 创伤(${traumaLabel}), 状态${buildStatusLabel(unit)}${expText}`;
     };
 
     const friendLines = battleState.units
@@ -2476,14 +2582,20 @@ export default function App() {
               <div className="text-center text-stone-500 text-sm font-mono">等待你的指令...</div>
             ) : (
               <div className="space-y-2 font-mono text-sm whitespace-pre-wrap">
-                {battleState.logs.map((line, index) => (
-                  <div
-                    key={`${line}-${index}`}
-                    className={line.startsWith('---') ? 'text-stone-400 mt-4' : 'text-stone-200'}
-                  >
-                    {line}
-                  </div>
-                ))}
+                {battleState.logs.map((line, index) => {
+                  const isSettlement = line.startsWith(SETTLEMENT_LOG);
+                  return (
+                    <div
+                      key={`${line}-${index}`}
+                      className={`${getLogLineClass(line)} ${isSettlement ? 'cursor-pointer text-base sm:text-lg text-center' : ''}`}
+                      onClick={() => {
+                        if (isSettlement) setResultConfirmed(true);
+                      }}
+                    >
+                      {line}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -2613,7 +2725,7 @@ export default function App() {
           {renderDetailContent()}
         </InfoModal>
       )}
-      {battleState.result && (
+      {battleState.result && resultConfirmed && (
         <BattleResultModal
           outcome={displayOutcome}
           outcomeDescription={battleOutcomeDescription}

@@ -1,6 +1,6 @@
 <template>
   <div class="options-root">
-    <div v-if="options.length" class="interactive-options-container">
+    <div v-if="options.length" class="interactive-options-container" :class="`option-count-${options.length}`">
       <button class="action-gear-btn" type="button" @click.stop="toggleSpecialMenu">
         <i class="ri-settings-4-fill"></i>
       </button>
@@ -149,7 +149,7 @@ function fillInput(text: string) {
 }
 
 function isFightOption(opt: OptionItem): boolean {
-  return /发起战斗|战斗/.test(opt.text);
+  return /战斗判定/.test(opt.text);
 }
 
 function getCharacterMeta(): { name: string; avatar?: string } {
@@ -346,6 +346,8 @@ onBeforeUnmount(() => {
   border-radius: 6px;
   padding: 8px 0;
   min-width: 120px;
+  max-height: min(60vh, 360px);
+  overflow-y: auto;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.8);
   z-index: 9;
   opacity: 0;
@@ -373,6 +375,33 @@ onBeforeUnmount(() => {
   letter-spacing: 2px;
   background: transparent;
   border: none;
+}
+
+.option-count-4 .special-actions-menu,
+.option-count-5 .special-actions-menu,
+.option-count-6 .special-actions-menu,
+.option-count-7 .special-actions-menu,
+.option-count-8 .special-actions-menu {
+  max-height: min(50vh, 300px);
+}
+
+.option-count-4 .special-action-item,
+.option-count-5 .special-action-item,
+.option-count-6 .special-action-item,
+.option-count-7 .special-action-item,
+.option-count-8 .special-action-item {
+  padding: 8px 16px;
+  font-size: 0.88rem;
+  letter-spacing: 1.5px;
+}
+
+.option-count-4 .interactive-options-container,
+.option-count-5 .interactive-options-container,
+.option-count-6 .interactive-options-container,
+.option-count-7 .interactive-options-container,
+.option-count-8 .interactive-options-container {
+  gap: 10px;
+  padding: 24px 20px 20px 20px;
 }
 
 .special-action-item:hover {
