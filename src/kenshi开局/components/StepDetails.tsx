@@ -95,7 +95,19 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
 
     const selectedRace = RACES.find(race => race.id === data.race);
     const selectedSubrace = selectedRace?.subraces.find(subrace => subrace.id === data.subrace);
-    const textSource = [selectedRace?.description ?? '', selectedSubrace?.description ?? ''].join(' ');
+    const raceSummary = (selectedRace as { attributeSummary?: string })?.attributeSummary ?? '';
+    const subraceSummary = (selectedSubrace as { attributeSummary?: string })?.attributeSummary ?? '';
+    const subraceTitle = selectedSubrace?.title ?? '';
+    const subraceInRaceDescription = selectedRace?.description?.includes(subraceTitle)
+      ? (selectedRace?.description ?? '')
+      : '';
+    const textSource = [
+      selectedRace?.description ?? '',
+      subraceInRaceDescription,
+      selectedSubrace?.description ?? '',
+      raceSummary,
+      subraceSummary,
+    ].join(' ');
 
     const regex = /(力量|敏捷|感知|体质|意志|智力|魅力)\s*([+-]\s*\d+)/g;
     let match = regex.exec(textSource);

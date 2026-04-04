@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="zh-CN">
   <head>
@@ -1126,7 +1127,14 @@
           if (!attrKey || !entityType) return;
 
           const option = { type: 'message', message_id: getCurrentMessageId() };
-          const mvuData = Mvu.getMvuData(option);
+          const mvuData = Mvu.getMvuData(option) || {};
+          if (!_.get(mvuData, 'stat_data')) {
+            const rawVars = getAllVariables();
+            const fallbackData = _.get(rawVars, 'stat_data', {});
+            if (!_.isEmpty(fallbackData)) {
+              _.set(mvuData, 'stat_data', fallbackData);
+            }
+          }
 
           let basePath = '';
           if (entityType === 'current') {
