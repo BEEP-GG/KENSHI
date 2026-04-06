@@ -1247,11 +1247,28 @@ export default function App() {
     const load = async () => {
       setLoading(true);
       await waitGlobalInitialized('Mvu');
+      const resolveMessageId = () => (typeof getCurrentMessageId === 'function' ? getCurrentMessageId() : 'latest');
+      const getMvuDataSafe = (messageId: number | 'latest') =>
+        Mvu.getMvuData({ type: 'message', message_id: messageId });
+
       await waitUntil(
-        () => _.has(Mvu.getMvuData({ type: 'message', message_id: getCurrentMessageId() }), 'stat_data'),
-        { timeout: 10000, intervalBetweenAttempts: 200 },
+        () => {
+          const currentId = resolveMessageId();
+          const currentData = getMvuDataSafe(currentId);
+          if (_.has(currentData, 'stat_data')) return true;
+          if (currentId !== 'latest') {
+            const latestData = getMvuDataSafe('latest');
+            return _.has(latestData, 'stat_data');
+          }
+          return false;
+        },
+        { timeout: 20000, intervalBetweenAttempts: 200 },
       );
-      const mvuData = Mvu.getMvuData({ type: 'message', message_id: getCurrentMessageId() });
+      const currentId = resolveMessageId();
+      let mvuData = getMvuDataSafe(currentId);
+      if (!_.has(mvuData, 'stat_data') && currentId !== 'latest') {
+        mvuData = getMvuDataSafe('latest');
+      }
       const stat = _.get(mvuData, ['stat_data'], {});
       const { units, playerId } = buildUnitsFromStat(stat);
       if (cancelled) return;
