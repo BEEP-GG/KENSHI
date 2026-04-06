@@ -418,69 +418,66 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
       ],
       alias: {},
     },
-    plugins: (entry.html === undefined
-      ? [new MiniCssExtractPlugin()]
-      : [
-          new HtmlWebpackPlugin({
-            template: path.join(import.meta.dirname, entry.html),
-            filename: path.parse(entry.html).base,
-            scriptLoading: 'module',
-            cache: false,
-          }),
-          new HtmlInlineScriptWebpackPlugin(),
-          new MiniCssExtractPlugin(),
-          new HTMLInlineCSSWebpackPlugin({
-            styleTagFactory({ style }: { style: string }) {
-              return `<style>${style}</style>`;
-            },
-          }),
-        ]
-    )
-      .concat(
-        { apply: watch_tavern_helper },
-        { apply: schema_dump },
-        { apply: tavern_sync },
-        new VueLoaderPlugin(),
-        unpluginAutoImport({
-          dts: true,
-          dtsMode: 'overwrite',
-          imports: [
-            'vue',
-            'pinia',
-            '@vueuse/core',
-            { from: 'dedent', imports: [['default', 'dedent']] },
-            { from: 'klona', imports: ['klona'] },
-            { from: 'vue-final-modal', imports: ['useModal'] },
-            { from: 'zod', imports: ['z'] },
-          ],
-        }),
-        unpluginVueComponents({
-          dts: true,
-          syncMode: 'overwrite',
-          // globs: ['src/panel/component/*.vue'],
-          resolvers: [VueUseComponentsResolver(), VueUseDirectiveResolver()],
-        }),
-        new webpack.optimize.LimitChunkCountPlugin({ maxChunks: 1 }),
-        new webpack.DefinePlugin({
-          __VUE_OPTIONS_API__: false,
-          __VUE_PROD_DEVTOOLS__: process.env.CI !== 'true',
-          __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: false,
-        }),
-      )
-      .concat(
-        should_obfuscate
-          ? [
-              new WebpackObfuscator({
-                controlFlowFlattening: true,
-                numbersToExpressions: true,
-                selfDefending: true,
-                simplify: true,
-                splitStrings: true,
-                seed: 1,
-              }),
-            ]
-          : [],
-      ),
+    plugins: [
+      new MiniCssExtractPlugin(),
+      ...(entry.html === undefined
+        ? []
+        : [
+            new HtmlWebpackPlugin({
+              template: path.join(import.meta.dirname, entry.html),
+              filename: path.parse(entry.html).base,
+              scriptLoading: 'module',
+              cache: false,
+            }),
+            new HtmlInlineScriptWebpackPlugin(),
+            new HTMLInlineCSSWebpackPlugin({
+              styleTagFactory({ style }: { style: string }) {
+                return `<style>${style}</style>`;
+              },
+            }),
+          ]),
+      { apply: watch_tavern_helper },
+      { apply: schema_dump },
+      { apply: tavern_sync },
+      new VueLoaderPlugin(),
+      unpluginAutoImport({
+        dts: true,
+        dtsMode: 'overwrite',
+        imports: [
+          'vue',
+          'pinia',
+          '@vueuse/core',
+          { from: 'dedent', imports: [['default', 'dedent']] },
+          { from: 'klona', imports: ['klona'] },
+          { from: 'vue-final-modal', imports: ['useModal'] },
+          { from: 'zod', imports: ['z'] },
+        ],
+      }),
+      unpluginVueComponents({
+        dts: true,
+        syncMode: 'overwrite',
+        // globs: ['src/panel/component/*.vue'],
+        resolvers: [VueUseComponentsResolver(), VueUseDirectiveResolver()],
+      }),
+      new webpack.optimize.LimitChunkCountPlugin({ maxChunks: 1 }),
+      new webpack.DefinePlugin({
+        __VUE_OPTIONS_API__: false,
+        __VUE_PROD_DEVTOOLS__: process.env.CI !== 'true',
+        __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: false,
+      }),
+      ...(should_obfuscate
+        ? [
+            new WebpackObfuscator({
+              controlFlowFlattening: true,
+              numbersToExpressions: true,
+              selfDefending: true,
+              simplify: true,
+              splitStrings: true,
+              seed: 1,
+            }),
+          ]
+        : []),
+    ] as any[],
     optimization: {
       minimize: true,
       minimizer: [
