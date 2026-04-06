@@ -2344,7 +2344,7 @@ export default function App() {
   };
 
   return (
-    <div className="w-full h-[100svh] min-h-[100svh] lg:h-auto lg:aspect-[16/9] lg:min-h-[720px] bg-[#050505] text-stone-300 font-sans selection:bg-stone-700 selection:text-white flex flex-col relative overflow-hidden">
+    <div className="w-full h-auto aspect-[9/16] sm:aspect-[3/4] lg:aspect-[16/9] bg-[#050505] text-stone-300 font-sans selection:bg-stone-700 selection:text-white flex flex-col relative overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-stone-900/20 via-[#050505] to-black pointer-events-none"></div>
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-[0.03] pointer-events-none mix-blend-overlay"></div>
 
