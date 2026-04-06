@@ -379,9 +379,6 @@ export default function MapViewer() {
     <div
       ref={mapRootRef}
       className={`relative w-full h-screen bg-slate-950 overflow-hidden font-sans text-slate-100 ${isFullscreen ? 'z-[9999]' : ''}`}
-      onTouchStart={event => event.stopPropagation()}
-      onTouchMove={event => event.stopPropagation()}
-      onTouchEnd={event => event.stopPropagation()}
     >
       {/* Map Container */}
       <MapContainerAny
@@ -389,6 +386,9 @@ export default function MapViewer() {
         center={[MAP_SIZE[0] / 2, MAP_SIZE[1] / 2]}
         zoom={-1}
         scrollWheelZoom={true}
+        touchZoom={true}
+        dragging={true}
+        tap={false}
         crs={L.CRS.Simple}
         style={{ height: '100%', width: '100%', background: '#020617', touchAction: 'none' }} // slate-950
         zoomControl={false} // We'll add custom controls
