@@ -82,6 +82,7 @@ type BattleState = {
   logs: string[];
   result: 'victory' | 'defeat' | null;
   endReason?: 'normal' | 'surrender';
+  lastRoundAttackersCount: Record<string, number>;
 };
 
 type BattleOutcome =
@@ -212,6 +213,10 @@ const BATTLE_RULES = `战斗轮结构:
     倒地判定: 当 HP 归零时，角色需进行一次【体质】检定。
     成功: 保持清醒（可尝试爬行逃跑或装死）。
     失败: 陷入休克状态。
+- 逃跑:
+    角色选择“逃跑”时，先掷一次 d100。
+    把“基础逃跑惩罚 + 被锁定惩罚 + 创伤惩罚 + 状态惩罚”加总，成功率 = 60 − 总惩罚。若掷骰值 ≤ 成功率则逃跑成功；
+    另外有小成功保底：掷骰 ≤ 5 且创伤惩罚 < 25 且状态惩罚 < 30 也算成功。若创伤惩罚或状态惩罚达到“无法移动”的级别，则直接判定失败。
 
 `;
 
@@ -491,6 +496,7 @@ const applyMoraleOutcome = (
   unit: BattleCharacter,
   logs: string[],
   reason: 'round' | 'damage',
+  lastRoundAttackersCount: Record<string, number>,
 ) => {
   if (unit.attributes.WIL > 80) return units;
   if (unit.subFaction === 'squad') return units;
@@ -500,8 +506,28 @@ const applyMoraleOutcome = (
     const failKey = 'morale_escape_failures';
     const currentFails = unit.hitBonusAgainst[failKey] || 0;
     const updatedFails = currentFails + 1;
-    let updated = { ...unit, escaped: true, hitBonusAgainst: { ...unit.hitBonusAgainst, [failKey]: updatedFails } };
+    let updated = { ...unit, escaped: false, hitBonusAgainst: { ...unit.hitBonusAgainst, [failKey]: updatedFails } };
     appendLog(logs, `${unit.name}: 士气不足，选择撤退(${reason === 'round' ? '回合开始' : '受伤'}判定)。`);
+
+    const escapeRoll = d100();
+    const traumaPenalty = getEscapeTraumaPenalty(unit);
+    const statusPenalty = getEscapeStatusPenalty(unit);
+    const attackersCount = lastRoundAttackersCount[unit.id] ?? 0;
+
+    if (traumaPenalty >= 9999 || statusPenalty >= 9999) {
+      appendLog(logs, `${unit.name}: 撤退失败，无法移动。`);
+    } else {
+      const escapePenalty = getEscapePenalty(unit) + attackersCount * 15 + traumaPenalty + statusPenalty;
+      const escapeChance = 70 - escapePenalty;
+      const criticalEscape = escapeRoll <= 5 && traumaPenalty < 25 && statusPenalty < 30;
+      appendLog(logs, `${unit.name}: 撤退判定 d100=${escapeRoll} 成功率=${Math.max(0, Math.round(escapeChance))}。`);
+      if (escapeRoll <= escapeChance || criticalEscape) {
+        updated = { ...updated, escaped: true };
+        appendLog(logs, `${unit.name}: 撤退成功(${escapeRoll}<${Math.max(0, Math.round(escapeChance))})。`);
+      } else {
+        appendLog(logs, `${unit.name}: 撤退失败(${escapeRoll}>=${Math.max(0, Math.round(escapeChance))})。`);
+      }
+    }
 
     if (updatedFails >= 2) {
       const roll = _.random(1, 6);
@@ -1118,6 +1144,7 @@ export default function App() {
     logs: [],
     result: null,
     endReason: 'normal',
+    lastRoundAttackersCount: {},
   });
   const battleOutcome = useMemo(() => getBattleOutcome(battleState.units), [battleState.units]);
   const displayOutcome: BattleOutcome = battleState.endReason === 'surrender' ? '投降' : battleOutcome;
@@ -1282,7 +1309,7 @@ export default function App() {
       const stat = _.get(mvuData, ['stat_data'], {});
       const { units, playerId } = buildUnitsFromStat(stat);
       if (cancelledRef.current) return;
-      setBattleState({ round: 1, units, logs: [], result: null, endReason: 'normal' });
+      setBattleState({ round: 1, units, logs: [], result: null, endReason: 'normal', lastRoundAttackersCount: {} });
       setPlayerId(playerId);
       setResultConfirmed(false);
       setSelectedActorId(playerId);
@@ -1536,6 +1563,7 @@ export default function App() {
     defender: BattleCharacter,
     attackIndex: number,
     logs: string[],
+    lastRoundAttackersCount: Record<string, number>,
     attackPenaltyExtra = 0,
   ): AttackResult => {
     const hitBonus = attacker.hitBonusAgainst[defender.id] || 0;
@@ -1589,7 +1617,7 @@ export default function App() {
       }
       appendLog(logs, `${attacker.name}: 大失败！下一轮无法格挡，触发${defender.name}反击。`);
       attacker.noBlockNextRound = true;
-      return applyAttack(units, defender, attacker, 0, logs);
+      return applyAttack(units, defender, attacker, 0, logs, lastRoundAttackersCount);
     }
 
     if (attackRoll < evadeValue) {
@@ -1609,7 +1637,15 @@ export default function App() {
         const candidates = targetPool.filter(unit => unit.id !== defender.id);
         if (candidates.length) newTarget = candidates[_.random(0, candidates.length - 1)];
       }
-      const heavyResult = applyAttack(units, attacker, newTarget, attackIndex, logs, attackPenaltyExtra);
+      const heavyResult = applyAttack(
+        units,
+        attacker,
+        newTarget,
+        attackIndex,
+        logs,
+        lastRoundAttackersCount,
+        attackPenaltyExtra,
+      );
       return { units: heavyResult.units, attacker, defender: heavyResult.defender };
     }
 
@@ -1749,7 +1785,7 @@ export default function App() {
       }
     }
 
-    const moraleUnits = applyMoraleOutcome(units, updatedDefender, logs, 'damage');
+    const moraleUnits = applyMoraleOutcome(units, updatedDefender, logs, 'damage', lastRoundAttackersCount);
     return {
       units: replaceUnit(replaceUnit(moraleUnits, attacker), updatedDefender),
       attacker,
@@ -1764,15 +1800,26 @@ export default function App() {
       if (prev.result) return prev;
       const logs: string[] = [];
       let workingUnits = cloneUnits(prev.units).map(unit => ({ ...unit, defenseBonus: 0 }));
+      const lastRoundAttackersCount: Record<string, number> = { ...prev.lastRoundAttackersCount };
+      const lastRoundAttackersMap = new Map<string, Set<string>>();
       appendLog(logs, `--- 第 ${prev.round} 回合 ---`);
       workingUnits = applyBleedAndShock(workingUnits, logs);
-      workingUnits = workingUnits.reduce((acc, unit) => applyMoraleOutcome(acc, unit, logs, 'round'), workingUnits);
+      workingUnits = workingUnits.reduce(
+        (acc, unit) => applyMoraleOutcome(acc, unit, logs, 'round', lastRoundAttackersCount),
+        workingUnits,
+      );
 
       const player = getUnit(workingUnits, playerId);
       if (!player || player.hp <= 0) {
         appendLog(logs, '玩家无法行动。');
         appendLog(logs, SETTLEMENT_LOG);
-        return { ...prev, logs: [...prev.logs, ...logs], result: 'defeat', endReason: 'normal' };
+        return {
+          ...prev,
+          logs: [...prev.logs, ...logs],
+          result: 'defeat',
+          endReason: 'normal',
+          lastRoundAttackersCount: prev.lastRoundAttackersCount,
+        };
       }
 
       const tauntTargets: Record<string, string> = {};
@@ -1818,9 +1865,9 @@ export default function App() {
             }
 
             if (planned?.actionId === 'tactics' && planned.tactic === 'defense') {
-              workingUnits = replaceUnit(workingUnits, { ...actor, defenseBonus: 10 });
+              workingUnits = replaceUnit(workingUnits, { ...actor, defenseBonus: 15 });
               workingUnits = setUnitIntent(workingUnits, actor.id, '防御');
-              appendLog(logs, `${actor.name}: 进入防御姿态，格挡基础+10。`);
+              appendLog(logs, `${actor.name}: 进入防御姿态，格挡基础+15。`);
               continue;
             }
 
@@ -1935,7 +1982,7 @@ export default function App() {
             }
 
             if (planned?.actionId === 'tactics' && planned.tactic === 'escape') {
-              const targetedCount = Object.values(enemyTargetMap).filter(targetId => targetId === actor.id).length;
+              const attackersCount = lastRoundAttackersCount[actor.id] ?? 0;
               const escapeRoll = d100();
               const traumaPenalty = getEscapeTraumaPenalty(actor);
               const statusPenalty = getEscapeStatusPenalty(actor);
@@ -1944,16 +1991,26 @@ export default function App() {
                 appendLog(logs, `${actor.name}: 逃跑失败，无法移动。`);
                 continue;
               }
-              const escapePenalty = getEscapePenalty(actor) + targetedCount * 20 + traumaPenalty + statusPenalty;
-              const escapeChance = 60 - escapePenalty;
+              const escapePenalty = getEscapePenalty(actor) + attackersCount * 15 + traumaPenalty + statusPenalty;
+              const escapeChance = 70 - escapePenalty;
               const criticalEscape = escapeRoll <= 5 && traumaPenalty < 25 && statusPenalty < 30;
+              appendLog(
+                logs,
+                `${actor.name}: 逃跑判定 d100=${escapeRoll} 成功率=${Math.max(0, Math.round(escapeChance))}。`,
+              );
               if (escapeRoll <= escapeChance || criticalEscape) {
                 workingUnits = replaceUnit(workingUnits, { ...actor, escaped: true });
                 workingUnits = setUnitIntent(workingUnits, actor.id, '逃跑成功');
-                appendLog(logs, `${actor.name}: 逃跑成功，退出战斗。`);
+                appendLog(
+                  logs,
+                  `${actor.name}: 逃跑成功(${escapeRoll}<${Math.max(0, Math.round(escapeChance))})，退出战斗。`,
+                );
               } else {
                 workingUnits = setUnitIntent(workingUnits, actor.id, '逃跑失败');
-                appendLog(logs, `${actor.name}: 逃跑失败，被敌人锁定。`);
+                appendLog(
+                  logs,
+                  `${actor.name}: 逃跑失败(${escapeRoll}>=${Math.max(0, Math.round(escapeChance))})，被敌人锁定。`,
+                );
               }
               continue;
             }
@@ -1962,7 +2019,13 @@ export default function App() {
               workingUnits = setUnitIntent(workingUnits, actor.id, '投降');
               appendLog(logs, `${actor.name}: 选择投降，战斗结束。`);
               appendLog(logs, SETTLEMENT_LOG);
-              return { ...prev, logs: [...prev.logs, ...logs], result: 'defeat', endReason: 'surrender' };
+              return {
+                ...prev,
+                logs: [...prev.logs, ...logs],
+                result: 'defeat',
+                endReason: 'surrender',
+                lastRoundAttackersCount: prev.lastRoundAttackersCount,
+              };
             }
 
             let target: BattleCharacter | null = null;
@@ -2012,8 +2075,21 @@ export default function App() {
               for (let i = 0; i < actor.attackCount; i += 1) {
                 let allDodged = isHeavyWeapon;
                 for (const targetPick of perAttackTargets) {
-                  const result = applyAttack(workingUnits, actor, targetPick, i, logs, extraPenalty);
+                  const result = applyAttack(
+                    workingUnits,
+                    actor,
+                    targetPick,
+                    i,
+                    logs,
+                    lastRoundAttackersCount,
+                    extraPenalty,
+                  );
                   workingUnits = result.units;
+                  if (!result.dodged) {
+                    const attackerSet = (lastRoundAttackersMap.get(targetPick.id) ?? new Set<string>()) as Set<string>;
+                    attackerSet.add(actor.id);
+                    lastRoundAttackersMap.set(targetPick.id, attackerSet);
+                  }
                   if (isHeavyWeapon && !result.dodged) allDodged = false;
                 }
                 if (isHeavyWeapon && perAttackTargets.length > 0 && allDodged) {
@@ -2060,8 +2136,21 @@ export default function App() {
               for (let i = 0; i < actor.attackCount; i += 1) {
                 let allDodged = isHeavyWeapon;
                 for (const targetPick of perAttackTargets) {
-                  const result = applyAttack(workingUnits, actor, targetPick, i, logs, extraPenalty);
+                  const result = applyAttack(
+                    workingUnits,
+                    actor,
+                    targetPick,
+                    i,
+                    logs,
+                    lastRoundAttackersCount,
+                    extraPenalty,
+                  );
                   workingUnits = result.units;
+                  if (!result.dodged) {
+                    const attackerSet = (lastRoundAttackersMap.get(targetPick.id) ?? new Set<string>()) as Set<string>;
+                    attackerSet.add(actor.id);
+                    lastRoundAttackersMap.set(targetPick.id, attackerSet);
+                  }
                   if (isHeavyWeapon && !result.dodged) allDodged = false;
                 }
                 if (isHeavyWeapon && perAttackTargets.length > 0 && allDodged) {
@@ -2109,8 +2198,21 @@ export default function App() {
             for (let i = 0; i < actor.attackCount; i += 1) {
               let allDodged = isHeavyWeapon;
               for (const targetPick of perAttackTargets) {
-                const result = applyAttack(workingUnits, actor, targetPick, i, logs, extraPenalty);
+                const result = applyAttack(
+                  workingUnits,
+                  actor,
+                  targetPick,
+                  i,
+                  logs,
+                  lastRoundAttackersCount,
+                  extraPenalty,
+                );
                 workingUnits = result.units;
+                if (!result.dodged) {
+                  const attackerSet = (lastRoundAttackersMap.get(targetPick.id) ?? new Set<string>()) as Set<string>;
+                  attackerSet.add(actor.id);
+                  lastRoundAttackersMap.set(targetPick.id, attackerSet);
+                }
                 if (isHeavyWeapon && !result.dodged) allDodged = false;
               }
               if (isHeavyWeapon && perAttackTargets.length > 0 && allDodged) {
@@ -2144,12 +2246,17 @@ export default function App() {
         appendLog(logs, SETTLEMENT_LOG);
       }
 
+      const nextLastRoundAttackersCount = Object.fromEntries(
+        Array.from(lastRoundAttackersMap.entries()).map(([targetId, attackers]) => [targetId, attackers.size]),
+      ) as Record<string, number>;
+
       return {
         round: prev.round + 1,
         units: workingUnits,
         logs: [...prev.logs, ...logs],
         result,
         endReason: result ? 'normal' : prev.endReason,
+        lastRoundAttackersCount: nextLastRoundAttackersCount,
       };
     });
   };
@@ -2879,7 +2986,7 @@ export default function App() {
                 onClick={() => applyTactic('defense')}
                 className="w-full text-left px-4 py-2 border border-stone-700/60 rounded-sm hover:bg-stone-800/60"
               >
-                防御：格挡基础+10，本回合不攻击
+                防御：格挡基础+15，本回合不攻击
               </button>
               <button
                 onClick={() => applyTactic('medical')}
