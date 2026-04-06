@@ -2345,11 +2345,11 @@ export default function App() {
                   <button
                     onClick={() => {
                       setSettingsOpen(false);
-                      setInfoModal('rules');
+                      toggleFullscreen();
                     }}
                     className="block w-full text-left px-3 py-2 rounded-sm hover:bg-stone-800/60 text-stone-300"
                   >
-                    战斗流程规则详解
+                    {isFullscreen ? '退出全屏' : '进入全屏'}
                   </button>
                   <button
                     onClick={() => {
@@ -2381,11 +2381,11 @@ export default function App() {
                   <button
                     onClick={() => {
                       setSettingsOpen(false);
-                      toggleFullscreen();
+                      setInfoModal('rules');
                     }}
                     className="block w-full text-left px-3 py-2 rounded-sm hover:bg-stone-800/60 text-stone-300"
                   >
-                    {isFullscreen ? '退出全屏' : '进入全屏'}
+                    战斗流程规则详解
                   </button>
                   <button
                     onClick={() => {
