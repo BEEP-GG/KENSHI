@@ -348,7 +348,12 @@ export default function MapViewer() {
   }, [selectedFeature]);
 
   return (
-    <div className="relative w-full h-screen bg-slate-950 overflow-hidden font-sans text-slate-100">
+    <div
+      className="relative w-full h-screen bg-slate-950 overflow-hidden font-sans text-slate-100"
+      onTouchStart={event => event.stopPropagation()}
+      onTouchMove={event => event.stopPropagation()}
+      onTouchEnd={event => event.stopPropagation()}
+    >
       {/* Map Container */}
       <MapContainerAny
         preferCanvas={true} // Performance optimization
@@ -356,7 +361,7 @@ export default function MapViewer() {
         zoom={-1}
         scrollWheelZoom={true}
         crs={L.CRS.Simple}
-        style={{ height: '100%', width: '100%', background: '#020617' }} // slate-950
+        style={{ height: '100%', width: '100%', background: '#020617', touchAction: 'none' }} // slate-950
         zoomControl={false} // We'll add custom controls
         attributionControl={false}
       >
