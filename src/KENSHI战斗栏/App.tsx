@@ -1148,6 +1148,7 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [infoModal, setInfoModal] = useState<null | 'rules' | 'round' | 'tutorial' | 'weapon' | 'trauma'>(null);
   const [detailModal, setDetailModal] = useState<null | {
     type: 'weapon' | 'armor' | 'attributes' | 'trauma';
@@ -1167,8 +1168,17 @@ export default function App() {
   const actionButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const autoSelectRef = useRef<HTMLButtonElement | null>(null);
   const outcomeTriggeredRef = useRef(false);
+  const cancelledRef = useRef(false);
   const [surrenderConfirmOpen, setSurrenderConfirmOpen] = useState(false);
   const [resultConfirmed, setResultConfirmed] = useState(false);
+  const isMobile = useMemo(() => {
+    if (typeof navigator === 'undefined') return false;
+    const ua = navigator.userAgent || '';
+    const byUa = /Mobi|Android|iPhone|iPad|iPod|Windows Phone/i.test(ua);
+    const byWidth =
+      typeof window !== 'undefined' && window.matchMedia ? window.matchMedia('(max-width: 1024px)').matches : false;
+    return byUa || byWidth;
+  }, []);
 
   const friendlyUnits = useMemo(
     () => battleState.units.filter(unit => unit.faction === 'friendly'),
@@ -1242,10 +1252,10 @@ export default function App() {
     if (uid) applyBattleOutcomeWorldbook(uid);
   }, [battleOutcome, battleState.endReason, battleState.result, resultConfirmed]);
 
-  useEffect(() => {
-    let cancelled = false;
-    const load = async () => {
+  const loadBattleState = async () => {
+    try {
       setLoading(true);
+      setLoadError(null);
       await waitGlobalInitialized('Mvu');
       const resolveMessageId = () => (typeof getCurrentMessageId === 'function' ? getCurrentMessageId() : 'latest');
       const getMvuDataSafe = (messageId: number | 'latest') =>
@@ -1262,7 +1272,7 @@ export default function App() {
           }
           return false;
         },
-        { timeout: 20000, intervalBetweenAttempts: 200 },
+        { timeout: 10000, intervalBetweenAttempts: 200 },
       );
       const currentId = resolveMessageId();
       let mvuData = getMvuDataSafe(currentId);
@@ -1271,7 +1281,7 @@ export default function App() {
       }
       const stat = _.get(mvuData, ['stat_data'], {});
       const { units, playerId } = buildUnitsFromStat(stat);
-      if (cancelled) return;
+      if (cancelledRef.current) return;
       setBattleState({ round: 1, units, logs: [], result: null, endReason: 'normal' });
       setPlayerId(playerId);
       setResultConfirmed(false);
@@ -1279,21 +1289,30 @@ export default function App() {
       setSelectedTargetId(units.find(unit => unit.faction === 'enemy')?.id ?? null);
       setPlannedActions({});
       setLoading(false);
-    };
-
-    load().catch(err => {
-      if (cancelled) return;
-      setBattleState(prev => ({
-        ...prev,
-        logs: [...prev.logs, `无法读取 MVU 变量: ${String(err)}`],
-      }));
+    } catch (err) {
+      if (cancelledRef.current) return;
+      if (!isMobile) {
+        setBattleState(prev => ({
+          ...prev,
+          logs: [...prev.logs, `无法读取 MVU 变量: ${String(err)}`],
+        }));
+      }
+      setLoadError(String(err));
       setLoading(false);
-    });
+    }
+  };
 
+  useEffect(() => {
+    cancelledRef.current = false;
+    loadBattleState();
     return () => {
-      cancelled = true;
+      cancelledRef.current = true;
     };
   }, []);
+
+  const handleRetryLoad = () => {
+    loadBattleState();
+  };
 
   useEffect(() => {
     if (infoModal === 'tutorial') {
@@ -2329,6 +2348,27 @@ export default function App() {
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-stone-900/20 via-[#050505] to-black pointer-events-none"></div>
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-[0.03] pointer-events-none mix-blend-overlay"></div>
 
+      {isMobile && loadError && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/60 backdrop-blur-sm px-6">
+          <div className="w-full max-w-sm rounded-sm border border-amber-900/60 bg-stone-900/90 p-4 text-center">
+            <div className="text-amber-300 text-sm font-mono">无法读取 MVU 变量</div>
+            <div className="mt-2 text-xs text-stone-400 font-mono break-all">{loadError}</div>
+            <button
+              type="button"
+              onClick={handleRetryLoad}
+              disabled={loading}
+              className={`mt-4 px-4 py-2 text-xs font-mono border rounded-sm transition-colors ${
+                loading
+                  ? 'text-stone-600 border-stone-800/60 cursor-not-allowed'
+                  : 'text-amber-200 border-amber-900/60 hover:bg-amber-900/30'
+              }`}
+            >
+              {loading ? '重试中...' : '重试读取'}
+            </button>
+          </div>
+        </div>
+      )}
+
       <header className="relative z-20 px-4 py-3 lg:px-8 lg:py-5 border-b border-stone-800/40 bg-black/40 backdrop-blur-md flex justify-between items-center shadow-md">
         <div className="flex items-center gap-4">
           <div className="w-8 h-8 rounded-sm border border-stone-700/50 flex items-center justify-center bg-stone-900/80 shadow-[0_0_15px_rgba(255,255,255,0.05)]">
@@ -2601,7 +2641,24 @@ export default function App() {
               </span>
             </div>
 
-            {battleState.logs.length === 0 ? (
+            {!isMobile && loadError ? (
+              <div className="space-y-3 text-center">
+                <div className="text-amber-300 text-sm font-mono">无法读取 MVU 变量</div>
+                <div className="text-xs text-stone-500 font-mono break-all">{loadError}</div>
+                <button
+                  type="button"
+                  onClick={handleRetryLoad}
+                  disabled={loading}
+                  className={`mx-auto px-4 py-2 text-xs font-mono border rounded-sm transition-colors ${
+                    loading
+                      ? 'text-stone-600 border-stone-800/60 cursor-not-allowed'
+                      : 'text-amber-200 border-amber-900/60 hover:bg-amber-900/30'
+                  }`}
+                >
+                  {loading ? '重试中...' : '重试读取'}
+                </button>
+              </div>
+            ) : battleState.logs.length === 0 ? (
               <div className="text-center text-stone-500 text-sm font-mono">等待你的指令...</div>
             ) : (
               <div className="space-y-2 font-mono text-sm whitespace-pre-wrap">
