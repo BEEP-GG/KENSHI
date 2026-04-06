@@ -48,7 +48,7 @@
             </div>
             <div class="roll-details" :class="{ 'is-visible': showResult }">
               <div class="roll-breakdown">{{ breakdownText }}</div>
-              <div class="roll-formula">掷骰基础: 1d20 + 属性修正 + 环境修正</div>
+              <div class="roll-formula">掷骰基础: 1d20 + 属性修正 + 其他修正</div>
             </div>
           </div>
         </div>
@@ -92,7 +92,7 @@ const isRolling = ref(false);
 const showResult = ref(false);
 
 const DEFAULT_PARAMS: DiceParams = {
-  checkName: '灵巧检定',
+  checkName: '',
   baseRoll: 18,
   modifiers: [
     { v: 3, n: '敏捷' },
@@ -147,14 +147,11 @@ const parseTextToParams = (text: string): DiceParamsInput => {
 
   const result: DiceParamsInput = {};
 
-  const action = extractQuoted(actionRaw);
-  const kind = extractQuoted(kindRaw);
-  if (action && kind) {
-    result.checkName = `${action}（${kind}）`;
-  } else if (action) {
+  const action = actionRaw ? stripQuotes(actionRaw) : '';
+  if (action) {
     result.checkName = action;
-  } else if (kind) {
-    result.checkName = kind;
+  } else {
+    result.checkName = '';
   }
 
   if (baseRaw) {
