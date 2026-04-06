@@ -2362,6 +2362,15 @@ export default function App() {
                   <button
                     onClick={() => {
                       setSettingsOpen(false);
+                      setInfoModal('rules');
+                    }}
+                    className="block w-full text-left px-3 py-2 rounded-sm hover:bg-stone-800/60 text-stone-300"
+                  >
+                    战斗流程规则详解
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSettingsOpen(false);
                       toggleFullscreen();
                     }}
                     className="block w-full text-left px-3 py-2 rounded-sm hover:bg-stone-800/60 text-stone-300"
@@ -2394,15 +2403,6 @@ export default function App() {
                     className="block w-full text-left px-3 py-2 rounded-sm hover:bg-stone-800/60 text-stone-300"
                   >
                     武器类别详解
-                  </button>
-                  <button
-                    onClick={() => {
-                      setSettingsOpen(false);
-                      setInfoModal('rules');
-                    }}
-                    className="block w-full text-left px-3 py-2 rounded-sm hover:bg-stone-800/60 text-stone-300"
-                  >
-                    战斗流程规则详解
                   </button>
                   <button
                     onClick={() => {
@@ -2548,7 +2548,7 @@ export default function App() {
             <div className="absolute left-0 top-0 h-full w-[28%] min-w-[300px] bg-black/50" />
           </div>
         )}
-        <div className="w-full lg:w-[28%] lg:min-w-[300px] p-4 lg:p-6 overflow-y-auto border-r border-stone-800/30 bg-gradient-to-r from-black/80 to-transparent scrollbar-hide flex flex-col">
+        <div className="order-1 lg:order-none w-full lg:w-[28%] lg:min-w-[300px] max-h-[28vh] lg:max-h-none p-4 lg:p-6 overflow-y-auto border-b border-stone-800/30 lg:border-b-0 lg:border-r lg:border-stone-800/30 bg-gradient-to-r from-black/80 to-transparent scrollbar-hide flex flex-col">
           <div className="flex items-center justify-between mb-6 pb-2 border-b border-stone-800/50">
             <h2 className="text-sm font-serif text-stone-400 tracking-[0.2em] flex items-center gap-3">
               <div className="w-1.5 h-4 bg-blue-600 rounded-sm shadow-[0_0_10px_rgba(37,99,235,0.8)]"></div>
@@ -2585,7 +2585,7 @@ export default function App() {
           </div>
         </div>
 
-        <div className="flex-1 p-4 lg:p-8 flex flex-col relative">
+        <div className="order-2 lg:order-none flex-1 min-h-0 p-4 lg:p-8 flex flex-col relative">
           <div className="absolute inset-0 bg-stone-950/40 backdrop-blur-sm m-4 lg:m-8 rounded-sm border border-stone-800/40 shadow-[inset_0_0_60px_rgba(0,0,0,0.8)]"></div>
 
           <div className="relative z-10 flex-1 overflow-y-auto p-6 lg:p-10 font-serif text-base leading-[1.8] text-stone-300 space-y-3 scrollbar-hide">
@@ -2618,7 +2618,7 @@ export default function App() {
           </div>
         </div>
 
-        <div className="w-[28%] min-w-[300px] p-6 overflow-y-auto border-l border-stone-800/30 bg-gradient-to-l from-black/80 to-transparent scrollbar-hide flex flex-col">
+        <div className="order-3 lg:order-none w-full lg:w-[28%] lg:min-w-[300px] max-h-[28vh] lg:max-h-none p-4 lg:p-6 overflow-y-auto border-t border-stone-800/30 lg:border-t-0 lg:border-l lg:border-stone-800/30 bg-gradient-to-l from-black/80 to-transparent scrollbar-hide flex flex-col">
           <div className="flex items-center justify-between mb-6 pb-2 border-b border-stone-800/50">
             <span className="text-xs font-mono text-stone-600">
               {enemyAliveCount}/{enemyUnits.length} 单位
