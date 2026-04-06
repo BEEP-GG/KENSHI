@@ -199,7 +199,7 @@ function handleOptionClick(opt: OptionItem, event: MouseEvent) {
     triggerFightBattle();
     return;
   }
-  const text = `${opt.number}. ${opt.text}`;
+  const text = opt.text;
   setTimeout(() => {
     fillInput(text);
   }, 200);
