@@ -2325,11 +2325,11 @@ export default function App() {
   };
 
   return (
-    <div className="w-full lg:aspect-[16/9] min-h-[720px] bg-[#050505] text-stone-300 font-sans selection:bg-stone-700 selection:text-white flex flex-col relative">
+    <div className="w-full h-[100svh] min-h-[100svh] lg:h-auto lg:aspect-[16/9] lg:min-h-[720px] bg-[#050505] text-stone-300 font-sans selection:bg-stone-700 selection:text-white flex flex-col relative overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-stone-900/20 via-[#050505] to-black pointer-events-none"></div>
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-[0.03] pointer-events-none mix-blend-overlay"></div>
 
-      <header className="relative z-20 px-8 py-5 border-b border-stone-800/40 bg-black/40 backdrop-blur-md flex justify-between items-center shadow-md">
+      <header className="relative z-20 px-4 py-3 lg:px-8 lg:py-5 border-b border-stone-800/40 bg-black/40 backdrop-blur-md flex justify-between items-center shadow-md">
         <div className="flex items-center gap-4">
           <div className="w-8 h-8 rounded-sm border border-stone-700/50 flex items-center justify-center bg-stone-900/80 shadow-[0_0_15px_rgba(255,255,255,0.05)]">
             <Sword size={16} className="text-stone-400" />
@@ -2542,13 +2542,16 @@ export default function App() {
         </InfoModal>
       )}
 
-      <main className="flex-1 relative z-10 flex flex-col lg:flex-row overflow-hidden">
+      <main className="flex-1 min-h-0 relative z-10 flex flex-col lg:flex-row overflow-hidden">
         {targetingMode === 'attack' && (
           <div className="absolute inset-0 z-20 pointer-events-none">
             <div className="absolute left-0 top-0 h-full w-[28%] min-w-[300px] bg-black/50" />
           </div>
         )}
-        <div className="order-1 lg:order-none w-full lg:w-[28%] lg:min-w-[300px] max-h-[28vh] lg:max-h-none p-4 lg:p-6 overflow-y-auto border-b border-stone-800/30 lg:border-b-0 lg:border-r lg:border-stone-800/30 bg-gradient-to-r from-black/80 to-transparent scrollbar-hide flex flex-col">
+        <div
+          className="order-1 lg:order-none w-full lg:w-[28%] lg:min-w-[300px] max-h-[28vh] lg:max-h-none p-4 lg:p-6 overflow-y-auto border-b border-stone-800/30 lg:border-b-0 lg:border-r lg:border-stone-800/30 bg-gradient-to-r from-black/80 to-transparent scrollbar-hide flex flex-col min-h-0 overscroll-contain"
+          style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
+        >
           <div className="flex items-center justify-between mb-6 pb-2 border-b border-stone-800/50">
             <h2 className="text-sm font-serif text-stone-400 tracking-[0.2em] flex items-center gap-3">
               <div className="w-1.5 h-4 bg-blue-600 rounded-sm shadow-[0_0_10px_rgba(37,99,235,0.8)]"></div>
@@ -2588,7 +2591,10 @@ export default function App() {
         <div className="order-2 lg:order-none flex-1 min-h-0 p-4 lg:p-8 flex flex-col relative">
           <div className="absolute inset-0 bg-stone-950/40 backdrop-blur-sm m-4 lg:m-8 rounded-sm border border-stone-800/40 shadow-[inset_0_0_60px_rgba(0,0,0,0.8)]"></div>
 
-          <div className="relative z-10 flex-1 overflow-y-auto p-6 lg:p-10 font-serif text-base leading-[1.8] text-stone-300 space-y-3 scrollbar-hide">
+          <div
+            className="relative z-10 flex-1 overflow-y-auto p-6 lg:p-10 font-serif text-base leading-[1.8] text-stone-300 space-y-3 scrollbar-hide overscroll-contain"
+            style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
+          >
             <div className="text-center mb-6">
               <span className="inline-block px-4 py-1 border border-stone-800/60 rounded-sm text-xs font-mono text-stone-500 tracking-widest bg-stone-900/30">
                 战斗日志
@@ -2618,7 +2624,10 @@ export default function App() {
           </div>
         </div>
 
-        <div className="order-3 lg:order-none w-full lg:w-[28%] lg:min-w-[300px] max-h-[28vh] lg:max-h-none p-4 lg:p-6 overflow-y-auto border-t border-stone-800/30 lg:border-t-0 lg:border-l lg:border-stone-800/30 bg-gradient-to-l from-black/80 to-transparent scrollbar-hide flex flex-col">
+        <div
+          className="order-3 lg:order-none w-full lg:w-[28%] lg:min-w-[300px] max-h-[28vh] lg:max-h-none p-4 lg:p-6 overflow-y-auto border-t border-stone-800/30 lg:border-t-0 lg:border-l lg:border-stone-800/30 bg-gradient-to-l from-black/80 to-transparent scrollbar-hide flex flex-col min-h-0 overscroll-contain"
+          style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
+        >
           <div className="flex items-center justify-between mb-6 pb-2 border-b border-stone-800/50">
             <span className="text-xs font-mono text-stone-600">
               {enemyAliveCount}/{enemyUnits.length} 单位
@@ -2688,7 +2697,7 @@ export default function App() {
       </main>
 
       <footer className="relative z-20 border-t border-stone-800/50 bg-black/60 backdrop-blur-xl">
-        <div className="max-w-4xl mx-auto p-4 flex items-center justify-center gap-6">
+        <div className="max-w-4xl mx-auto p-3 lg:p-4 flex items-center justify-center gap-4 lg:gap-6">
           <button
             ref={autoSelectRef}
             onClick={autoSelectTargets}
