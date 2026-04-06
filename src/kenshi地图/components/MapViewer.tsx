@@ -2,12 +2,16 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
   ArrowLeft,
+  ChevronDown,
+  ChevronUp,
   CircleDot,
   Crosshair,
   Eye,
   EyeOff,
   Layers,
   MapPin,
+  Maximize2,
+  Minimize2,
   Tent,
   Triangle,
   X,
@@ -15,7 +19,7 @@ import {
   ZoomIn,
   ZoomOut,
 } from 'lucide-react';
-import { useEffect, useMemo, useState, type FC } from 'react';
+import { useEffect, useMemo, useRef, useState, type FC } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MapContainer, Marker, Polygon, Tooltip, useMap, useMapEvents } from 'react-leaflet';
 import { cities, City, Continent, continents, MAP_SIZE, MapFeature, outposts, ruins, villages } from '../data/mapData';
@@ -190,11 +194,35 @@ export default function MapViewer() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchStatus, setSearchStatus] = useState('');
   const [searchCollapsed, setSearchCollapsed] = useState(true);
+  const [legendCollapsed, setLegendCollapsed] = useState(true);
+  const [layersCollapsed, setLayersCollapsed] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const mapRootRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (window.parent && window.parent !== window) {
       window.parent.postMessage({ type: 'kenshi-map-ready' }, '*');
     }
+  }, []);
+
+  useEffect(() => {
+    if (!mapRootRef.current) return;
+    if (isFullscreen) {
+      if (document.fullscreenElement !== mapRootRef.current) {
+        mapRootRef.current.requestFullscreen?.().catch(() => {});
+      }
+    } else if (document.fullscreenElement) {
+      document.exitFullscreen?.().catch(() => {});
+    }
+  }, [isFullscreen]);
+
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      setIsFullscreen(document.fullscreenElement === mapRootRef.current);
+      window.dispatchEvent(new Event('resize'));
+    };
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
   }, []);
 
   // Layer visibility controls
@@ -349,7 +377,8 @@ export default function MapViewer() {
 
   return (
     <div
-      className="relative w-full h-screen bg-slate-950 overflow-hidden font-sans text-slate-100"
+      ref={mapRootRef}
+      className={`relative w-full h-screen bg-slate-950 overflow-hidden font-sans text-slate-100 ${isFullscreen ? 'z-[9999]' : ''}`}
       onTouchStart={event => event.stopPropagation()}
       onTouchMove={event => event.stopPropagation()}
       onTouchEnd={event => event.stopPropagation()}
@@ -510,25 +539,43 @@ export default function MapViewer() {
       {/* UI Overlay: Search */}
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[1000] flex flex-col items-center gap-2 w-[90vw] max-w-[520px]">
         {searchCollapsed ? (
-          <button
-            onClick={() => setSearchCollapsed(false)}
-            className="flex items-center gap-2 rounded-full bg-slate-900/85 backdrop-blur-md border border-slate-700/50 px-4 py-2 shadow-2xl"
-          >
-            <MapPin size={16} className="text-sky-400" />
-            <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">地点搜索</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSearchCollapsed(false)}
+              className="flex items-center gap-2 rounded-full bg-slate-900/85 backdrop-blur-md border border-slate-700/50 px-4 py-2 shadow-2xl"
+            >
+              <MapPin size={16} className="text-sky-400" />
+              <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">地点搜索</span>
+            </button>
+            <button
+              onClick={() => setIsFullscreen(value => !value)}
+              className="flex items-center justify-center w-9 h-9 rounded-full bg-slate-900/85 backdrop-blur-md border border-slate-700/50 shadow-2xl text-slate-300 hover:text-slate-100 transition-colors"
+              title={isFullscreen ? '退出全屏' : '全屏'}
+            >
+              {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+            </button>
+          </div>
         ) : (
           <div className="bg-slate-900/85 backdrop-blur-md border border-slate-700/50 px-4 py-3 rounded-2xl shadow-2xl flex flex-col gap-2 w-full">
-            <button
-              onClick={() => setSearchCollapsed(true)}
-              className="flex items-center justify-between gap-2 text-left"
-            >
-              <div className="flex items-center gap-2">
-                <MapPin size={16} className="text-sky-400" />
-                <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">地点搜索</span>
-              </div>
-              <span className="text-xs text-slate-400">收起</span>
-            </button>
+            <div className="flex items-center justify-between gap-2">
+              <button
+                onClick={() => setSearchCollapsed(true)}
+                className="flex items-center justify-between gap-2 text-left"
+              >
+                <div className="flex items-center gap-2">
+                  <MapPin size={16} className="text-sky-400" />
+                  <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">地点搜索</span>
+                </div>
+                <span className="text-xs text-slate-400">收起</span>
+              </button>
+              <button
+                onClick={() => setIsFullscreen(value => !value)}
+                className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-800/70 border border-slate-700/50 text-slate-300 hover:text-slate-100 transition-colors"
+                title={isFullscreen ? '退出全屏' : '全屏'}
+              >
+                {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+              </button>
+            </div>
             <div className="flex items-center gap-2">
               <input
                 value={searchQuery}
@@ -557,103 +604,150 @@ export default function MapViewer() {
       </div>
 
       {/* UI Overlay: Legend */}
-      <div className="absolute top-6 left-1/2 -translate-x-1/2 z-[1000] bg-slate-900/80 backdrop-blur-md border border-slate-700/50 px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-8">
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-slate-400 opacity-60 border border-white/20"></div>
-          <span className="text-xs font-medium text-slate-300">区域</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <CircleDot size={16} className="text-sky-400" />
-          <span className="text-xs font-medium text-slate-300">城镇</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Triangle size={16} className="text-green-400" />
-          <span className="text-xs font-medium text-slate-300">哨站</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Tent size={16} className="text-amber-400" />
-          <span className="text-xs font-medium text-slate-300">村庄</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <XIcon size={16} className="text-red-400" />
-          <span className="text-xs font-medium text-slate-300">废墟</span>
-        </div>
+      <div className="absolute top-6 left-1/2 -translate-x-1/2 z-[1000] bg-slate-900/80 backdrop-blur-md border border-slate-700/50 px-4 py-3 rounded-2xl shadow-2xl flex flex-col gap-3 min-w-[220px]">
+        <button
+          onClick={() => setLegendCollapsed(value => !value)}
+          className="flex items-center justify-between gap-2 text-left"
+        >
+          <div className="flex items-center gap-2">
+            <CircleDot size={16} className="text-slate-300" />
+            <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">区域图例</span>
+          </div>
+          {legendCollapsed ? (
+            <ChevronDown size={16} className="text-slate-400" />
+          ) : (
+            <ChevronUp size={16} className="text-slate-400" />
+          )}
+        </button>
+        {!legendCollapsed && (
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-slate-400 opacity-60 border border-white/20"></div>
+              <span className="text-xs font-medium text-slate-300">区域</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <CircleDot size={16} className="text-sky-400" />
+              <span className="text-xs font-medium text-slate-300">城镇</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Triangle size={16} className="text-green-400" />
+              <span className="text-xs font-medium text-slate-300">哨站</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Tent size={16} className="text-amber-400" />
+              <span className="text-xs font-medium text-slate-300">村庄</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <XIcon size={16} className="text-red-400" />
+              <span className="text-xs font-medium text-slate-300">废墟</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* UI Overlay: Layer Controls */}
       <div className="absolute top-6 right-6 z-[1000] bg-slate-900/80 backdrop-blur-md border border-slate-700/50 p-4 rounded-2xl shadow-2xl flex flex-col gap-3 min-w-[180px]">
-        <div className="flex items-center gap-2 mb-1 border-b border-slate-700/50 pb-2">
-          <Layers size={16} className="text-slate-400" />
-          <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">图层控制</span>
-        </div>
-
-        <button onClick={() => setShowRegions(!showRegions)} className="flex items-center justify-between group w-full">
-          <div className="flex items-center gap-2">
-            <div
-              className={`w-3 h-3 rounded-full border ${showRegions ? 'bg-slate-400 border-white/20' : 'bg-transparent border-slate-600'}`}
-            ></div>
-            <span
-              className={`text-xs font-medium transition-colors ${showRegions ? 'text-slate-200' : 'text-slate-500'}`}
-            >
-              区域显示
-            </span>
-          </div>
-          {showRegions ? <Eye size={14} className="text-sky-400" /> : <EyeOff size={14} className="text-slate-600" />}
-        </button>
-
-        <button onClick={() => setShowTowns(!showTowns)} className="flex items-center justify-between group w-full">
-          <div className="flex items-center gap-2">
-            <CircleDot size={14} className={showTowns ? 'text-sky-400' : 'text-slate-600'} />
-            <span
-              className={`text-xs font-medium transition-colors ${showTowns ? 'text-slate-200' : 'text-slate-500'}`}
-            >
-              城镇显示
-            </span>
-          </div>
-          {showTowns ? <Eye size={14} className="text-sky-400" /> : <EyeOff size={14} className="text-slate-600" />}
-        </button>
-
         <button
-          onClick={() => setShowOutposts(!showOutposts)}
-          className="flex items-center justify-between group w-full"
+          onClick={() => setLayersCollapsed(value => !value)}
+          className="flex items-center justify-between gap-2 text-left"
         >
           <div className="flex items-center gap-2">
-            <Triangle size={14} className={showOutposts ? 'text-green-400' : 'text-slate-600'} />
-            <span
-              className={`text-xs font-medium transition-colors ${showOutposts ? 'text-slate-200' : 'text-slate-500'}`}
-            >
-              哨站显示
-            </span>
+            <Layers size={16} className="text-slate-400" />
+            <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">图层控制</span>
           </div>
-          {showOutposts ? <Eye size={14} className="text-sky-400" /> : <EyeOff size={14} className="text-slate-600" />}
+          {layersCollapsed ? (
+            <ChevronDown size={16} className="text-slate-400" />
+          ) : (
+            <ChevronUp size={16} className="text-slate-400" />
+          )}
         </button>
 
-        <button
-          onClick={() => setShowVillages(!showVillages)}
-          className="flex items-center justify-between group w-full"
-        >
-          <div className="flex items-center gap-2">
-            <Tent size={14} className={showVillages ? 'text-amber-400' : 'text-slate-600'} />
-            <span
-              className={`text-xs font-medium transition-colors ${showVillages ? 'text-slate-200' : 'text-slate-500'}`}
+        {!layersCollapsed && (
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={() => setShowRegions(!showRegions)}
+              className="flex items-center justify-between group w-full"
             >
-              村庄显示
-            </span>
-          </div>
-          {showVillages ? <Eye size={14} className="text-sky-400" /> : <EyeOff size={14} className="text-slate-600" />}
-        </button>
+              <div className="flex items-center gap-2">
+                <div
+                  className={`w-3 h-3 rounded-full border ${showRegions ? 'bg-slate-400 border-white/20' : 'bg-transparent border-slate-600'}`}
+                ></div>
+                <span
+                  className={`text-xs font-medium transition-colors ${showRegions ? 'text-slate-200' : 'text-slate-500'}`}
+                >
+                  区域显示
+                </span>
+              </div>
+              {showRegions ? (
+                <Eye size={14} className="text-sky-400" />
+              ) : (
+                <EyeOff size={14} className="text-slate-600" />
+              )}
+            </button>
 
-        <button onClick={() => setShowRuins(!showRuins)} className="flex items-center justify-between group w-full">
-          <div className="flex items-center gap-2">
-            <XIcon size={14} className={showRuins ? 'text-red-400' : 'text-slate-600'} />
-            <span
-              className={`text-xs font-medium transition-colors ${showRuins ? 'text-slate-200' : 'text-slate-500'}`}
+            <button onClick={() => setShowTowns(!showTowns)} className="flex items-center justify-between group w-full">
+              <div className="flex items-center gap-2">
+                <CircleDot size={14} className={showTowns ? 'text-sky-400' : 'text-slate-600'} />
+                <span
+                  className={`text-xs font-medium transition-colors ${showTowns ? 'text-slate-200' : 'text-slate-500'}`}
+                >
+                  城镇显示
+                </span>
+              </div>
+              {showTowns ? <Eye size={14} className="text-sky-400" /> : <EyeOff size={14} className="text-slate-600" />}
+            </button>
+
+            <button
+              onClick={() => setShowOutposts(!showOutposts)}
+              className="flex items-center justify-between group w-full"
             >
-              废墟显示
-            </span>
+              <div className="flex items-center gap-2">
+                <Triangle size={14} className={showOutposts ? 'text-green-400' : 'text-slate-600'} />
+                <span
+                  className={`text-xs font-medium transition-colors ${showOutposts ? 'text-slate-200' : 'text-slate-500'}`}
+                >
+                  哨站显示
+                </span>
+              </div>
+              {showOutposts ? (
+                <Eye size={14} className="text-sky-400" />
+              ) : (
+                <EyeOff size={14} className="text-slate-600" />
+              )}
+            </button>
+
+            <button
+              onClick={() => setShowVillages(!showVillages)}
+              className="flex items-center justify-between group w-full"
+            >
+              <div className="flex items-center gap-2">
+                <Tent size={14} className={showVillages ? 'text-amber-400' : 'text-slate-600'} />
+                <span
+                  className={`text-xs font-medium transition-colors ${showVillages ? 'text-slate-200' : 'text-slate-500'}`}
+                >
+                  村庄显示
+                </span>
+              </div>
+              {showVillages ? (
+                <Eye size={14} className="text-sky-400" />
+              ) : (
+                <EyeOff size={14} className="text-slate-600" />
+              )}
+            </button>
+
+            <button onClick={() => setShowRuins(!showRuins)} className="flex items-center justify-between group w-full">
+              <div className="flex items-center gap-2">
+                <XIcon size={14} className={showRuins ? 'text-red-400' : 'text-slate-600'} />
+                <span
+                  className={`text-xs font-medium transition-colors ${showRuins ? 'text-slate-200' : 'text-slate-500'}`}
+                >
+                  废墟显示
+                </span>
+              </div>
+              {showRuins ? <Eye size={14} className="text-sky-400" /> : <EyeOff size={14} className="text-slate-600" />}
+            </button>
           </div>
-          {showRuins ? <Eye size={14} className="text-sky-400" /> : <EyeOff size={14} className="text-slate-600" />}
-        </button>
+        )}
       </div>
 
       {/* UI Overlay: Coordinates Display */}
