@@ -418,10 +418,15 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
       ],
       alias: {},
     },
+<<<<<<< HEAD
     plugins: [
       new MiniCssExtractPlugin(),
       ...(entry.html === undefined
         ? []
+=======
+    plugins: (entry.html === undefined
+      ? [new MiniCssExtractPlugin()]
+>>>>>>> f759a3e3f10c9abb6086ecf76222f35268e80cf1
         : [
             new HtmlWebpackPlugin({
               template: path.join(import.meta.dirname, entry.html),
@@ -430,12 +435,22 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
               cache: false,
             }),
             new HtmlInlineScriptWebpackPlugin(),
+<<<<<<< HEAD
+=======
+          new MiniCssExtractPlugin(),
+>>>>>>> f759a3e3f10c9abb6086ecf76222f35268e80cf1
             new HTMLInlineCSSWebpackPlugin({
               styleTagFactory({ style }: { style: string }) {
                 return `<style>${style}</style>`;
               },
             }),
+<<<<<<< HEAD
           ]),
+=======
+        ]
+    )
+      .concat(
+>>>>>>> f759a3e3f10c9abb6086ecf76222f35268e80cf1
       { apply: watch_tavern_helper },
       { apply: schema_dump },
       { apply: tavern_sync },
@@ -465,7 +480,13 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
         __VUE_PROD_DEVTOOLS__: process.env.CI !== 'true',
         __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: false,
       }),
+<<<<<<< HEAD
       ...(should_obfuscate
+=======
+      )
+      .concat(
+        should_obfuscate
+>>>>>>> f759a3e3f10c9abb6086ecf76222f35268e80cf1
         ? [
             new WebpackObfuscator({
               controlFlowFlattening: true,
@@ -476,8 +497,13 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
               seed: 1,
             }),
           ]
+<<<<<<< HEAD
         : []),
     ] as any[],
+=======
+          : [],
+      ),
+>>>>>>> f759a3e3f10c9abb6086ecf76222f35268e80cf1
     optimization: {
       minimize: true,
       minimizer: [
@@ -537,9 +563,13 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
 
       if (
         ['vue', 'vue-router'].every(key => request !== key) &&
+<<<<<<< HEAD
         ['pixi', 'react', 'vue', 'motion', 'framer-motion', 'scheduler'].some(
           key => request === key || request.includes(key),
         )
+=======
+        ['pixi', 'react', 'vue'].some(key => request.includes(key))
+>>>>>>> f759a3e3f10c9abb6086ecf76222f35268e80cf1
       ) {
         return callback();
       }
