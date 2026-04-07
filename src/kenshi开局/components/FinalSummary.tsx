@@ -397,8 +397,12 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
   };
 
   const buildAttributesRecord = () => {
-    const raceModifiers = parseAttributeModifiers(race?.description ?? '');
-    const subraceModifiers = parseAttributeModifiers(subrace?.description ?? '');
+    const raceModifiers = parseAttributeModifiers(
+      [race?.description ?? '', (race as { attributeSummary?: string })?.attributeSummary ?? ''].join(' '),
+    );
+    const subraceModifiers = parseAttributeModifiers(
+      [subrace?.description ?? '', (subrace as { attributeSummary?: string })?.attributeSummary ?? ''].join(' '),
+    );
     const finalStrength = data.attributes.strength + raceModifiers.strength + subraceModifiers.strength;
     const finalDexterity = data.attributes.dexterity + raceModifiers.dexterity + subraceModifiers.dexterity;
     const finalPerception = data.attributes.perception + raceModifiers.perception + subraceModifiers.perception;
@@ -434,8 +438,14 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
   const buildSquadAttributesRecord = (member: SquadMemberData) => {
     const memberRace = RACES.find(r => r.id === member.race);
     const memberSubrace = memberRace?.subraces.find(s => s.id === member.subrace);
-    const raceModifiers = parseAttributeModifiers(memberRace?.description ?? '');
-    const subraceModifiers = parseAttributeModifiers(memberSubrace?.description ?? '');
+    const raceModifiers = parseAttributeModifiers(
+      [memberRace?.description ?? '', (memberRace as { attributeSummary?: string })?.attributeSummary ?? ''].join(' '),
+    );
+    const subraceModifiers = parseAttributeModifiers(
+      [memberSubrace?.description ?? '', (memberSubrace as { attributeSummary?: string })?.attributeSummary ?? ''].join(
+        ' ',
+      ),
+    );
     const finalStrength = member.attributes.strength + raceModifiers.strength + subraceModifiers.strength;
     const finalDexterity = member.attributes.dexterity + raceModifiers.dexterity + subraceModifiers.dexterity;
     const finalPerception = member.attributes.perception + raceModifiers.perception + subraceModifiers.perception;
@@ -586,7 +596,22 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
   const buildBaseSettingText = () => {
     const equipmentList = scenario?.equipment ?? [];
     const lines: string[] = [];
-    const attributeLine = Object.entries(data.attributes)
+    const raceModifiers = parseAttributeModifiers(
+      [race?.description ?? '', (race as { attributeSummary?: string })?.attributeSummary ?? ''].join(' '),
+    );
+    const subraceModifiers = parseAttributeModifiers(
+      [subrace?.description ?? '', (subrace as { attributeSummary?: string })?.attributeSummary ?? ''].join(' '),
+    );
+    const finalAttributes = {
+      strength: data.attributes.strength + raceModifiers.strength + subraceModifiers.strength,
+      dexterity: data.attributes.dexterity + raceModifiers.dexterity + subraceModifiers.dexterity,
+      perception: data.attributes.perception + raceModifiers.perception + subraceModifiers.perception,
+      constitution: data.attributes.constitution + raceModifiers.constitution + subraceModifiers.constitution,
+      will: data.attributes.will + raceModifiers.will + subraceModifiers.will,
+      intelligence: data.attributes.intelligence + raceModifiers.intelligence + subraceModifiers.intelligence,
+      charisma: data.attributes.charisma + raceModifiers.charisma + subraceModifiers.charisma,
+    };
+    const attributeLine = Object.entries(finalAttributes)
       .map(([key, value]) => `${attributeLabels[key as keyof CharacterData['attributes']]}=${value}`)
       .join('，');
     lines.push('主角设定');
