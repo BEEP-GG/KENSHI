@@ -168,7 +168,7 @@ const BATTLE_RULES = `战斗轮结构:
 攻击与对抗流程:
 第一步_闪避:
   - 防守方闪避值: (敏捷 * 0.5) + (感知 * 0.2)，最高不超过70
-  - 进攻方投掷: D100（大型武器90-100为大失败，其余95-100为大失败）
+  - 进攻方投掷: D100（01-05为大失败）
   - 判定: 防守方闪避值 ≤ 进攻方投掷结果
   - 结果: 失败则本次攻击落空；成功则进入【对抗防御】阶段。
 
@@ -208,7 +208,7 @@ const BATTLE_RULES = `战斗轮结构:
 - 连击机制: 若角色拥有多次攻击次数，防御方在同一轮内防御后续攻击时，【最终防御成功率】每下累积 -10。
 - 大成功与大失败:
     攻击大成功 (01-07): 伤害结算x1.5且无法格挡。
-    攻击大失败 (大型武器90-100，其余95-100): 攻击者失去平衡，下一轮无法执行格挡，且防御方可获得一次即时反击。
+    攻击大失败 (01-05): 攻击者失去平衡，下一轮无法执行格挡，且防御方可获得一次即时反击。
 - 濒死与韧性:
     倒地判定: 当 HP 归零时，角色需进行一次【体质】检定。
     成功: 保持清醒（可尝试爬行逃跑或装死）。
@@ -359,7 +359,14 @@ const actions: ActionType[] = [
   },
 ];
 
-const d100 = () => _.random(1, 100);
+const d100 = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    const buffer = new Uint32Array(1);
+    crypto.getRandomValues(buffer);
+    return (buffer[0] % 100) + 1;
+  }
+  return Math.floor(Math.random() * 100) + 1;
+};
 
 const rollDice = (dice: string) => {
   const match = dice.match(/(\d+)d(\d+)/i);
@@ -371,7 +378,8 @@ const rollDice = (dice: string) => {
 
 const parseDamageTypeRatio = (damageType: string): DamageRatio | null => {
   if (!damageType) return null;
-  const entries = damageType
+  const normalized = damageType.replace(/，/g, '/').replace(/、/g, '/');
+  const entries = normalized
     .split('/')
     .map(part => part.trim())
     .filter(Boolean)
@@ -1565,11 +1573,16 @@ export default function App() {
     logs: string[],
     lastRoundAttackersCount: Record<string, number>,
     attackPenaltyExtra = 0,
+    targetIndex?: number,
+    targetCount?: number,
   ): AttackResult => {
     const hitBonus = attacker.hitBonusAgainst[defender.id] || 0;
     if (attacker.hitBonusAgainst[defender.id]) {
       attacker.hitBonusAgainst[defender.id] = 0;
     }
+
+    const targetLabel =
+      targetCount && targetCount > 1 && targetIndex !== undefined ? `·目标${targetIndex + 1}/${targetCount}` : '';
 
     const rawRoll = d100();
     const attackRoll = rawRoll + hitBonus - attackPenaltyExtra;
@@ -1577,7 +1590,7 @@ export default function App() {
     const evadeValue = Math.min(70, evadeBase);
     const isCrit = rawRoll <= 7;
     const isHeavyWeapon = /大型/.test(attacker.weapon.type);
-    const isFumble = rawRoll >= (isHeavyWeapon ? 90 : 95);
+    const isFumble = rawRoll <= 5;
 
     if (isFumble) {
       appendLog(logs, `${attacker.name}: 攻击检定大失败 (判定 ${rawRoll})`);
@@ -1620,34 +1633,14 @@ export default function App() {
       return applyAttack(units, defender, attacker, 0, logs, lastRoundAttackersCount);
     }
 
+    appendLog(logs, `${attacker.name}: 攻击${defender.name}（第${attackIndex + 1}击${targetLabel}：判定 ${rawRoll}）`);
+
     if (attackRoll < evadeValue) {
       appendLog(logs, `${attacker.name}: 攻击落空 (判定 ${attackRoll.toFixed(0)} < ${evadeValue.toFixed(0)})`);
       return { units, attacker, defender, dodged: true };
     }
 
-    appendLog(logs, `${attacker.name}: 通过闪避判定 (判定 ${attackRoll.toFixed(0)} >= ${evadeValue.toFixed(0)})`);
-
-    if (isHeavyWeapon && attackPenaltyExtra === 0) {
-      const targetPool = units.filter(unit => unit.faction === defender.faction && unit.hp > 0 && !unit.escaped);
-      if (targetPool.length === 0) {
-        return { units, attacker, defender };
-      }
-      let newTarget = defender;
-      if (targetPool.length > 1) {
-        const candidates = targetPool.filter(unit => unit.id !== defender.id);
-        if (candidates.length) newTarget = candidates[_.random(0, candidates.length - 1)];
-      }
-      const heavyResult = applyAttack(
-        units,
-        attacker,
-        newTarget,
-        attackIndex,
-        logs,
-        lastRoundAttackersCount,
-        attackPenaltyExtra,
-      );
-      return { units: heavyResult.units, attacker, defender: heavyResult.defender };
-    }
+    appendLog(logs, `${defender.name}: 闪避判定失败 (判定 ${attackRoll.toFixed(0)} >= ${evadeValue.toFixed(0)})`);
 
     let useBlock = getDefenseMode(defender);
     if (defender.noBlockNextRound) useBlock = false;
@@ -1850,6 +1843,7 @@ export default function App() {
         });
 
       const turnOrderIds = buildTurnOrder(workingUnits).map(unit => unit.id);
+      const attackPlans = new Map<string, { targetId?: string; plannedTargetIds?: string[]; targetFaction: Faction }>();
 
       for (const actorId of turnOrderIds) {
         const actor = getUnit(workingUnits, actorId);
@@ -2042,69 +2036,11 @@ export default function App() {
             }
 
             workingUnits = setUnitIntent(workingUnits, actor.id, `攻击 ${target.name}`);
-            const currentTarget = target;
-            const isPolearm = /长柄/.test(actor.weapon.type);
-            const isHeavyWeapon = /大型/.test(actor.weapon.type);
-            const explicitTargets = plannedTargetIds
-              .map((id: string) => getUnit(workingUnits, id))
-              .filter((unit: BattleCharacter | undefined | null): unit is BattleCharacter =>
-                Boolean(unit && unit.hp > 0 && !unit.escaped),
-              );
-            const extraTargets = isPolearm
-              ? workingUnits.filter(
-                  unit => unit.faction === 'enemy' && unit.id !== currentTarget.id && unit.hp > 0 && !unit.escaped,
-                )
-              : [];
-            const poleTargets = isPolearm
-              ? explicitTargets.length
-                ? explicitTargets
-                : [currentTarget, ...extraTargets.slice(0, 2)]
-              : [currentTarget];
-            for (const [index, poleTarget] of poleTargets.entries()) {
-              const extraPenalty = isPolearm ? index * 7 : 0;
-              const perAttackTargets = isHeavyWeapon
-                ? [
-                    poleTarget,
-                    ...workingUnits
-                      .filter(
-                        unit => unit.faction === 'enemy' && unit.id !== poleTarget.id && unit.hp > 0 && !unit.escaped,
-                      )
-                      .slice(0, 1),
-                  ]
-                : [poleTarget];
-              for (let i = 0; i < actor.attackCount; i += 1) {
-                let allDodged = isHeavyWeapon;
-                for (const targetPick of perAttackTargets) {
-                  const result = applyAttack(
-                    workingUnits,
-                    actor,
-                    targetPick,
-                    i,
-                    logs,
-                    lastRoundAttackersCount,
-                    extraPenalty,
-                  );
-                  workingUnits = result.units;
-                  if (!result.dodged) {
-                    const attackerSet = (lastRoundAttackersMap.get(targetPick.id) ?? new Set<string>()) as Set<string>;
-                    attackerSet.add(actor.id);
-                    lastRoundAttackersMap.set(targetPick.id, attackerSet);
-                  }
-                  if (isHeavyWeapon && !result.dodged) allDodged = false;
-                }
-                if (isHeavyWeapon && perAttackTargets.length > 0 && allDodged) {
-                  const latestActor = getUnit(workingUnits, actor.id);
-                  if (latestActor) {
-                    const updatedActor = {
-                      ...latestActor,
-                      defenseBonus: (latestActor.defenseBonus || 0) - 15,
-                    };
-                    workingUnits = replaceUnit(workingUnits, updatedActor);
-                    appendLog(logs, `${latestActor.name}: 被闪避导致失衡，防御检定-15。`);
-                  }
-                }
-              }
-            }
+            attackPlans.set(actor.id, {
+              targetId: target.id,
+              plannedTargetIds,
+              targetFaction: 'enemy',
+            });
           } else {
             const target = pickRandomTarget(workingUnits, 'enemy');
             if (!target) {
@@ -2112,60 +2048,7 @@ export default function App() {
               continue;
             }
             workingUnits = setUnitIntent(workingUnits, actor.id, `攻击 ${target.name}`);
-            const currentTarget = target;
-            const isPolearm = /长柄/.test(actor.weapon.type);
-            const isHeavyWeapon = /大型/.test(actor.weapon.type);
-            const extraTargets = isPolearm
-              ? workingUnits.filter(
-                  unit => unit.faction === 'enemy' && unit.id !== currentTarget.id && unit.hp > 0 && !unit.escaped,
-                )
-              : [];
-            const poleTargets = isPolearm ? [currentTarget, ...extraTargets.slice(0, 2)] : [currentTarget];
-            for (const [index, poleTarget] of poleTargets.entries()) {
-              const extraPenalty = isPolearm ? index * 7 : 0;
-              const perAttackTargets = isHeavyWeapon
-                ? [
-                    poleTarget,
-                    ...workingUnits
-                      .filter(
-                        unit => unit.faction === 'enemy' && unit.id !== poleTarget.id && unit.hp > 0 && !unit.escaped,
-                      )
-                      .slice(0, 1),
-                  ]
-                : [poleTarget];
-              for (let i = 0; i < actor.attackCount; i += 1) {
-                let allDodged = isHeavyWeapon;
-                for (const targetPick of perAttackTargets) {
-                  const result = applyAttack(
-                    workingUnits,
-                    actor,
-                    targetPick,
-                    i,
-                    logs,
-                    lastRoundAttackersCount,
-                    extraPenalty,
-                  );
-                  workingUnits = result.units;
-                  if (!result.dodged) {
-                    const attackerSet = (lastRoundAttackersMap.get(targetPick.id) ?? new Set<string>()) as Set<string>;
-                    attackerSet.add(actor.id);
-                    lastRoundAttackersMap.set(targetPick.id, attackerSet);
-                  }
-                  if (isHeavyWeapon && !result.dodged) allDodged = false;
-                }
-                if (isHeavyWeapon && perAttackTargets.length > 0 && allDodged) {
-                  const latestActor = getUnit(workingUnits, actor.id);
-                  if (latestActor) {
-                    const updatedActor = {
-                      ...latestActor,
-                      defenseBonus: (latestActor.defenseBonus || 0) - 15,
-                    };
-                    workingUnits = replaceUnit(workingUnits, updatedActor);
-                    appendLog(logs, `${latestActor.name}: 被闪避导致失衡，防御检定-15。`);
-                  }
-                }
-              }
-            }
+            attackPlans.set(actor.id, { targetId: target.id, plannedTargetIds: [], targetFaction: 'enemy' });
           }
         } else {
           const targetId = enemyTargetMap[actor.id];
@@ -2174,15 +2057,53 @@ export default function App() {
             workingUnits = setUnitIntent(workingUnits, actor.id, '无有效目标');
             continue;
           }
-          const currentTarget = target;
+          attackPlans.set(actor.id, { targetId: target.id, plannedTargetIds: [], targetFaction: 'friendly' });
+        }
+      }
+
+      const maxAttackCount = Math.max(
+        0,
+        ...Array.from(attackPlans.keys()).map(actorId => {
+          const actor = getUnit(workingUnits, actorId);
+          return actor ? actor.attackCount : 0;
+        }),
+      );
+
+      for (let attackIndex = 0; attackIndex < maxAttackCount; attackIndex += 1) {
+        for (const actorId of turnOrderIds) {
+          const plan = attackPlans.get(actorId);
+          if (!plan) continue;
+          const actor = getUnit(workingUnits, actorId);
+          if (!actor || actor.hp <= 0 || actor.escaped) continue;
+          if (attackIndex >= actor.attackCount) continue;
+
+          const targetFaction = actor.faction === 'friendly' ? 'enemy' : 'friendly';
+          let target = plan.targetId ? getUnit(workingUnits, plan.targetId) : null;
+          if (!target || target.hp <= 0 || target.escaped || target.faction !== targetFaction) {
+            target = pickRandomTarget(workingUnits, targetFaction);
+            plan.targetId = target?.id;
+          }
+          if (!target) continue;
+
           const isPolearm = /长柄/.test(actor.weapon.type);
           const isHeavyWeapon = /大型/.test(actor.weapon.type);
+          const plannedTargetIds = plan.plannedTargetIds || [];
+          const explicitTargets = plannedTargetIds
+            .map((id: string) => getUnit(workingUnits, id))
+            .filter((unit: BattleCharacter | undefined | null): unit is BattleCharacter =>
+              Boolean(unit && unit.hp > 0 && !unit.escaped),
+            );
           const extraTargets = isPolearm
             ? workingUnits.filter(
-                unit => unit.faction === 'friendly' && unit.id !== currentTarget.id && unit.hp > 0 && !unit.escaped,
+                unit => unit.faction === targetFaction && unit.id !== target.id && unit.hp > 0 && !unit.escaped,
               )
             : [];
-          const poleTargets = isPolearm ? [currentTarget, ...extraTargets.slice(0, 2)] : [currentTarget];
+          const poleTargets = isPolearm
+            ? explicitTargets.length
+              ? explicitTargets
+              : [target, ...extraTargets.slice(0, 2)]
+            : [target];
+
           for (const [index, poleTarget] of poleTargets.entries()) {
             const extraPenalty = isPolearm ? index * 7 : 0;
             const perAttackTargets = isHeavyWeapon
@@ -2190,41 +2111,42 @@ export default function App() {
                   poleTarget,
                   ...workingUnits
                     .filter(
-                      unit => unit.faction === 'friendly' && unit.id !== poleTarget.id && unit.hp > 0 && !unit.escaped,
+                      unit =>
+                        unit.faction === targetFaction && unit.id !== poleTarget.id && unit.hp > 0 && !unit.escaped,
                     )
                     .slice(0, 1),
                 ]
               : [poleTarget];
-            for (let i = 0; i < actor.attackCount; i += 1) {
-              let allDodged = isHeavyWeapon;
-              for (const targetPick of perAttackTargets) {
-                const result = applyAttack(
-                  workingUnits,
-                  actor,
-                  targetPick,
-                  i,
-                  logs,
-                  lastRoundAttackersCount,
-                  extraPenalty,
-                );
-                workingUnits = result.units;
-                if (!result.dodged) {
-                  const attackerSet = (lastRoundAttackersMap.get(targetPick.id) ?? new Set<string>()) as Set<string>;
-                  attackerSet.add(actor.id);
-                  lastRoundAttackersMap.set(targetPick.id, attackerSet);
-                }
-                if (isHeavyWeapon && !result.dodged) allDodged = false;
+            let allDodged = isHeavyWeapon;
+            for (const [targetIndex, targetPick] of perAttackTargets.entries()) {
+              const result = applyAttack(
+                workingUnits,
+                actor,
+                targetPick,
+                attackIndex,
+                logs,
+                lastRoundAttackersCount,
+                extraPenalty,
+                targetIndex,
+                perAttackTargets.length,
+              );
+              workingUnits = result.units;
+              if (!result.dodged) {
+                const attackerSet = (lastRoundAttackersMap.get(targetPick.id) ?? new Set<string>()) as Set<string>;
+                attackerSet.add(actor.id);
+                lastRoundAttackersMap.set(targetPick.id, attackerSet);
               }
-              if (isHeavyWeapon && perAttackTargets.length > 0 && allDodged) {
-                const latestActor = getUnit(workingUnits, actor.id);
-                if (latestActor) {
-                  const updatedActor = {
-                    ...latestActor,
-                    defenseBonus: (latestActor.defenseBonus || 0) - 15,
-                  };
-                  workingUnits = replaceUnit(workingUnits, updatedActor);
-                  appendLog(logs, `${latestActor.name}: 被闪避导致失衡，防御检定-15。`);
-                }
+              if (isHeavyWeapon && !result.dodged) allDodged = false;
+            }
+            if (isHeavyWeapon && perAttackTargets.length > 0 && allDodged) {
+              const latestActor = getUnit(workingUnits, actor.id);
+              if (latestActor) {
+                const updatedActor = {
+                  ...latestActor,
+                  defenseBonus: (latestActor.defenseBonus || 0) - 15,
+                };
+                workingUnits = replaceUnit(workingUnits, updatedActor);
+                appendLog(logs, `${latestActor.name}: 被闪避导致失衡，防御检定-15。`);
               }
             }
           }
