@@ -1590,7 +1590,7 @@ export default function App() {
     const evadeValue = Math.min(70, evadeBase);
     const isCrit = rawRoll <= 7;
     const isHeavyWeapon = /大型/.test(attacker.weapon.type);
-    const isFumble = rawRoll <= 5;
+    const isFumble = rawRoll <= (isHeavyWeapon ? 10 : 5);
 
     if (isFumble) {
       appendLog(logs, `${attacker.name}: 攻击检定大失败 (判定 ${rawRoll})`);

@@ -589,7 +589,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
     const attributeLine = Object.entries(data.attributes)
       .map(([key, value]) => `${attributeLabels[key as keyof CharacterData['attributes']]}=${value}`)
       .join('，');
-    lines.push('当前角色基础设定');
+    lines.push('主角设定');
     lines.push('基础设定');
     lines.push(`角色名：${data.name || '无名氏'}`);
     lines.push(`性别：${data.gender === 'male' ? '男' : data.gender === 'female' ? '女' : '其他'}`);
@@ -605,7 +605,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
         data.appearance.hairColor || '无'
       }`,
     );
-    lines.push('根据上述角色设定以及开局剧本，创建故事开局。');
+    lines.push('根据上述角色设定以及开局剧本，创建故事开局以及更新形容角色外貌。');
     return lines.join('\n');
   };
 
