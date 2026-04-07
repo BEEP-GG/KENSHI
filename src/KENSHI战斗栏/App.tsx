@@ -928,7 +928,7 @@ const CharacterCard = ({
 
   return (
     <div
-      className={`relative group overflow-hidden rounded-sm border cursor-pointer ${
+      className={`relative group overflow-hidden rounded-sm border cursor-pointer min-w-[82vw] max-w-[360px] lg:min-w-0 lg:max-w-none ${
         isEnemy
           ? 'border-red-900/20 bg-gradient-to-br from-red-950/10 to-black/40'
           : 'border-blue-900/20 bg-gradient-to-br from-blue-950/10 to-black/40'
@@ -1206,6 +1206,7 @@ export default function App() {
   const cancelledRef = useRef(false);
   const [surrenderConfirmOpen, setSurrenderConfirmOpen] = useState(false);
   const [resultConfirmed, setResultConfirmed] = useState(false);
+  const [mobileLogCollapsed, setMobileLogCollapsed] = useState(false);
   const isMobile = useMemo(() => {
     if (typeof navigator === 'undefined') return false;
     const ua = navigator.userAgent || '';
@@ -2618,10 +2619,10 @@ export default function App() {
           </div>
         )}
         <div
-          className="order-1 lg:order-none w-full lg:w-[28%] lg:min-w-[300px] max-h-[28vh] lg:max-h-none p-4 lg:p-6 overflow-y-auto border-b border-stone-800/30 lg:border-b-0 lg:border-r lg:border-stone-800/30 bg-gradient-to-r from-black/80 to-transparent scrollbar-hide flex flex-col min-h-0 overscroll-contain"
-          style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
+          className="order-1 lg:order-none shrink-0 min-h-[186px] lg:min-h-0 w-full lg:w-[28%] lg:min-w-[300px] p-3 lg:p-6 overflow-x-auto overflow-y-visible lg:overflow-x-hidden lg:overflow-y-auto border-b border-stone-800/30 lg:border-b-0 lg:border-r lg:border-stone-800/30 bg-gradient-to-r from-black/80 to-transparent scrollbar-hide flex flex-col min-h-0 overscroll-contain"
+          style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x' }}
         >
-          <div className="flex items-center justify-between mb-6 pb-2 border-b border-stone-800/50">
+          <div className="flex items-center justify-between mb-3 lg:mb-6 pb-2 border-b border-stone-800/50">
             <h2 className="text-sm font-serif text-stone-400 tracking-[0.2em] flex items-center gap-3">
               <div className="w-1.5 h-4 bg-blue-600 rounded-sm shadow-[0_0_10px_rgba(37,99,235,0.8)]"></div>
               友方阵营
@@ -2630,7 +2631,7 @@ export default function App() {
               {friendlyAliveCount}/{friendlyUnits.length} 单位
             </span>
           </div>
-          <div className="flex flex-col gap-4 flex-1">
+          <div className="flex flex-row lg:flex-col gap-3 lg:gap-4 flex-1 min-w-max lg:min-w-0 pb-1 lg:pb-0">
             {friendlyUnits.map(unit => (
               <CharacterCard
                 key={unit.id}
@@ -2657,17 +2658,32 @@ export default function App() {
           </div>
         </div>
 
-        <div className="order-2 lg:order-none flex-1 min-h-0 p-4 lg:p-8 flex flex-col relative">
+        <div
+          className={`order-2 lg:order-none flex-1 ${
+            isMobile && mobileLogCollapsed ? 'min-h-[12vh]' : 'min-h-[30vh]'
+          } lg:min-h-0 p-3 lg:p-8 flex flex-col relative`}
+        >
           <div className="absolute inset-0 bg-stone-950/40 backdrop-blur-sm m-4 lg:m-8 rounded-sm border border-stone-800/40 shadow-[inset_0_0_60px_rgba(0,0,0,0.8)]"></div>
 
           <div
-            className="relative z-10 flex-1 overflow-y-auto p-6 lg:p-10 font-serif text-base leading-[1.8] text-stone-300 space-y-3 scrollbar-hide overscroll-contain"
+            className={`relative z-10 overflow-y-auto p-6 lg:p-10 font-serif text-base leading-[1.8] text-stone-300 space-y-3 scrollbar-hide overscroll-contain ${
+              isMobile && mobileLogCollapsed ? 'flex-none min-h-[7.2rem] max-h-[7.2rem]' : 'flex-1'
+            }`}
             style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
           >
-            <div className="text-center mb-6">
+            <div className="mb-4 lg:mb-6 flex items-center justify-center gap-2.5">
               <span className="inline-block px-4 py-1 border border-stone-800/60 rounded-sm text-xs font-mono text-stone-500 tracking-widest bg-stone-900/30">
                 战斗日志
               </span>
+              {isMobile && (
+                <button
+                  type="button"
+                  onClick={() => setMobileLogCollapsed(prev => !prev)}
+                  className="px-3 py-1 border border-stone-800/70 rounded-sm text-[11px] font-mono text-stone-400 bg-stone-900/40 hover:text-stone-200 hover:border-stone-600/70 transition-colors"
+                >
+                  {mobileLogCollapsed ? '展开' : '折叠'}
+                </button>
+              )}
             </div>
 
             {!isMobile && loadError ? (
@@ -2711,10 +2727,10 @@ export default function App() {
         </div>
 
         <div
-          className="order-3 lg:order-none w-full lg:w-[28%] lg:min-w-[300px] max-h-[28vh] lg:max-h-none p-4 lg:p-6 overflow-y-auto border-t border-stone-800/30 lg:border-t-0 lg:border-l lg:border-stone-800/30 bg-gradient-to-l from-black/80 to-transparent scrollbar-hide flex flex-col min-h-0 overscroll-contain"
-          style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
+          className="order-3 lg:order-none shrink-0 min-h-[186px] lg:min-h-0 w-full lg:w-[28%] lg:min-w-[300px] p-3 lg:p-6 overflow-x-auto overflow-y-visible lg:overflow-x-hidden lg:overflow-y-auto border-t border-stone-800/30 lg:border-t-0 lg:border-l lg:border-stone-800/30 bg-gradient-to-l from-black/80 to-transparent scrollbar-hide flex flex-col min-h-0 overscroll-contain"
+          style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x' }}
         >
-          <div className="flex items-center justify-between mb-6 pb-2 border-b border-stone-800/50">
+          <div className="flex items-center justify-between mb-3 lg:mb-6 pb-2 border-b border-stone-800/50">
             <span className="text-xs font-mono text-stone-600">
               {enemyAliveCount}/{enemyUnits.length} 单位
             </span>
@@ -2723,7 +2739,7 @@ export default function App() {
               <div className="w-1.5 h-4 bg-red-600 rounded-sm shadow-[0_0_10px_rgba(220,38,38,0.8)]"></div>
             </h2>
           </div>
-          <div className="flex flex-col gap-4 flex-1">
+          <div className="flex flex-row lg:flex-col gap-3 lg:gap-4 flex-1 min-w-max lg:min-w-0 pb-1 lg:pb-0">
             {enemyUnits.map(unit => (
               <CharacterCard
                 key={unit.id}
@@ -2782,21 +2798,21 @@ export default function App() {
         </div>
       </main>
 
-      <footer className="relative z-20 border-t border-stone-800/50 bg-black/60 backdrop-blur-xl">
-        <div className="max-w-4xl mx-auto p-3 lg:p-4 flex items-center justify-center gap-4 lg:gap-6">
+      <footer className="relative z-20 mt-2 lg:mt-0 border-t border-stone-800/50 bg-black/60 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]">
+        <div className="max-w-4xl mx-auto p-2.5 lg:p-4 flex items-center justify-center gap-2.5 lg:gap-6">
           <button
             ref={autoSelectRef}
             onClick={autoSelectTargets}
-            className="group relative flex flex-col items-center justify-center w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 rounded-sm border bg-stone-900/40 backdrop-blur-md transition-all duration-300 text-amber-300 border-amber-900/50 hover:bg-amber-950/40 hover:border-amber-500/50 group-hover:shadow-[0_0_20px_rgba(251,191,36,0.3)] overflow-hidden"
+            className="group relative flex flex-col items-center justify-center w-16 h-16 sm:w-24 sm:h-24 lg:w-28 lg:h-28 rounded-sm border bg-stone-900/40 backdrop-blur-md transition-all duration-300 text-amber-300 border-amber-900/50 hover:bg-amber-950/40 hover:border-amber-500/50 group-hover:shadow-[0_0_20px_rgba(251,191,36,0.3)] overflow-hidden"
           >
             <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
             <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-current opacity-30 group-hover:opacity-100 transition-opacity"></div>
             <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-current opacity-30 group-hover:opacity-100 transition-opacity"></div>
             <Crosshair
-              size={28}
+              size={22}
               className="mb-2 sm:mb-3 group-hover:-translate-y-1 group-hover:scale-110 transition-transform duration-300"
             />
-            <span className="text-xs sm:text-sm font-serif tracking-[0.2em]">自动选择</span>
+            <span className="text-[11px] sm:text-sm font-serif tracking-[0.15em]">自动选择</span>
           </button>
           {actions.map(action => (
             <button
@@ -2805,17 +2821,17 @@ export default function App() {
                 actionButtonRefs.current[action.id] = el;
               }}
               onClick={() => handleActionClick(action)}
-              className={`group relative flex flex-col items-center justify-center w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 rounded-sm border bg-stone-900/40 backdrop-blur-md transition-all duration-300 ${action.color} ${action.glow} overflow-hidden`}
+              className={`group relative flex flex-col items-center justify-center w-16 h-16 sm:w-24 sm:h-24 lg:w-28 lg:h-28 rounded-sm border bg-stone-900/40 backdrop-blur-md transition-all duration-300 ${action.color} ${action.glow} overflow-hidden`}
             >
               <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-current opacity-30 group-hover:opacity-100 transition-opacity"></div>
               <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-current opacity-30 group-hover:opacity-100 transition-opacity"></div>
 
               <action.icon
-                size={28}
+                size={22}
                 className="mb-2 sm:mb-3 group-hover:-translate-y-1 group-hover:scale-110 transition-transform duration-300"
               />
-              <span className="text-xs sm:text-sm font-serif tracking-[0.2em]">{action.label}</span>
+              <span className="text-[11px] sm:text-sm font-serif tracking-[0.15em]">{action.label}</span>
             </button>
           ))}
         </div>
