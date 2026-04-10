@@ -2733,7 +2733,7 @@ export default function App() {
         </div>
 
         <div
-          className="order-3 lg:order-none shrink-0 min-h-[156px] lg:min-h-0 w-full lg:w-[28%] lg:min-w-[300px] p-2.5 lg:p-6 overflow-x-auto overflow-y-visible lg:overflow-x-hidden lg:overflow-y-auto border-t border-stone-800/30 lg:border-t-0 lg:border-l lg:border-stone-800/30 bg-gradient-to-l from-black/80 to-transparent scrollbar-hide flex flex-col min-h-0 overscroll-contain"
+          className="order-3 lg:order-none shrink-0 h-[188px] lg:h-auto lg:min-h-0 w-full lg:w-[28%] lg:min-w-[300px] p-2.5 lg:p-6 overflow-x-auto overflow-y-visible lg:overflow-x-hidden lg:overflow-y-auto border-t border-stone-800/30 lg:border-t-0 lg:border-l lg:border-stone-800/30 bg-gradient-to-l from-black/80 to-transparent scrollbar-hide flex flex-col min-h-0 overscroll-contain"
           style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x' }}
         >
           <div className="flex items-center justify-between mb-3 lg:mb-6 pb-2 border-b border-stone-800/50">
@@ -2745,7 +2745,7 @@ export default function App() {
               <div className="w-1.5 h-4 bg-red-600 rounded-sm shadow-[0_0_10px_rgba(220,38,38,0.8)]"></div>
             </h2>
           </div>
-          <div className="flex flex-row lg:flex-col gap-3 lg:gap-4 flex-1 min-w-max lg:min-w-0 pb-1 lg:pb-0">
+          <div className="flex flex-row items-end lg:items-stretch lg:flex-col gap-3 lg:gap-4 flex-1 min-w-max lg:min-w-0 pb-1 lg:pb-0">
             {enemyUnits.map(unit => (
               <CharacterCard
                 key={unit.id}
@@ -2804,7 +2804,7 @@ export default function App() {
         </div>
       </main>
 
-      <footer className="relative z-20 mt-6 lg:mt-0 border-t border-stone-800/50 bg-black/60 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]">
+      <footer className="relative z-20 mt-6 lg:mt-0 translate-y-9 lg:translate-y-0 border-t border-stone-800/50 bg-black/60 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]">
         <div className="max-w-4xl mx-auto p-2.5 lg:p-4 flex items-center justify-center gap-2.5 lg:gap-6">
           <button
             ref={autoSelectRef}
