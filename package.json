@@ -49,7 +49,11 @@
     "postcss-load-config": "^6.0.1",
     "postcss-loader": "^8.2.1",
     "postcss-minify": "^1.2.0",
+<<<<<<< HEAD
     "prettier": "^3.8.1",
+=======
+    "prettier": "^3.8.2",
+>>>>>>> 304e8c08c9a8646568197fb30d79c23676d3a5a0
     "remark": "^15.0.1",
     "remark-html": "^16.0.1",
     "remark-loader": "^6.0.0",
@@ -83,6 +87,10 @@
     "@vueuse/integrations": "^13.9.0",
     "@vueuse/shared": "^13.9.0",
     "async-wait-until": "^2.0.31",
+<<<<<<< HEAD
+=======
+    "axios": "1.14.0",
+>>>>>>> 304e8c08c9a8646568197fb30d79c23676d3a5a0
     "compare-versions": "^6.1.1",
     "dedent": "^1.7.2",
     "gsap": "^3.14.2",
@@ -91,15 +99,22 @@
     "json5": "^2.2.3",
     "jsonrepair": "^3.13.3",
     "klona": "^2.0.6",
+<<<<<<< HEAD
     "leaflet": "^1.9.4",
     "lodash": "^4.18.1",
     "lucide-react": "^0.575.0",
     "motion": "^12.38.0",
+=======
+    "lodash": "^4.18.1",
+>>>>>>> 304e8c08c9a8646568197fb30d79c23676d3a5a0
     "pinia": "^3.0.4",
     "pixi.js": "^8.17.1",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
+<<<<<<< HEAD
     "react-leaflet": "^5.0.0",
+=======
+>>>>>>> 304e8c08c9a8646568197fb30d79c23676d3a5a0
     "toastr": "^2.1.4",
     "vue": "^3.5.32",
     "vue-final-modal": "^4.5.5",
