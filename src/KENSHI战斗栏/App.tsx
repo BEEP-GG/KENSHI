@@ -1216,7 +1216,13 @@ export default function App() {
     const byUa = /Mobi|Android|iPhone|iPad|iPod|Windows Phone/i.test(ua);
     const byWidth =
       typeof window !== 'undefined' && window.matchMedia ? window.matchMedia('(max-width: 1024px)').matches : false;
-    return byUa || byWidth;
+    const byTouch =
+      typeof navigator !== 'undefined' &&
+      typeof window !== 'undefined' &&
+      (navigator.maxTouchPoints || 0) > 0 &&
+      window.matchMedia &&
+      window.matchMedia('(hover: none)').matches;
+    return byUa || byWidth || byTouch;
   }, []);
 
   const friendlyUnits = useMemo(
@@ -2704,7 +2710,7 @@ export default function App() {
             type="button"
             aria-label={mobileLogCollapsed ? '展开战斗日志' : '折叠战斗日志'}
             onClick={() => setMobileLogCollapsed(prev => !prev)}
-            className="lg:hidden absolute right-2 top-1/2 -translate-y-1/2 z-30 w-8 h-8 rounded-sm border border-stone-700/70 bg-black/60 text-stone-200 hover:bg-black/80 active:bg-black/90 transition-colors grid place-items-center shadow-[0_0_18px_rgba(0,0,0,0.6)]"
+            className={`${isMobile ? 'grid' : 'hidden'} absolute right-2 top-1/2 -translate-y-1/2 z-30 w-8 h-8 rounded-sm border border-stone-700/70 bg-black/60 text-stone-200 hover:bg-black/80 active:bg-black/90 transition-colors place-items-center shadow-[0_0_18px_rgba(0,0,0,0.6)]`}
           >
             {mobileLogCollapsed ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
           </button>
