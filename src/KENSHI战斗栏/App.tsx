@@ -1202,11 +1202,13 @@ export default function App() {
   const [tooltipPos, setTooltipPos] = useState<null | { left: number; top: number }>(null);
   const actionButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const autoSelectRef = useRef<HTMLButtonElement | null>(null);
+  const logScrollRef = useRef<HTMLDivElement | null>(null);
+  const pendingScrollToBottomRef = useRef(false);
   const outcomeTriggeredRef = useRef(false);
   const cancelledRef = useRef(false);
   const [surrenderConfirmOpen, setSurrenderConfirmOpen] = useState(false);
   const [resultConfirmed, setResultConfirmed] = useState(false);
-  const [mobileLogCollapsed, setMobileLogCollapsed] = useState(false);
+  const [showCurrentRoundOnly, setShowCurrentRoundOnly] = useState(false);
   const isMobile = useMemo(() => {
     if (typeof navigator === 'undefined') return false;
     const ua = navigator.userAgent || '';
@@ -1237,6 +1239,18 @@ export default function App() {
       enemyUnits.filter(unit => unit.hp > 0 && !unit.escaped && unit.state !== '死亡' && unit.state !== '休克').length,
     [enemyUnits],
   );
+  const displayedLogs = useMemo(() => {
+    if (!showCurrentRoundOnly) return battleState.logs;
+    const roundMarkerRegex = /^---\s*第\s*\d+\s*回合\s*---$/;
+    let markerIndex = -1;
+    for (let i = battleState.logs.length - 1; i >= 0; i -= 1) {
+      if (roundMarkerRegex.test(battleState.logs[i].trim())) {
+        markerIndex = i;
+        break;
+      }
+    }
+    return markerIndex >= 0 ? battleState.logs.slice(markerIndex) : battleState.logs;
+  }, [battleState.logs, showCurrentRoundOnly]);
   const getLogLineClass = (line: string) => {
     if (line.startsWith('---')) return 'text-stone-400 mt-4';
     if (line.startsWith(SETTLEMENT_LOG)) return 'text-amber-300';
@@ -1407,6 +1421,19 @@ export default function App() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, [infoModal, tutorialStep]);
+
+  useEffect(() => {
+    if (!pendingScrollToBottomRef.current) return;
+    if (showCurrentRoundOnly) {
+      pendingScrollToBottomRef.current = false;
+      return;
+    }
+    const container = logScrollRef.current;
+    if (container) {
+      container.scrollTop = container.scrollHeight;
+    }
+    pendingScrollToBottomRef.current = false;
+  }, [battleState.logs, showCurrentRoundOnly]);
 
   const handleToggleExpand = (id: string) => {
     setExpandedCharId(prev => (prev === id ? null : id));
@@ -2186,6 +2213,7 @@ export default function App() {
 
   const handleActionClick = (action: ActionType) => {
     if (action.id === 'end_round') {
+      if (!showCurrentRoundOnly) pendingScrollToBottomRef.current = true;
       runRound();
       return;
     }
@@ -2660,32 +2688,25 @@ export default function App() {
           </div>
         </div>
 
-        <div
-          className={`order-2 lg:order-none ${
-            isMobile && mobileLogCollapsed ? 'flex-none h-[9.8rem]' : 'flex-1 min-h-[28vh]'
-          } lg:min-h-0 p-2.5 lg:p-8 flex flex-col relative`}
-        >
+        <div className="order-2 lg:order-none flex-1 min-h-[28vh] lg:min-h-0 p-2.5 lg:p-8 flex flex-col relative">
           <div className="absolute inset-0 bg-stone-950/40 backdrop-blur-sm m-2.5 lg:m-8 rounded-sm border border-stone-800/40 shadow-[inset_0_0_60px_rgba(0,0,0,0.8)]"></div>
 
           <div
-            className={`relative z-10 overflow-y-auto font-serif leading-[1.8] text-stone-300 space-y-3 scrollbar-hide overscroll-contain ${
-              isMobile && mobileLogCollapsed ? 'h-full p-3 text-sm' : 'flex-1 p-6 lg:p-10 text-base'
-            }`}
+            ref={logScrollRef}
+            className="relative z-10 flex-1 overflow-y-auto p-6 lg:p-10 font-serif text-base leading-[1.8] text-stone-300 space-y-3 scrollbar-hide overscroll-contain"
             style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
           >
-            <div className={`${isMobile && mobileLogCollapsed ? 'mb-2' : 'mb-4 lg:mb-6'} flex items-center justify-center gap-2.5`}>
+            <div className="mb-4 lg:mb-6 flex items-center justify-center gap-2.5">
               <span className="inline-block px-4 py-1 border border-stone-800/60 rounded-sm text-xs font-mono text-stone-500 tracking-widest bg-stone-900/30">
                 战斗日志
               </span>
-              {isMobile && (
-                <button
-                  type="button"
-                  onClick={() => setMobileLogCollapsed(prev => !prev)}
-                  className="px-3 py-1 border border-stone-800/70 rounded-sm text-[11px] font-mono text-stone-400 bg-stone-900/40 hover:text-stone-200 hover:border-stone-600/70 transition-colors"
-                >
-                  {mobileLogCollapsed ? '展开' : '折叠'}
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => setShowCurrentRoundOnly(prev => !prev)}
+                className="px-3 py-1 border border-stone-800/70 rounded-sm text-[11px] font-mono text-stone-400 bg-stone-900/40 hover:text-stone-200 hover:border-stone-600/70 transition-colors"
+              >
+                {showCurrentRoundOnly ? '显示全部' : '显示当前回合'}
+              </button>
             </div>
 
             {!isMobile && loadError ? (
@@ -2705,15 +2726,11 @@ export default function App() {
                   {loading ? '重试中...' : '重试读取'}
                 </button>
               </div>
-            ) : battleState.logs.length === 0 ? (
+            ) : displayedLogs.length === 0 ? (
               <div className="text-center text-stone-500 text-sm font-mono">等待你的指令...</div>
             ) : (
-              <div
-                className={`space-y-2 font-mono whitespace-pre-wrap ${
-                  isMobile && mobileLogCollapsed ? 'text-xs' : 'text-sm'
-                }`}
-              >
-                {battleState.logs.map((line, index) => {
+              <div className="space-y-2 font-mono text-sm whitespace-pre-wrap">
+                {displayedLogs.map((line, index) => {
                   const isSettlement = line.startsWith(SETTLEMENT_LOG);
                   return (
                     <div
@@ -2804,7 +2821,7 @@ export default function App() {
         </div>
       </main>
 
-      <footer className="relative z-20 mt-6 lg:mt-0 translate-y-9 lg:translate-y-0 border-t border-stone-800/50 bg-black/60 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]">
+      <footer className="relative z-20 mt-10 lg:mt-0 border-t border-stone-800/50 bg-black/60 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]">
         <div className="max-w-4xl mx-auto p-2.5 lg:p-4 flex items-center justify-center gap-2.5 lg:gap-6">
           <button
             ref={autoSelectRef}
