@@ -928,7 +928,7 @@ const CharacterCard = ({
 
   return (
     <div
-      className={`relative group overflow-hidden rounded-sm border cursor-pointer min-w-[82vw] max-w-[360px] lg:min-w-0 lg:max-w-none ${
+      className={`relative group overflow-hidden rounded-sm border cursor-pointer min-w-[74vw] max-w-[320px] lg:min-w-0 lg:max-w-none ${
         isEnemy
           ? 'border-red-900/20 bg-gradient-to-br from-red-950/10 to-black/40'
           : 'border-blue-900/20 bg-gradient-to-br from-blue-950/10 to-black/40'
@@ -2399,17 +2399,19 @@ export default function App() {
         </div>
       )}
 
-      <header className="relative z-20 px-4 py-3 lg:px-8 lg:py-5 border-b border-stone-800/40 bg-black/40 backdrop-blur-md flex justify-between items-center shadow-md">
-        <div className="flex items-center gap-4">
-          <div className="w-8 h-8 rounded-sm border border-stone-700/50 flex items-center justify-center bg-stone-900/80 shadow-[0_0_15px_rgba(255,255,255,0.05)]">
-            <Sword size={16} className="text-stone-400" />
+      <header className="relative z-20 px-3 py-2.5 lg:px-8 lg:py-5 border-b border-stone-800/40 bg-black/40 backdrop-blur-md flex justify-between items-center shadow-md">
+        <div className="flex items-center gap-3 lg:gap-4">
+          <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-sm border border-stone-700/50 flex items-center justify-center bg-stone-900/80 shadow-[0_0_15px_rgba(255,255,255,0.05)]">
+            <Sword size={14} className="text-stone-400 lg:w-4 lg:h-4" />
           </div>
-          <div className="text-2xl font-serif text-stone-200 tracking-[0.25em] text-shadow-glow">终末之诗</div>
+          <div className="text-xl lg:text-2xl font-serif text-stone-200 tracking-[0.15em] lg:tracking-[0.25em] text-shadow-glow">
+            终末之诗
+          </div>
         </div>
-        <div className="flex items-center gap-6">
-          <div className="text-lg font-serif text-stone-400 tracking-widest border-l border-stone-800 pl-6 flex items-center gap-2 relative">
+        <div className="flex items-center gap-3 lg:gap-6">
+          <div className="text-sm lg:text-lg font-serif text-stone-400 tracking-widest border-l border-stone-800 pl-3 lg:pl-6 flex items-center gap-1.5 lg:gap-2 relative">
             回合数
-            <span className="text-stone-200 font-mono text-2xl">
+            <span className="text-stone-200 font-mono text-xl lg:text-2xl">
               {roundLimit
                 ? `${String(battleState.round).padStart(2, '0')}/${String(roundLimit).padStart(2, '0')}`
                 : String(battleState.round).padStart(2, '0')}
@@ -2619,7 +2621,7 @@ export default function App() {
           </div>
         )}
         <div
-          className="order-1 lg:order-none shrink-0 min-h-[186px] lg:min-h-0 w-full lg:w-[28%] lg:min-w-[300px] p-3 lg:p-6 overflow-x-auto overflow-y-visible lg:overflow-x-hidden lg:overflow-y-auto border-b border-stone-800/30 lg:border-b-0 lg:border-r lg:border-stone-800/30 bg-gradient-to-r from-black/80 to-transparent scrollbar-hide flex flex-col min-h-0 overscroll-contain"
+          className="order-1 lg:order-none shrink-0 min-h-[156px] lg:min-h-0 w-full lg:w-[28%] lg:min-w-[300px] p-2.5 lg:p-6 overflow-x-auto overflow-y-visible lg:overflow-x-hidden lg:overflow-y-auto border-b border-stone-800/30 lg:border-b-0 lg:border-r lg:border-stone-800/30 bg-gradient-to-r from-black/80 to-transparent scrollbar-hide flex flex-col min-h-0 overscroll-contain"
           style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x' }}
         >
           <div className="flex items-center justify-between mb-3 lg:mb-6 pb-2 border-b border-stone-800/50">
@@ -2659,19 +2661,19 @@ export default function App() {
         </div>
 
         <div
-          className={`order-2 lg:order-none flex-1 ${
-            isMobile && mobileLogCollapsed ? 'min-h-[12vh]' : 'min-h-[30vh]'
-          } lg:min-h-0 p-3 lg:p-8 flex flex-col relative`}
+          className={`order-2 lg:order-none ${
+            isMobile && mobileLogCollapsed ? 'flex-none h-[9.8rem]' : 'flex-1 min-h-[28vh]'
+          } lg:min-h-0 p-2.5 lg:p-8 flex flex-col relative`}
         >
-          <div className="absolute inset-0 bg-stone-950/40 backdrop-blur-sm m-4 lg:m-8 rounded-sm border border-stone-800/40 shadow-[inset_0_0_60px_rgba(0,0,0,0.8)]"></div>
+          <div className="absolute inset-0 bg-stone-950/40 backdrop-blur-sm m-2.5 lg:m-8 rounded-sm border border-stone-800/40 shadow-[inset_0_0_60px_rgba(0,0,0,0.8)]"></div>
 
           <div
-            className={`relative z-10 overflow-y-auto p-6 lg:p-10 font-serif text-base leading-[1.8] text-stone-300 space-y-3 scrollbar-hide overscroll-contain ${
-              isMobile && mobileLogCollapsed ? 'flex-none min-h-[7.2rem] max-h-[7.2rem]' : 'flex-1'
+            className={`relative z-10 overflow-y-auto font-serif leading-[1.8] text-stone-300 space-y-3 scrollbar-hide overscroll-contain ${
+              isMobile && mobileLogCollapsed ? 'h-full p-3 text-sm' : 'flex-1 p-6 lg:p-10 text-base'
             }`}
             style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
           >
-            <div className="mb-4 lg:mb-6 flex items-center justify-center gap-2.5">
+            <div className={`${isMobile && mobileLogCollapsed ? 'mb-2' : 'mb-4 lg:mb-6'} flex items-center justify-center gap-2.5`}>
               <span className="inline-block px-4 py-1 border border-stone-800/60 rounded-sm text-xs font-mono text-stone-500 tracking-widest bg-stone-900/30">
                 战斗日志
               </span>
@@ -2706,7 +2708,11 @@ export default function App() {
             ) : battleState.logs.length === 0 ? (
               <div className="text-center text-stone-500 text-sm font-mono">等待你的指令...</div>
             ) : (
-              <div className="space-y-2 font-mono text-sm whitespace-pre-wrap">
+              <div
+                className={`space-y-2 font-mono whitespace-pre-wrap ${
+                  isMobile && mobileLogCollapsed ? 'text-xs' : 'text-sm'
+                }`}
+              >
                 {battleState.logs.map((line, index) => {
                   const isSettlement = line.startsWith(SETTLEMENT_LOG);
                   return (
@@ -2727,7 +2733,7 @@ export default function App() {
         </div>
 
         <div
-          className="order-3 lg:order-none shrink-0 min-h-[186px] lg:min-h-0 w-full lg:w-[28%] lg:min-w-[300px] p-3 lg:p-6 overflow-x-auto overflow-y-visible lg:overflow-x-hidden lg:overflow-y-auto border-t border-stone-800/30 lg:border-t-0 lg:border-l lg:border-stone-800/30 bg-gradient-to-l from-black/80 to-transparent scrollbar-hide flex flex-col min-h-0 overscroll-contain"
+          className="order-3 lg:order-none shrink-0 min-h-[156px] lg:min-h-0 w-full lg:w-[28%] lg:min-w-[300px] p-2.5 lg:p-6 overflow-x-auto overflow-y-visible lg:overflow-x-hidden lg:overflow-y-auto border-t border-stone-800/30 lg:border-t-0 lg:border-l lg:border-stone-800/30 bg-gradient-to-l from-black/80 to-transparent scrollbar-hide flex flex-col min-h-0 overscroll-contain"
           style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x' }}
         >
           <div className="flex items-center justify-between mb-3 lg:mb-6 pb-2 border-b border-stone-800/50">
@@ -2798,7 +2804,7 @@ export default function App() {
         </div>
       </main>
 
-      <footer className="relative z-20 mt-2 lg:mt-0 border-t border-stone-800/50 bg-black/60 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]">
+      <footer className="relative z-20 mt-6 lg:mt-0 border-t border-stone-800/50 bg-black/60 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]">
         <div className="max-w-4xl mx-auto p-2.5 lg:p-4 flex items-center justify-center gap-2.5 lg:gap-6">
           <button
             ref={autoSelectRef}
