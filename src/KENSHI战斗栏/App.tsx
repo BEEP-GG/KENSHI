@@ -2428,7 +2428,7 @@ export default function App() {
                   : 'text-amber-200 border-amber-900/60 hover:bg-amber-900/30'
               }`}
             >
-              {loading ? '重试中...' : '重试读取'}
+              {loading ? '重试中...' : '删除此消息，重新点击战斗栏，多试几次，我为此感到很抱歉'}
             </button>
           </div>
         </div>
@@ -2748,7 +2748,7 @@ export default function App() {
                         : 'text-amber-200 border-amber-900/60 hover:bg-amber-900/30'
                     }`}
                   >
-                    {loading ? '重试中...' : '重试读取'}
+                    {loading ? '重试中...' : '删除此消息，重新点击战斗栏，多试几次，我为此感到很抱歉'}
                   </button>
                 </div>
               ) : displayedLogs.length === 0 ? (
