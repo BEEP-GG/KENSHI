@@ -1751,7 +1751,7 @@ export default function App() {
 
     const traumaThreshold = defender.attributes.TGH * 0.4;
     let traumaIncreased = false;
-    if (totalDamage > traumaThreshold || isCrit) {
+    if (newRemaining <= 0 || totalDamage > traumaThreshold || isCrit) {
       traumaIncreased = true;
     }
 
