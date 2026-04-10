@@ -1209,6 +1209,7 @@ export default function App() {
   const [surrenderConfirmOpen, setSurrenderConfirmOpen] = useState(false);
   const [resultConfirmed, setResultConfirmed] = useState(false);
   const [showCurrentRoundOnly, setShowCurrentRoundOnly] = useState(false);
+  const [mobileLogCollapsed, setMobileLogCollapsed] = useState(false);
   const isMobile = useMemo(() => {
     if (typeof navigator === 'undefined') return false;
     const ua = navigator.userAgent || '';
@@ -2688,65 +2689,84 @@ export default function App() {
           </div>
         </div>
 
-        <div className="order-2 lg:order-none flex-1 min-h-[28vh] lg:min-h-0 p-2.5 lg:p-8 flex flex-col relative">
-          <div className="absolute inset-0 bg-stone-950/40 backdrop-blur-sm m-2.5 lg:m-8 rounded-sm border border-stone-800/40 shadow-[inset_0_0_60px_rgba(0,0,0,0.8)]"></div>
+        <div
+          className={`order-2 lg:order-none flex flex-col relative ${
+            isMobile && mobileLogCollapsed
+              ? 'flex-none h-[44px] min-h-0 p-0'
+              : 'flex-1 min-h-[28vh] lg:min-h-0 p-2.5 lg:p-8'
+          }`}
+        >
+          {!(isMobile && mobileLogCollapsed) && (
+            <div className="absolute inset-0 bg-stone-950/40 backdrop-blur-sm m-2.5 lg:m-8 rounded-sm border border-stone-800/40 shadow-[inset_0_0_60px_rgba(0,0,0,0.8)]"></div>
+          )}
 
-          <div
-            ref={logScrollRef}
-            className="relative z-10 flex-1 overflow-y-auto p-6 lg:p-10 font-serif text-base leading-[1.8] text-stone-300 space-y-3 scrollbar-hide overscroll-contain"
-            style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
+          <button
+            type="button"
+            aria-label={mobileLogCollapsed ? '展开战斗日志' : '折叠战斗日志'}
+            onClick={() => setMobileLogCollapsed(prev => !prev)}
+            className="lg:hidden absolute right-2 top-1/2 -translate-y-1/2 z-30 w-8 h-8 rounded-sm border border-stone-700/70 bg-black/60 text-stone-200 hover:bg-black/80 active:bg-black/90 transition-colors grid place-items-center shadow-[0_0_18px_rgba(0,0,0,0.6)]"
           >
-            <div className="mb-4 lg:mb-6 flex items-center justify-center gap-2.5">
-              <span className="inline-block px-4 py-1 border border-stone-800/60 rounded-sm text-xs font-mono text-stone-500 tracking-widest bg-stone-900/30">
-                战斗日志
-              </span>
-              <button
-                type="button"
-                onClick={() => setShowCurrentRoundOnly(prev => !prev)}
-                className="px-3 py-1 border border-stone-800/70 rounded-sm text-[11px] font-mono text-stone-400 bg-stone-900/40 hover:text-stone-200 hover:border-stone-600/70 transition-colors"
-              >
-                {showCurrentRoundOnly ? '显示全部' : '显示当前回合'}
-              </button>
-            </div>
+            {mobileLogCollapsed ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+          </button>
 
-            {!isMobile && loadError ? (
-              <div className="space-y-3 text-center">
-                <div className="text-amber-300 text-sm font-mono">无法读取 MVU 变量</div>
-                <div className="text-xs text-stone-500 font-mono break-all">{loadError}</div>
+          {!(isMobile && mobileLogCollapsed) && (
+            <div
+              ref={logScrollRef}
+              className="relative z-10 flex-1 overflow-y-auto p-6 lg:p-10 font-serif text-base leading-[1.8] text-stone-300 space-y-3 scrollbar-hide overscroll-contain"
+              style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
+            >
+              <div className="mb-4 lg:mb-6 flex items-center justify-center gap-2.5">
+                <span className="inline-block px-4 py-1 border border-stone-800/60 rounded-sm text-xs font-mono text-stone-500 tracking-widest bg-stone-900/30">
+                  战斗日志
+                </span>
                 <button
                   type="button"
-                  onClick={handleRetryLoad}
-                  disabled={loading}
-                  className={`mx-auto px-4 py-2 text-xs font-mono border rounded-sm transition-colors ${
-                    loading
-                      ? 'text-stone-600 border-stone-800/60 cursor-not-allowed'
-                      : 'text-amber-200 border-amber-900/60 hover:bg-amber-900/30'
-                  }`}
+                  onClick={() => setShowCurrentRoundOnly(prev => !prev)}
+                  className="px-3 py-1 border border-stone-800/70 rounded-sm text-[11px] font-mono text-stone-400 bg-stone-900/40 hover:text-stone-200 hover:border-stone-600/70 transition-colors"
                 >
-                  {loading ? '重试中...' : '重试读取'}
+                  {showCurrentRoundOnly ? '显示全部' : '显示当前回合'}
                 </button>
               </div>
-            ) : displayedLogs.length === 0 ? (
-              <div className="text-center text-stone-500 text-sm font-mono">等待你的指令...</div>
-            ) : (
-              <div className="space-y-2 font-mono text-sm whitespace-pre-wrap">
-                {displayedLogs.map((line, index) => {
-                  const isSettlement = line.startsWith(SETTLEMENT_LOG);
-                  return (
-                    <div
-                      key={`${line}-${index}`}
-                      className={`${getLogLineClass(line)} ${isSettlement ? 'cursor-pointer text-base sm:text-lg text-center' : ''}`}
-                      onClick={() => {
-                        if (isSettlement) setResultConfirmed(true);
-                      }}
-                    >
-                      {line}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+
+              {!isMobile && loadError ? (
+                <div className="space-y-3 text-center">
+                  <div className="text-amber-300 text-sm font-mono">无法读取 MVU 变量</div>
+                  <div className="text-xs text-stone-500 font-mono break-all">{loadError}</div>
+                  <button
+                    type="button"
+                    onClick={handleRetryLoad}
+                    disabled={loading}
+                    className={`mx-auto px-4 py-2 text-xs font-mono border rounded-sm transition-colors ${
+                      loading
+                        ? 'text-stone-600 border-stone-800/60 cursor-not-allowed'
+                        : 'text-amber-200 border-amber-900/60 hover:bg-amber-900/30'
+                    }`}
+                  >
+                    {loading ? '重试中...' : '重试读取'}
+                  </button>
+                </div>
+              ) : displayedLogs.length === 0 ? (
+                <div className="text-center text-stone-500 text-sm font-mono">等待你的指令...</div>
+              ) : (
+                <div className="space-y-2 font-mono text-sm whitespace-pre-wrap">
+                  {displayedLogs.map((line, index) => {
+                    const isSettlement = line.startsWith(SETTLEMENT_LOG);
+                    return (
+                      <div
+                        key={`${line}-${index}`}
+                        className={`${getLogLineClass(line)} ${isSettlement ? 'cursor-pointer text-base sm:text-lg text-center' : ''}`}
+                        onClick={() => {
+                          if (isSettlement) setResultConfirmed(true);
+                        }}
+                      >
+                        {line}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div
