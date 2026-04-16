@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
@@ -315,6 +315,33 @@
       .char-card:hover {
         border-color: var(--accent-gold);
         transform: translateX(5px);
+      }
+      .view-char-card {
+        position: relative;
+        padding-right: 46px;
+      }
+      .view-remove-btn {
+        position: absolute;
+        top: 6px;
+        right: 8px;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        border: 1px solid rgba(231, 76, 60, 0.65);
+        background: rgba(0, 0, 0, 0.28);
+        color: var(--accent-danger);
+        font-family: var(--font-header);
+        font-size: 0.75em;
+        line-height: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+      .view-remove-btn:hover {
+        border-color: var(--accent-danger);
+        background: rgba(231, 76, 60, 0.15);
       }
 
       .tag-box {
@@ -1096,7 +1123,7 @@
               if (stance === '友方') color = 'var(--accent-positive)';
 
               const card = $(
-                `<div class="char-card" style="border-left:3px solid ${color}"><div><span style="font-size:0.8em; color:${color}; margin-right:8px;">${displayString}</span><span>${k}</span></div><div style="font-size:0.9em; color:#888;">${_.get(v, '种族.名称', '')}</div></div>`,
+                `<div class="char-card view-char-card" style="border-left:3px solid ${color}"><button class="view-remove-btn" data-name="${k}" title="移除视野角色">X</button><div><span style="font-size:0.8em; color:${color}; margin-right:8px;">${displayString}</span><span>${k}</span></div><div style="font-size:0.9em; color:#888;">${_.get(v, '种族.名称', '')}</div></div>`,
               );
               card.on('click', () => {
                 $('#modal-content-inner').html(buildCharHTML(v, false, 'view', k));
@@ -1187,14 +1214,29 @@
         }
 
         let pendingPastDeleteIndex = null;
+        let pendingViewDeleteName = '';
 
         function openPastDeleteConfirm(index) {
           pendingPastDeleteIndex = index;
+          pendingViewDeleteName = '';
+          $('#confirm-modal .confirm-title').text('确认删除');
+          $('#confirm-modal .confirm-title').next('div').text('是否删除该往事记录？');
           $('#confirm-modal').css('display', 'flex');
         }
 
-        function closePastDeleteConfirm() {
+        function openViewDeleteConfirm(name) {
           pendingPastDeleteIndex = null;
+          pendingViewDeleteName = name || '';
+          $('#confirm-modal .confirm-title').text('确认移除视野');
+          $('#confirm-modal .confirm-title')
+            .next('div')
+            .text(`是否确认移除"视野"，如果角色已离开但仍然存在视野请使用`);
+          $('#confirm-modal').css('display', 'flex');
+        }
+
+        function closeConfirmModal() {
+          pendingPastDeleteIndex = null;
+          pendingViewDeleteName = '';
           $('#confirm-modal').hide();
         }
 
@@ -1209,6 +1251,22 @@
           update();
         }
 
+        async function deleteViewEntry(name) {
+          if (!name) return;
+          const option = { type: 'message', message_id: getCurrentMessageId() };
+          const mvuData = Mvu.getMvuData(option) || {};
+          const viewData = _.get(mvuData, 'stat_data.视野', {});
+          if (!viewData || typeof viewData !== 'object') return;
+
+          const nextViewData = _.omit(viewData, [name]);
+          _.set(mvuData, 'stat_data.视野', nextViewData);
+          await Mvu.replaceMvuData(mvuData, option);
+          if (currentModalEntity && currentModalEntity.entityType === 'view' && currentModalEntity.entityName === name) {
+            closeModal();
+          }
+          update();
+        }
+
         $('#past-add-btn').on('click', () => {
           addPastEntry();
         });
@@ -1218,19 +1276,29 @@
             openPastDeleteConfirm(index);
           }
         });
+        $('#view-list').on('click', '.view-remove-btn', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          const name = $(this).attr('data-name');
+          if (name) {
+            openViewDeleteConfirm(name);
+          }
+        });
 
         $('#confirm-cancel').on('click', () => {
-          closePastDeleteConfirm();
+          closeConfirmModal();
         });
-        $('#confirm-ok').on('click', () => {
+        $('#confirm-ok').on('click', async () => {
           if (pendingPastDeleteIndex !== null) {
-            deletePastEntry(pendingPastDeleteIndex);
+            await deletePastEntry(pendingPastDeleteIndex);
+          } else if (pendingViewDeleteName) {
+            await deleteViewEntry(pendingViewDeleteName);
           }
-          closePastDeleteConfirm();
+          closeConfirmModal();
         });
         $('#confirm-modal').on('click', function (e) {
           if (e.target === this) {
-            closePastDeleteConfirm();
+            closeConfirmModal();
           }
         });
 
@@ -1485,3 +1553,4 @@
     <div id="tooltip"></div>
   </body>
 </html>
+
