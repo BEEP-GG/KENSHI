@@ -434,6 +434,77 @@
         font-size: 2em;
         cursor: pointer;
       }
+      .stance-gear-btn {
+        position: absolute;
+        right: 62px;
+        top: 22px;
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        border: 1px solid var(--accent-bronze);
+        background: rgba(0, 0, 0, 0.2);
+        color: var(--accent-gold);
+        font-size: 1.1em;
+        cursor: pointer;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        transition: 0.2s;
+      }
+      .stance-gear-btn:hover {
+        border-color: var(--accent-gold);
+        background: rgba(193, 163, 95, 0.12);
+        transform: rotate(18deg);
+      }
+      .stance-popover {
+        position: absolute;
+        right: 20px;
+        top: 64px;
+        background: rgba(15, 15, 20, 0.98);
+        border: 1px solid var(--accent-gold);
+        padding: 12px;
+        min-width: 160px;
+        display: none;
+        z-index: 5;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+      }
+      .stance-popover.show {
+        display: block;
+      }
+      .stance-popover-title {
+        font-family: var(--font-header);
+        color: var(--accent-gold);
+        margin-bottom: 8px;
+        font-size: 0.95em;
+      }
+      .stance-option {
+        width: 100%;
+        text-align: left;
+        background: transparent;
+        border: 1px solid rgba(193, 163, 95, 0.2);
+        color: var(--text-main);
+        padding: 6px 8px;
+        margin-bottom: 6px;
+        cursor: pointer;
+        font-family: var(--font-header);
+        transition: 0.2s;
+      }
+      .stance-option:last-child {
+        margin-bottom: 0;
+      }
+      .stance-option:hover {
+        border-color: var(--accent-gold);
+        background: rgba(193, 163, 95, 0.12);
+      }
+      .stance-option.enemy {
+        color: var(--accent-danger);
+      }
+      .stance-option.neutral {
+        color: var(--accent-yellow);
+      }
+      .stance-option.friendly {
+        color: var(--accent-positive);
+      }
 
       .mission-item {
         border: 1px solid #444;
@@ -715,10 +786,29 @@
           window.dispatchEvent(new Event('kenshi-map-visible'));
         }
       }
+
+      let currentModalEntity = null;
+
+      function setModalEntity(entityType, entityName) {
+        currentModalEntity = { entityType, entityName };
+        const gearBtn = document.getElementById('stance-gear');
+        const popover = document.getElementById('stance-popover');
+        if (gearBtn) {
+          if (entityType === 'view' && entityName) {
+            gearBtn.style.display = 'flex';
+          } else {
+            gearBtn.style.display = 'none';
+          }
+        }
+        if (popover) popover.classList.remove('show');
+      }
+
       function closeModal() {
         const modalContent = document.getElementById('modal-content-inner');
         if (modalContent) modalContent.scrollTop = 0;
         document.getElementById('char-modal').style.display = 'none';
+        const popover = document.getElementById('stance-popover');
+        if (popover) popover.classList.remove('show');
       }
       function openModal() {
         const modalContent = document.getElementById('modal-content-inner');
@@ -733,10 +823,25 @@
         $('.main-container').toggleClass('collapsed');
       }
 
+      function toggleStancePopover() {
+        const popover = document.getElementById('stance-popover');
+        if (!popover) return;
+        popover.classList.toggle('show');
+      }
+
+      function closeStancePopover() {
+        const popover = document.getElementById('stance-popover');
+        if (!popover) return;
+        popover.classList.remove('show');
+      }
+
       window.switchTab = switchTab;
       window.closeModal = closeModal;
       window.toggleMission = toggleMission;
       window.toggleCollapse = toggleCollapse;
+      window.toggleStancePopover = toggleStancePopover;
+      window.closeStancePopover = closeStancePopover;
+      window.setModalEntity = setModalEntity;
 
       const attrTooltips = {
         STR: '力量 (STR)\n影响近战伤害、重武器使用能力以及负重上限。',
@@ -969,6 +1074,7 @@
               );
               card.on('click', () => {
                 $('#modal-content-inner').html(buildCharHTML(v, false, 'squad', k));
+                setModalEntity('squad', k);
                 openModal();
               });
               squadList.append(card);
@@ -994,6 +1100,7 @@
               );
               card.on('click', () => {
                 $('#modal-content-inner').html(buildCharHTML(v, false, 'view', k));
+                setModalEntity('view', k);
                 openModal();
               });
               viewList.append(card);
@@ -1184,6 +1291,39 @@
           }
         });
 
+        $(document).on('click', '.stance-option', async function (e) {
+          e.preventDefault();
+          const stance = $(this).attr('data-stance');
+          if (!stance || !currentModalEntity) return;
+          if (currentModalEntity.entityType !== 'view' || !currentModalEntity.entityName) return;
+
+          const option = { type: 'message', message_id: getCurrentMessageId() };
+          const mvuData = Mvu.getMvuData(option) || {};
+          if (!_.get(mvuData, 'stat_data')) {
+            const rawVars = getAllVariables();
+            const fallbackData = _.get(rawVars, 'stat_data', {});
+            if (!_.isEmpty(fallbackData)) {
+              _.set(mvuData, 'stat_data', fallbackData);
+            }
+          }
+
+          const basePath = `stat_data.视野.${currentModalEntity.entityName}`;
+          _.set(mvuData, `${basePath}.立场`, stance);
+          await Mvu.replaceMvuData(mvuData, option);
+
+          closeStancePopover();
+          update();
+          const viewData = _.get(mvuData, 'stat_data.视野', {});
+          const latest = _.get(viewData, currentModalEntity.entityName, {});
+          $('#modal-content-inner').html(buildCharHTML(latest, false, 'view', currentModalEntity.entityName));
+        });
+
+        $(document).on('click', function (e) {
+          if ($(e.target).closest('#stance-popover').length === 0 && $(e.target).closest('#stance-gear').length === 0) {
+            closeStancePopover();
+          }
+        });
+
         const tip = $('#tooltip');
         let tipPinned = false;
         let tipOwner = null;
@@ -1322,6 +1462,13 @@
     <div id="char-modal" class="modal-overlay">
       <div class="modal-content">
         <button class="close-btn" onclick="closeModal()">×</button>
+        <button id="stance-gear" class="stance-gear-btn" onclick="toggleStancePopover()">⚙</button>
+        <div id="stance-popover" class="stance-popover">
+          <div class="stance-popover-title">修改立场</div>
+          <button class="stance-option enemy" data-stance="敌方">敌方</button>
+          <button class="stance-option neutral" data-stance="中立">中立</button>
+          <button class="stance-option friendly" data-stance="友方">友方</button>
+        </div>
         <div id="modal-content-inner"></div>
       </div>
     </div>

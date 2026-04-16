@@ -48,10 +48,10 @@ type OptionItem = {
 
 const options = ref<OptionItem[]>([]);
 const isSpecialMenuOpen = ref(false);
-const specialActions = ['暗杀', '偷窃', '休息', '医疗', '搜索', '交易', '战斗'];
+const specialActions = ['百科全书', '暗杀', '偷窃', '休息', '医疗', '搜索', '交易', '战斗'];
 
-const optionLineRegex = /^[^\S\n]*(?:[（(【]?\s*(\d+)\s*[.、:：]\s*(.*?))(?:[）)】])?\s*$/;
-const optionFallbackLineRegex = /^[^\S\n]*(\d+)\s+[、.．]\s*(.*?)\s*$/;
+const optionLineRegex = /^[^\S\n]*(?:[（(【]?\s*([A-Za-z])\s*[.、:：]\s*(.*?))(?:[）)】])?\s*$/;
+const optionFallbackLineRegex = /^[^\S\n]*([A-Za-z])\s+[、.．]\s*(.*?)\s*$/;
 
 function parseOptionsFromText(text: string): OptionItem[] {
   if (!text) return [];
@@ -62,10 +62,10 @@ function parseOptionsFromText(text: string): OptionItem[] {
   for (const line of lines) {
     const match = line.match(optionLineRegex) || line.match(optionFallbackLineRegex);
     if (match) {
-      const number = match[1]?.trim();
+      const prefix = match[1]?.trim();
       const optionText = match[2]?.trim();
-      if (number && optionText) {
-        currentBlock.push({ number, text: optionText });
+      if (prefix && optionText) {
+        currentBlock.push({ number: prefix, text: optionText });
         continue;
       }
     }
@@ -79,7 +79,11 @@ function parseOptionsFromText(text: string): OptionItem[] {
     blocks.push(currentBlock);
   }
 
-  return blocks.length ? blocks[blocks.length - 1] : [];
+  const lastBlock = blocks.length ? blocks[blocks.length - 1] : [];
+  return lastBlock.map((item, index) => ({
+    number: String(index + 1),
+    text: item.text,
+  }));
 }
 
 function getCurrentMessageText(): string {
@@ -192,6 +196,20 @@ async function triggerFightBattle() {
   }
 }
 
+async function triggerBookPanel() {
+  if (typeof triggerSlash !== 'function') {
+    console.warn('[kenshi选项栏] triggerSlash 不可用，无法触发百科全书');
+    return;
+  }
+  const { name, avatar } = getCharacterMeta();
+  const command = `/sendas name="${name}"${avatar ? ` avatar="${avatar}"` : ''} <BOOK>`;
+  try {
+    await triggerSlash(command);
+  } catch (error) {
+    console.error('[kenshi选项栏] 触发百科全书失败:', error);
+  }
+}
+
 function handleOptionClick(opt: OptionItem, event: MouseEvent) {
   const target = event.currentTarget as HTMLElement;
   createRipple(event, target);
@@ -208,6 +226,11 @@ function handleOptionClick(opt: OptionItem, event: MouseEvent) {
 function handleSpecialAction(action: string) {
   if (action === '战斗') {
     triggerFightBattle();
+    closeSpecialMenu();
+    return;
+  }
+  if (action === '百科全书') {
+    triggerBookPanel();
     closeSpecialMenu();
     return;
   }

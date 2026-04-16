@@ -98,6 +98,17 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const shouldOpenTutorial = params.get('tutorial') === '1';
+    if (shouldOpenTutorial) {
+      setIsStarted(true);
+      setIsTutorial(true);
+      setTutorialTopicId(TUTORIAL_TOPICS[0]?.id ?? '');
+      setTutorialSubTopicId(TUTORIAL_TOPICS[0]?.subTopics?.[0]?.id ?? '');
+    }
+  }, []);
+
+  useEffect(() => {
     const triggerResize = () => window.dispatchEvent(new Event('resize'));
     requestAnimationFrame(triggerResize);
     setTimeout(triggerResize, 50);

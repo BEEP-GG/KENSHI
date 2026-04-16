@@ -2,7 +2,6 @@ import { FSWatcher, watch } from 'chokidar';
 import HtmlInlineScriptWebpackPlugin from 'html-inline-script-webpack-plugin';
 import HtmlWebpackPlugin from 'html-webpack-plugin';
 import _ from 'lodash';
-import MiniCssExtractPlugin from 'mini-css-extract-plugin';
 import { ChildProcess, exec, spawn } from 'node:child_process';
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
@@ -385,9 +384,28 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
                 ] as any[])
               : ([
                   {
+                    test: /\.vue\.s(a|c)ss$/,
+                    use: [
+                      { loader: 'vue-style-loader', options: { ssrId: true } },
+                      { loader: 'css-loader', options: { url: false } },
+                      'postcss-loader',
+                      'sass-loader',
+                    ],
+                    exclude: /node_modules/,
+                  },
+                  {
+                    test: /\.vue\.css$/,
+                    use: [
+                      { loader: 'vue-style-loader', options: { ssrId: true } },
+                      { loader: 'css-loader', options: { url: false } },
+                      'postcss-loader',
+                    ],
+                    exclude: /node_modules/,
+                  },
+                  {
                     test: /\.s(a|c)ss$/,
                     use: [
-                      MiniCssExtractPlugin.loader,
+                      'style-loader',
                       { loader: 'css-loader', options: { url: false } },
                       'postcss-loader',
                       'sass-loader',
@@ -396,11 +414,7 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
                   },
                   {
                     test: /\.css$/,
-                    use: [
-                      MiniCssExtractPlugin.loader,
-                      { loader: 'css-loader', options: { url: false } },
-                      'postcss-loader',
-                    ],
+                    use: ['style-loader', { loader: 'css-loader', options: { url: false } }, 'postcss-loader'],
                     exclude: /node_modules/,
                   },
                 ] as any[]),
@@ -419,7 +433,6 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
       alias: {},
     },
     plugins: [
-      new MiniCssExtractPlugin(),
       ...(entry.html === undefined
         ? []
         : [
