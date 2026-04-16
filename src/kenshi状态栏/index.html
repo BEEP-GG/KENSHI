@@ -543,7 +543,33 @@
         cursor: pointer;
         display: flex;
         justify-content: space-between;
+        align-items: center;
         background: rgba(255, 255, 255, 0.03);
+      }
+      .mission-header-right {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .mission-delete-btn {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        border: 1px solid rgba(231, 76, 60, 0.65);
+        background: rgba(0, 0, 0, 0.28);
+        color: var(--accent-danger);
+        font-family: var(--font-header);
+        font-size: 0.75em;
+        line-height: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+      .mission-delete-btn:hover {
+        border-color: var(--accent-danger);
+        background: rgba(231, 76, 60, 0.15);
       }
       .mission-body {
         display: none;
@@ -1164,7 +1190,7 @@
               }
               const missionBody = `<div class="mission-description">${_.get(mainMissionData, '描述', '暂无描述。')}</div><div class="mission-reward">奖励: ${_.get(mainMissionData, '奖励', '无')}</div>${subtasksHTML}`;
               mList.append(
-                `<div class="mission-item"><div class="mission-header" onclick="toggleMission(this)"><span>${mainMissionName}</span><span style="color:var(--accent-gold)">${missionStatus}</span></div><div class="mission-body">${missionBody}</div></div>`,
+                `<div class="mission-item"><div class="mission-header" onclick="toggleMission(this)"><span>${mainMissionName}</span><div class="mission-header-right"><span style="color:var(--accent-gold)">${missionStatus}</span><button class="mission-delete-btn" data-name="${mainMissionName}" title="删除任务">X</button></div></div><div class="mission-body">${missionBody}</div></div>`,
               );
             });
           }
@@ -1215,10 +1241,12 @@
 
         let pendingPastDeleteIndex = null;
         let pendingViewDeleteName = '';
+        let pendingMissionDeleteName = '';
 
         function openPastDeleteConfirm(index) {
           pendingPastDeleteIndex = index;
           pendingViewDeleteName = '';
+          pendingMissionDeleteName = '';
           $('#confirm-modal .confirm-title').text('确认删除');
           $('#confirm-modal .confirm-title').next('div').text('是否删除该往事记录？');
           $('#confirm-modal').css('display', 'flex');
@@ -1227,6 +1255,7 @@
         function openViewDeleteConfirm(name) {
           pendingPastDeleteIndex = null;
           pendingViewDeleteName = name || '';
+          pendingMissionDeleteName = '';
           $('#confirm-modal .confirm-title').text('确认移除视野');
           $('#confirm-modal .confirm-title')
             .next('div')
@@ -1234,9 +1263,19 @@
           $('#confirm-modal').css('display', 'flex');
         }
 
+        function openMissionDeleteConfirm(name) {
+          pendingPastDeleteIndex = null;
+          pendingViewDeleteName = '';
+          pendingMissionDeleteName = name || '';
+          $('#confirm-modal .confirm-title').text('确认删除任务');
+          $('#confirm-modal .confirm-title').next('div').text('是否确定删除此任务');
+          $('#confirm-modal').css('display', 'flex');
+        }
+
         function closeConfirmModal() {
           pendingPastDeleteIndex = null;
           pendingViewDeleteName = '';
+          pendingMissionDeleteName = '';
           $('#confirm-modal').hide();
         }
 
@@ -1267,6 +1306,18 @@
           update();
         }
 
+        async function deleteMissionEntry(name) {
+          if (!name) return;
+          const option = { type: 'message', message_id: getCurrentMessageId() };
+          const mvuData = Mvu.getMvuData(option) || {};
+          const missionData = _.get(mvuData, 'stat_data.任务系统', {});
+          if (!missionData || typeof missionData !== 'object') return;
+          const nextMissionData = _.omit(missionData, [name]);
+          _.set(mvuData, 'stat_data.任务系统', nextMissionData);
+          await Mvu.replaceMvuData(mvuData, option);
+          update();
+        }
+
         $('#past-add-btn').on('click', () => {
           addPastEntry();
         });
@@ -1284,6 +1335,14 @@
             openViewDeleteConfirm(name);
           }
         });
+        $('#mission-list').on('click', '.mission-delete-btn', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          const name = $(this).attr('data-name');
+          if (name) {
+            openMissionDeleteConfirm(name);
+          }
+        });
 
         $('#confirm-cancel').on('click', () => {
           closeConfirmModal();
@@ -1293,6 +1352,8 @@
             await deletePastEntry(pendingPastDeleteIndex);
           } else if (pendingViewDeleteName) {
             await deleteViewEntry(pendingViewDeleteName);
+          } else if (pendingMissionDeleteName) {
+            await deleteMissionEntry(pendingMissionDeleteName);
           }
           closeConfirmModal();
         });
@@ -1553,4 +1614,3 @@
     <div id="tooltip"></div>
   </body>
 </html>
-
