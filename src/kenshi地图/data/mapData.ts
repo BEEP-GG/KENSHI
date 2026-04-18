@@ -4697,4 +4697,12 @@ export const villages: City[] = [
     coordinates: [6733, 4804],
     regionId: 'region-royal-valley',
   },
+  {
+    id: 'village-shatian-village',
+    name: '砂田村',
+    description: '位于荒漠边缘的小型村庄，以贫瘠耕地与商路补给点闻名。',
+    type: 'village',
+    coordinates: [1055, 4814],
+    regionId: 'region-sinkuun',
+  },
 ];
