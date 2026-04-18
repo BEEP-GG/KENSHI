@@ -35,6 +35,8 @@ export interface CharacterData {
   scenario: string;
   region: string;
   town: string;
+  godModeEnabled: boolean;
+  godModeLevel: number;
   race: string;
   subrace: string;
   attributes: Attributes;
@@ -98,6 +100,8 @@ export const INITIAL_CHARACTER: CharacterData = {
   scenario: '',
   region: '',
   town: '',
+  godModeEnabled: false,
+  godModeLevel: 1,
   race: '',
   subrace: '',
   attributes: INITIAL_ATTRIBUTES,

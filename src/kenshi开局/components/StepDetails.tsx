@@ -30,6 +30,10 @@ const TOTAL_ATTRIBUTE_POINTS = 168;
 const SKELETON_ATTRIBUTE_POINTS = 144;
 const ATTRIBUTE_MIN = 1;
 const ATTRIBUTE_MAX = 50;
+const GOD_MODE_ATTRIBUTE_MAX = 130;
+const GOD_MODE_MIN_LEVEL = 1;
+const GOD_MODE_MAX_LEVEL = 100;
+const GOD_MODE_POINTS_PER_LEVEL = 7;
 const CONTINUOUS_INTERVAL = 35;
 
 const ATTRIBUTE_PRESETS: Array<{ id: string; label: string; values: Attributes; note: string }> = [
@@ -75,7 +79,14 @@ const ATTRIBUTE_LABEL_TO_KEY: Record<string, Attribute> = {
 
 export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) => {
   const isSkeleton = data.race === 'skeleton';
-  const totalAttributePoints = isSkeleton ? SKELETON_ATTRIBUTE_POINTS : TOTAL_ATTRIBUTE_POINTS;
+  const baseAttributePoints = isSkeleton ? SKELETON_ATTRIBUTE_POINTS : TOTAL_ATTRIBUTE_POINTS;
+  const godModeLevel = Math.max(
+    GOD_MODE_MIN_LEVEL,
+    Math.min(GOD_MODE_MAX_LEVEL, data.godModeLevel || GOD_MODE_MIN_LEVEL),
+  );
+  const godModeBonusPoints = data.godModeEnabled ? (godModeLevel - 1) * GOD_MODE_POINTS_PER_LEVEL : 0;
+  const totalAttributePoints = baseAttributePoints + godModeBonusPoints;
+  const attributeUpperLimit = data.godModeEnabled ? GOD_MODE_ATTRIBUTE_MAX : ATTRIBUTE_MAX;
   const usedPoints = Object.entries(data.attributes).reduce((sum, [key, value]) => {
     if (isSkeleton && key === 'will') return sum;
     return sum + (value - ATTRIBUTE_MIN);
@@ -198,7 +209,7 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
       const currentAttrs = attributesRef.current;
       const currentValue = currentAttrs[attr];
 
-      if (delta > 0 && (currentValue >= ATTRIBUTE_MAX || remainingRef.current <= 0)) {
+      if (delta > 0 && (currentValue >= attributeUpperLimit || remainingRef.current <= 0)) {
         return;
       }
       if (delta < 0 && currentValue <= ATTRIBUTE_MIN) {
@@ -215,7 +226,7 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
       remainingRef.current = remainingRef.current - delta;
       updateData({ attributes: nextAttrs });
     },
-    [isSkeleton, updateData],
+    [attributeUpperLimit, isSkeleton, updateData],
   );
 
   const startContinuousAdjust = (attr: Attribute, delta: 1 | -1) => {
@@ -228,6 +239,30 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
 
   const applyPreset = (presetValues: Attributes) => {
     updateData({ attributes: { ...presetValues, will: isSkeleton ? 100 : presetValues.will } });
+  };
+
+  const handleGodModeAttributeInput = (attr: Attribute, rawValue: string) => {
+    if (!data.godModeEnabled) return;
+    if (isSkeleton && attr === 'will') return;
+
+    const currentAttrs = attributesRef.current;
+    const currentValue = currentAttrs[attr];
+    const parsed = parseInt(rawValue, 10);
+    const nextRaw = Number.isNaN(parsed) ? ATTRIBUTE_MIN : parsed;
+
+    const maxByPoints = currentValue + remainingRef.current;
+    const nextValue = Math.max(ATTRIBUTE_MIN, Math.min(attributeUpperLimit, maxByPoints, nextRaw));
+
+    if (nextValue === currentValue) return;
+
+    const nextAttrs = {
+      ...currentAttrs,
+      [attr]: nextValue,
+    };
+
+    attributesRef.current = nextAttrs;
+    remainingRef.current = remainingRef.current - (nextValue - currentValue);
+    updateData({ attributes: nextAttrs });
   };
 
   const toggleTrait = (traitId: string, category: 'attribute' | 'life' | 'fun') => {
@@ -388,6 +423,38 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
                 已分配 {usedPoints} / 剩余 {remainingPoints}
               </span>
             </div>
+            <div className="flex flex-wrap items-center gap-2 rounded border border-[#C2B280]/30 bg-black/40 px-3 py-2 text-xs">
+              <label className="inline-flex cursor-pointer items-center gap-2 text-[#C2B280]">
+                <input
+                  type="checkbox"
+                  checked={data.godModeEnabled}
+                  onChange={e => updateData({ godModeEnabled: e.target.checked })}
+                  className="h-3.5 w-3.5 rounded border-white/30 bg-black/50"
+                />
+                上帝模式
+              </label>
+              {data.godModeEnabled && (
+                <>
+                  <label className="text-white/60">等级</label>
+                  <input
+                    type="number"
+                    min={GOD_MODE_MIN_LEVEL}
+                    max={GOD_MODE_MAX_LEVEL}
+                    value={godModeLevel}
+                    onChange={e => {
+                      const parsed = parseInt(e.target.value, 10);
+                      const nextLevel = Number.isNaN(parsed)
+                        ? GOD_MODE_MIN_LEVEL
+                        : Math.max(GOD_MODE_MIN_LEVEL, Math.min(GOD_MODE_MAX_LEVEL, parsed));
+                      updateData({ godModeLevel: nextLevel });
+                    }}
+                    className="w-20 rounded border border-white/20 bg-black/50 px-2 py-1 text-white focus:border-[#C2B280] focus:outline-none"
+                  />
+                  <span className="text-white/50">(1-100)</span>
+                  <span className="text-green-400">额外 +{godModeBonusPoints} 属性点</span>
+                </>
+              )}
+            </div>
             <div className="flex flex-wrap gap-2">
               {ATTRIBUTE_PRESETS.map(preset => (
                 <button
@@ -400,7 +467,8 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
               ))}
             </div>
             <p className="text-[10px] text-white/40">
-              按游戏加点逻辑：默认 1 点，+1 消耗 1 点，-1 返还 1 点；单项最高 50 点。长按 +/- 可连续加点。
+              按游戏加点逻辑：默认 1 点，+1 消耗 1 点，-1 返还 1 点；普通模式单项最高 50 点。上帝模式可设置等级 1-100，
+              每升 1 级额外 +7 属性点，单项上限提升到 130，且可直接输入数值分配。长按 +/- 可连续加点。
             </p>
           </div>
 
@@ -411,7 +479,8 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
               const value = data.attributes[attr];
               const isLocked = isSkeleton && attr === 'will';
               const canMinus = value > ATTRIBUTE_MIN && !isLocked;
-              const canPlus = value < ATTRIBUTE_MAX && remainingPoints > 0 && !isLocked;
+              const canPlus = value < attributeUpperLimit && remainingPoints > 0 && !isLocked;
+              const barMax = data.godModeEnabled ? GOD_MODE_ATTRIBUTE_MAX : ATTRIBUTE_MAX;
 
               return (
                 <div key={attr} className="group">
@@ -420,8 +489,20 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
                       <Icon size={14} className="text-white/50" />
                       {config.label}
                     </label>
-                    <span className="text-[#C2B280] font-mono">
-                      {value}
+                    <span className="text-[#C2B280] font-mono inline-flex items-center gap-2">
+                      {data.godModeEnabled ? (
+                        <input
+                          type="number"
+                          min={ATTRIBUTE_MIN}
+                          max={attributeUpperLimit}
+                          value={value}
+                          onChange={e => handleGodModeAttributeInput(attr, e.target.value)}
+                          disabled={isLocked}
+                          className="w-20 rounded border border-white/20 bg-black/50 px-2 py-0.5 text-[#C2B280] focus:border-[#C2B280] focus:outline-none disabled:opacity-60"
+                        />
+                      ) : (
+                        <>{value}</>
+                      )}
                       {raceAttributeBonus[attr] + scenarioAttributeBonus[attr] !== 0 && (
                         <span
                           className={
@@ -457,7 +538,7 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
 
                     <div className="h-2 rounded bg-white/10 overflow-hidden">
                       <motion.div
-                        animate={{ width: `${((value - ATTRIBUTE_MIN) / (ATTRIBUTE_MAX - ATTRIBUTE_MIN)) * 100}%` }}
+                        animate={{ width: `${((value - ATTRIBUTE_MIN) / Math.max(1, barMax - ATTRIBUTE_MIN)) * 100}%` }}
                         transition={{ duration: 0.12 }}
                         className="h-full bg-[#C2B280]"
                       />

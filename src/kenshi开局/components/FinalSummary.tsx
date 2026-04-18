@@ -5,6 +5,11 @@ import React from 'react';
 import { RACES, REGIONS, SCENARIOS, TRAITS } from '../data';
 import { CharacterData, SquadMemberData } from '../types';
 
+const TOTAL_ATTRIBUTE_POINTS = 168;
+const SKELETON_ATTRIBUTE_POINTS = 144;
+const ATTRIBUTE_MIN = 1;
+const GOD_MODE_POINTS_PER_LEVEL = 7;
+
 interface FinalSummaryProps {
   data: CharacterData;
 }
@@ -483,6 +488,19 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
     _.set(mvuData, 'stat_data.当前角色.年龄', data.age);
     _.set(mvuData, 'stat_data.当前角色.外貌', '');
     _.set(mvuData, 'stat_data.当前角色.体型', `${(data.appearance.height / 100).toFixed(2)}m`);
+    const currentLevel = data.godModeEnabled ? data.godModeLevel : 1;
+    const baseAttributePoints = data.race === 'skeleton' ? SKELETON_ATTRIBUTE_POINTS : TOTAL_ATTRIBUTE_POINTS;
+    const godModeBonusPoints = data.godModeEnabled ? (currentLevel - 1) * GOD_MODE_POINTS_PER_LEVEL : 0;
+    const totalAttributePoints = baseAttributePoints + godModeBonusPoints;
+    const usedPoints = Object.entries(data.attributes).reduce((sum, [key, value]) => {
+      if (data.race === 'skeleton' && key === 'will') return sum;
+      return sum + (value - ATTRIBUTE_MIN);
+    }, 0);
+    const remainingPoints = Math.max(0, totalAttributePoints - usedPoints);
+    _.set(mvuData, 'stat_data.当前角色.等级', currentLevel);
+    _.set(mvuData, 'stat_data.当前角色.经验值.当前', 0);
+    _.set(mvuData, 'stat_data.当前角色.经验值.升级所需', Math.floor(currentLevel * 10 + 100));
+    _.set(mvuData, 'stat_data.当前角色.属性点', remainingPoints);
     _.set(mvuData, 'stat_data.当前角色.种族.名称', subrace?.title || race?.title || '人类');
     _.set(mvuData, 'stat_data.当前角色.属性', buildAttributesRecord());
     _.set(mvuData, 'stat_data.当前角色.特质', buildTraitsRecord());
