@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
@@ -1257,9 +1257,7 @@
           pendingViewDeleteName = name || '';
           pendingMissionDeleteName = '';
           $('#confirm-modal .confirm-title').text('确认移除视野');
-          $('#confirm-modal .confirm-title')
-            .next('div')
-            .text(`是否确认移除"视野"，如果角色已离开但仍然存在视野请使用`);
+          $('#confirm-modal .confirm-title').next('div').text(`是否确认移除"视野"，如果角色已离开但仍然存在视野请使用`);
           $('#confirm-modal').css('display', 'flex');
         }
 
@@ -1300,7 +1298,11 @@
           const nextViewData = _.omit(viewData, [name]);
           _.set(mvuData, 'stat_data.视野', nextViewData);
           await Mvu.replaceMvuData(mvuData, option);
-          if (currentModalEntity && currentModalEntity.entityType === 'view' && currentModalEntity.entityName === name) {
+          if (
+            currentModalEntity &&
+            currentModalEntity.entityType === 'view' &&
+            currentModalEntity.entityName === name
+          ) {
             closeModal();
           }
           update();
@@ -1379,17 +1381,18 @@
             }
           }
 
-          let basePath = '';
+          let basePath = [];
           if (entityType === 'current') {
-            basePath = 'stat_data.当前角色';
+            basePath = ['stat_data', '当前角色'];
           } else if (entityType === 'squad' && entityName) {
-            basePath = `stat_data.小队成员.${entityName}`;
+            // 使用数组路径避免成员名中包含 "."、"["、"]" 等字符时被 lodash 误解析
+            basePath = ['stat_data', '小队成员', entityName];
           } else {
             return;
           }
 
-          const attrPointPath = `${basePath}.属性点`;
-          const attrPath = `${basePath}.属性.${attrKey}`;
+          const attrPointPath = [...basePath, '属性点'];
+          const attrPath = [...basePath, '属性', attrKey];
           const attrPoint = Number(_.get(mvuData, attrPointPath, 0));
           if (attrPoint <= 0) return;
 
