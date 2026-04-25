@@ -2,6 +2,10 @@ import { FSWatcher, watch } from 'chokidar';
 import HtmlInlineScriptWebpackPlugin from 'html-inline-script-webpack-plugin';
 import HtmlWebpackPlugin from 'html-webpack-plugin';
 import _ from 'lodash';
+<<<<<<< HEAD
+=======
+import MiniCssExtractPlugin from 'mini-css-extract-plugin';
+>>>>>>> 951ccd9ef4542130071c3067b09bef4651ce8128
 import { ChildProcess, exec, spawn } from 'node:child_process';
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
@@ -384,6 +388,7 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
                 ] as any[])
               : ([
                   {
+<<<<<<< HEAD
                     test: /\.vue\.s(a|c)ss$/,
                     use: [
                       { loader: 'vue-style-loader', options: { ssrId: true } },
@@ -406,6 +411,11 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
                     test: /\.s(a|c)ss$/,
                     use: [
                       'style-loader',
+=======
+                    test: /\.s(a|c)ss$/,
+                    use: [
+                      MiniCssExtractPlugin.loader,
+>>>>>>> 951ccd9ef4542130071c3067b09bef4651ce8128
                       { loader: 'css-loader', options: { url: false } },
                       'postcss-loader',
                       'sass-loader',
@@ -414,7 +424,15 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
                   },
                   {
                     test: /\.css$/,
+<<<<<<< HEAD
                     use: ['style-loader', { loader: 'css-loader', options: { url: false } }, 'postcss-loader'],
+=======
+                    use: [
+                      MiniCssExtractPlugin.loader,
+                      { loader: 'css-loader', options: { url: false } },
+                      'postcss-loader',
+                    ],
+>>>>>>> 951ccd9ef4542130071c3067b09bef4651ce8128
                     exclude: /node_modules/,
                   },
                 ] as any[]),
@@ -432,9 +450,14 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
       ],
       alias: {},
     },
+<<<<<<< HEAD
     plugins: [
       ...(entry.html === undefined
         ? []
+=======
+    plugins: (entry.html === undefined
+      ? [new MiniCssExtractPlugin()]
+>>>>>>> 951ccd9ef4542130071c3067b09bef4651ce8128
         : [
             new HtmlWebpackPlugin({
               template: path.join(import.meta.dirname, entry.html),
@@ -443,12 +466,22 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
               cache: false,
             }),
             new HtmlInlineScriptWebpackPlugin(),
+<<<<<<< HEAD
+=======
+          new MiniCssExtractPlugin(),
+>>>>>>> 951ccd9ef4542130071c3067b09bef4651ce8128
             new HTMLInlineCSSWebpackPlugin({
               styleTagFactory({ style }: { style: string }) {
                 return `<style>${style}</style>`;
               },
             }),
+<<<<<<< HEAD
           ]),
+=======
+        ]
+    )
+      .concat(
+>>>>>>> 951ccd9ef4542130071c3067b09bef4651ce8128
       { apply: watch_tavern_helper },
       { apply: schema_dump },
       { apply: tavern_sync },
@@ -478,7 +511,13 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
         __VUE_PROD_DEVTOOLS__: process.env.CI !== 'true',
         __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: false,
       }),
+<<<<<<< HEAD
       ...(should_obfuscate
+=======
+      )
+      .concat(
+        should_obfuscate
+>>>>>>> 951ccd9ef4542130071c3067b09bef4651ce8128
         ? [
             new WebpackObfuscator({
               controlFlowFlattening: true,
@@ -489,8 +528,13 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
               seed: 1,
             }),
           ]
+<<<<<<< HEAD
         : []),
     ] as any[],
+=======
+          : [],
+      ),
+>>>>>>> 951ccd9ef4542130071c3067b09bef4651ce8128
     optimization: {
       minimize: true,
       minimizer: [
@@ -550,9 +594,13 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
 
       if (
         ['vue', 'vue-router'].every(key => request !== key) &&
+<<<<<<< HEAD
         ['pixi', 'react', 'vue', 'motion', 'framer-motion', 'scheduler'].some(
           key => request === key || request.includes(key),
         )
+=======
+        ['pixi', 'react', 'vue'].some(key => request.includes(key))
+>>>>>>> 951ccd9ef4542130071c3067b09bef4651ce8128
       ) {
         return callback();
       }
