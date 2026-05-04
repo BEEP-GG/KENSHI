@@ -43,6 +43,7 @@ export const StepScenario: React.FC<StepScenarioProps> = ({ data, updateData, on
     unknown_dream: 749,
     slave_master: 798,
     human_torso: 799,
+    monster_hunter: 800,
   };
   const ALL_SCENARIO_UIDS = Object.values(SCENARIO_WB_UIDS);
 
