@@ -466,6 +466,30 @@
         background: rgba(231, 76, 60, 0.15);
       }
 
+      .other-remove-btn {
+        position: absolute;
+        top: 6px;
+        right: 8px;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        border: 1px solid rgba(231, 76, 60, 0.65);
+        background: rgba(0, 0, 0, 0.28);
+        color: var(--accent-danger);
+        font-family: var(--font-header);
+        font-size: 0.75em;
+        line-height: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+      .other-remove-btn:hover {
+        border-color: var(--accent-danger);
+        background: rgba(231, 76, 60, 0.15);
+      }
+
       .identity-tag {
         margin-left: 8px;
         padding: 1px 7px;
@@ -1656,7 +1680,7 @@
               if (stance === '敌方') color = 'var(--accent-danger)';
               if (stance === '友方') color = 'var(--accent-positive)';
               const card = $(
-                `<div class="char-card view-char-card" style="border-left:3px solid ${color}"><div><span style="font-size:0.8em; color:${color}; margin-right:8px;">${displayString}</span><span>${k}</span><span class="identity-tag">${identity}</span></div><div style="font-size:0.9em; color:#888;">地址: ${location}</div></div>`,
+                `<div class="char-card view-char-card" style="border-left:3px solid ${color}"><button class="other-remove-btn" data-name="${k}" title="移除异地角色">X</button><div><span style="font-size:0.8em; color:${color}; margin-right:8px;">${displayString}</span><span>${k}</span><span class="identity-tag">${identity}</span></div><div style="font-size:0.9em; color:#888;">地址: ${location}</div></div>`,
               );
               card.on('click', () => {
                 $('#modal-content-inner').html(buildCharHTML(v, false, 'other', k));
@@ -1760,6 +1784,7 @@
 
         let pendingPastDeleteIndex = null;
         let pendingViewDeleteName = '';
+        let pendingOtherDeleteName = '';
         let pendingMissionDeleteName = '';
         window.pendingMoveName = '';
         window.pendingMoveTarget = '';
@@ -1767,27 +1792,52 @@
         function openPastDeleteConfirm(index) {
           pendingPastDeleteIndex = index;
           pendingViewDeleteName = '';
+          pendingOtherDeleteName = '';
           pendingMissionDeleteName = '';
           $('#confirm-modal .confirm-title').text('确认删除');
           $('#confirm-modal .confirm-title').next('div').text('是否删除该往事记录？');
+          $('#confirm-ok').text('删除').addClass('danger');
+          $('#confirm-cancel').text('取消');
+          $('#confirm-third').css('display', 'none');
           $('#confirm-modal').css('display', 'flex');
         }
 
         function openViewDeleteConfirm(name) {
           pendingPastDeleteIndex = null;
           pendingViewDeleteName = name || '';
+          pendingOtherDeleteName = '';
           pendingMissionDeleteName = '';
           $('#confirm-modal .confirm-title').text('确认移除视野');
           $('#confirm-modal .confirm-title').next('div').text(`是否确认移除"视野"，如果角色已离开但仍然存在视野请使用`);
+          $('#confirm-ok').text('删除').addClass('danger');
+          $('#confirm-cancel').text('取消');
+          $('#confirm-third').css('display', 'none');
+          $('#confirm-modal').css('display', 'flex');
+        }
+
+        function openOtherDeleteConfirm(name) {
+          pendingPastDeleteIndex = null;
+          pendingViewDeleteName = '';
+          pendingOtherDeleteName = name || '';
+          pendingMissionDeleteName = '';
+          $('#confirm-modal .confirm-title').text('确认移除异地');
+          $('#confirm-modal .confirm-title').next('div').text('是否确认遗忘该异地成员？');
+          $('#confirm-ok').text('遗忘').addClass('danger');
+          $('#confirm-cancel').text('取消');
+          $('#confirm-third').css('display', 'none');
           $('#confirm-modal').css('display', 'flex');
         }
 
         function openMissionDeleteConfirm(name) {
           pendingPastDeleteIndex = null;
           pendingViewDeleteName = '';
+          pendingOtherDeleteName = '';
           pendingMissionDeleteName = name || '';
           $('#confirm-modal .confirm-title').text('确认删除任务');
           $('#confirm-modal .confirm-title').next('div').text('是否确定删除此任务');
+          $('#confirm-ok').text('删除').addClass('danger');
+          $('#confirm-cancel').text('取消');
+          $('#confirm-third').css('display', 'none');
           $('#confirm-modal').css('display', 'flex');
         }
 
@@ -1817,6 +1867,7 @@
         function closeConfirmModal() {
           pendingPastDeleteIndex = null;
           pendingViewDeleteName = '';
+          pendingOtherDeleteName = '';
           pendingMissionDeleteName = '';
           window.pendingMoveName = '';
           window.pendingMoveTarget = '';
@@ -1919,6 +1970,26 @@
           if (
             currentModalEntity &&
             currentModalEntity.entityType === 'view' &&
+            currentModalEntity.entityName === name
+          ) {
+            closeModal();
+          }
+          update();
+        }
+
+        async function deleteOtherEntry(name) {
+          if (!name) return;
+          const option = { type: 'message', message_id: getCurrentMessageId() };
+          const mvuData = Mvu.getMvuData(option) || {};
+          const otherData = _.get(mvuData, 'stat_data.异地', {});
+          if (!otherData || typeof otherData !== 'object') return;
+
+          const nextOtherData = _.omit(otherData, [name]);
+          _.set(mvuData, 'stat_data.异地', nextOtherData);
+          await Mvu.replaceMvuData(mvuData, option);
+          if (
+            currentModalEntity &&
+            currentModalEntity.entityType === 'other' &&
             currentModalEntity.entityName === name
           ) {
             closeModal();
@@ -2084,6 +2155,14 @@
             openViewDeleteConfirm(name);
           }
         });
+        $('#other-list').on('click', '.other-remove-btn', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          const name = $(this).attr('data-name');
+          if (name) {
+            openOtherDeleteConfirm(name);
+          }
+        });
         $('#view-list').on('click', '.view-card-btn', function (e) {
           e.preventDefault();
           e.stopPropagation();
@@ -2186,6 +2265,8 @@
             await deletePastEntry(pendingPastDeleteIndex);
           } else if (pendingViewDeleteName) {
             await deleteViewEntry(pendingViewDeleteName);
+          } else if (pendingOtherDeleteName) {
+            await deleteOtherEntry(pendingOtherDeleteName);
           } else if (pendingMissionDeleteName) {
             await deleteMissionEntry(pendingMissionDeleteName);
           } else if (window.pendingMoveName) {

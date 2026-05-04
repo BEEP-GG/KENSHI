@@ -1,1 +1,965 @@
-<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>kenshi状态栏</title><link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap" rel="stylesheet"/><style>:root{--bg-deep:rgba(12, 12, 15, 0.95);--bg-panel:rgba(35, 33, 30, 0.6);--accent-gold:#c1a35f;--accent-bronze:#8b6d4d;--accent-rust:#8b3a3a;--accent-green:#2b8a3e;--text-main:#e0dacc;--text-dim:#9e968b;--font-header:'Cinzel','KaiTi','楷体',serif;--font-body:'Georgia','serif','KaiTi';--border-style:1px solid rgba(193, 163, 95, 0.3);--accent-danger:#e74c3c;--accent-positive:#2ecc71;--accent-yellow:#f1c40f}body{font-family:var(--font-body);background:0 0;margin:0;padding:10px;color:var(--text-main);user-select:none;overflow-x:hidden;font-size:16px}.main-container{width:100%;max-width:1200px;background:var(--bg-deep);border:1px solid var(--accent-bronze);backdrop-filter:blur(8px);box-shadow:0 0 30px rgba(0,0,0,.8);margin:0 auto;border-radius:3px;transition:all .4s ease}.top-bar{background:linear-gradient(180deg,#1e1914,rgba(30,25,20,.5));border-bottom:var(--border-style);padding:12px 25px;display:flex;justify-content:space-between;align-items:center;font-family:var(--font-header);position:relative;z-index:10}.top-left{display:flex;align-items:center;gap:20px}.top-right{display:flex;align-items:center;gap:20px;color:var(--accent-gold);font-weight:700}.day-badge{font-size:1.2em;color:var(--accent-gold);border-right:1px solid #555;padding-right:20px}.location-info{font-size:1.1em;color:var(--text-main);letter-spacing:.5px}.toggle-btn{background:0 0;border:1px solid var(--accent-bronze);color:var(--accent-gold);width:30px;height:30px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .4s ease,background .3s;font-size:.8em}.main-container.collapsed .toggle-btn{transform:rotate(-90deg)}.collapsible-content{max-height:2000px;overflow:hidden;opacity:1;transition:max-height .5s ease-in-out,opacity .4s ease-in-out}.main-container.collapsed .collapsible-content{max-height:0;opacity:0}.nav-tabs{display:flex;justify-content:center;background:rgba(0,0,0,.4);border-bottom:var(--border-style);margin-bottom:5px}.tab-btn{padding:12px 30px;cursor:pointer;font-family:var(--font-header);color:var(--text-dim);transition:.3s;border-bottom:3px solid transparent}.tab-btn.active{color:var(--accent-gold);border-bottom:3px solid var(--accent-gold);background:linear-gradient(to top,rgba(193,163,95,.1),transparent)}.content-area{padding:25px;min-height:650px;max-height:80vh;overflow-y:auto}.content-area::-webkit-scrollbar{width:6px}.content-area::-webkit-scrollbar-thumb{background:var(--accent-bronze);border-radius:3px}.tab-pane{display:none}.tab-pane.active{display:block;animation:fadeIn .3s}@keyframes fadeIn{from{opacity:0}to{opacity:1}}.section-box{background:var(--bg-panel);border:1px solid rgba(193,163,95,.2);padding:20px;margin-bottom:20px}.section-title{font-family:var(--font-header);color:var(--accent-gold);font-size:1.1em;border-bottom:1px solid rgba(193,163,95,.3);margin-bottom:15px;padding-bottom:5px}.event-text{font-style:italic;line-height:1.6;color:var(--text-main);padding:10px;border-left:3px solid var(--accent-gold);background:rgba(193,163,95,.05)}.desc-text{color:#888;font-size:.95em;font-style:italic;margin-bottom:20px;padding:0 5px;border-left:2px solid #444;line-height:1.5}.detail-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:20px}.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(70px,1fr));gap:10px}.stat-item{background:rgba(0,0,0,.3);border:1px solid #444;padding:8px 4px;text-align:center;cursor:help}.stat-item:hover{border-color:var(--accent-gold);background:rgba(193,163,95,.1)}.stat-item b{display:block;color:var(--accent-bronze);font-size:.85em;margin-bottom:4px}.points-summary{display:flex;gap:15px;margin-bottom:15px;flex-wrap:wrap;padding-bottom:10px;border-bottom:1px dashed rgba(193,163,95,.2)}.point-tag{background:rgba(193,163,95,.1);border:1px solid var(--accent-gold);padding:2px 10px;font-size:.85em;color:var(--accent-gold);border-radius:2px}.status-badge{font-size:.8em;padding:1px 6px;border-radius:2px;margin-left:8px;vertical-align:middle;border:1px solid #555;color:#aaa}.status-badge.danger{border-color:var(--accent-danger);color:var(--accent-danger)}.status-badge.warn{border-color:#f39c12;color:#f39c12}.status-row{margin-bottom:15px}.status-header{display:flex;justify-content:space-between;font-size:.9em;margin-bottom:5px}.bar-container{height:8px;background:#222;border:1px solid #444}.bar-fill{height:100%;box-shadow:0 0 8px currentColor;transition:width .4s}.bar-hp{background:#8b3a3a;color:#8b3a3a}.bar-exp{background:#c1a35f;color:#c1a35f}.bar-morale{background:#3498db;color:#3498db}.char-card{background:linear-gradient(90deg,rgba(40,40,45,.9),rgba(30,30,35,.6));border:1px solid rgba(193,163,95,.2);padding:12px 20px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;transition:.2s}.char-card:hover{border-color:var(--accent-gold);transform:translateX(5px)}.tag-box{display:flex;flex-wrap:wrap;gap:6px}.item-tag{background:rgba(255,255,255,.08);border:1px solid #555;padding:3px 8px;font-size:.9em;cursor:help}.item-tag:hover{border-color:var(--accent-gold);background:rgba(193,163,95,.1)}.faction-pill{padding:2px 8px;border:1px solid #555;margin-right:8px;font-size:.8em;cursor:help}#tooltip{position:fixed;background:rgba(15,15,20,.98);border:1px solid var(--accent-gold);color:#fff;padding:12px;z-index:99999;display:none;pointer-events:none;font-size:.9em;line-height:1.5;white-space:pre-wrap;box-shadow:0 5px 20px rgba(0,0,0,.8);max-width:300px}.modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.85);z-index:1000;display:none;justify-content:center;align-items:center;animation:fadeIn .2s}.modal-content{background:var(--bg-deep);width:90%;max-width:1200px;border:1px solid var(--accent-gold);padding:40px;max-height:90vh;overflow-y:auto;position:relative;box-shadow:0 10px 50px rgba(0,0,0,.8)}.close-btn{position:absolute;right:20px;top:20px;background:0 0;border:none;color:var(--accent-gold);font-size:2em;cursor:pointer}.mission-item{border:1px solid #444;background:rgba(0,0,0,.2);margin-bottom:8px}.mission-header{padding:12px;cursor:pointer;display:flex;justify-content:space-between;background:rgba(255,255,255,.03)}.mission-body{display:none;padding:15px;border-top:1px solid #444;font-size:.95em;color:#ccc}.mission-item.open .mission-body{display:block}.mission-description{font-style:italic;margin-bottom:15px;padding-bottom:10px;border-bottom:1px dashed #444}.mission-reward{font-weight:700;color:var(--accent-gold);margin-bottom:15px}.subtask-list{list-style:none;padding-left:10px;margin:0}.subtask-item{margin-bottom:12px;padding-left:15px;border-left:2px solid #555}.subtask-item.completed{border-left-color:var(--accent-green)}.subtask-item.completed .subtask-name{color:#888;text-decoration:line-through}.subtask-name{font-size:.9em;margin-bottom:4px}.subtask-progress-container{display:flex;align-items:center;gap:10px}.subtask-progress-bar-container{flex-grow:1;height:6px;background:#222;border:1px solid #555}.subtask-progress-bar{height:100%;background:var(--accent-bronze);transition:width .4s}.subtask-progress-text{font-size:.85em;color:#888;min-width:50px;text-align:right}.map-frame-wrap{border:1px solid rgba(193,163,95,.25);background:rgba(0,0,0,.35);padding:10px;position:relative}#map-frame{width:100%;height:70vh;border:1px solid #444;background:#0c0c0f}.map-loading{position:absolute;inset:10px;display:flex;align-items:center;justify-content:center;gap:10px;color:var(--accent-gold);font-family:var(--font-header);letter-spacing:.5px;background:rgba(12,12,15,.85);border:1px solid rgba(193,163,95,.25);z-index:2}.map-loading.hidden{display:none}</style><script type="module">function switchTab(t){if(document.querySelectorAll(".tab-btn").forEach(t=>t.classList.remove("active")),document.querySelector(`.tab-btn[data-tab="${t}"]`).classList.add("active"),document.querySelectorAll(".tab-pane").forEach(t=>t.classList.remove("active")),document.getElementById(`pane-${t}`).classList.add("active"),"map"===t){const t=document.getElementById("map-frame"),e=document.getElementById("map-loading");t&&(t.getAttribute("src")||(window.mapReady=!1,t.setAttribute("src","http://localhost:5500/dist/kenshi%E5%9C%B0%E5%9B%BE/index.html")),window.mapReady?(e&&e.classList.add("hidden"),window.mapLoadTimer&&clearTimeout(window.mapLoadTimer)):(e&&(e.classList.remove("hidden"),e.textContent="地图加载中..."),window.mapLoadTimer&&clearTimeout(window.mapLoadTimer),window.mapLoadTimer=setTimeout(()=>{e&&!e.classList.contains("hidden")&&(e.textContent="地图加载较慢，请稍候...")},8e3)))}}function closeModal(){const t=document.getElementById("modal-content-inner");t&&(t.scrollTop=0),document.getElementById("char-modal").style.display="none"}function openModal(){const t=document.getElementById("modal-content-inner");t&&(t.scrollTop=0),document.getElementById("char-modal").style.display="flex"}function toggleMission(t){t.parentElement.classList.toggle("open")}function toggleCollapse(){$(".main-container").toggleClass("collapsed")}window.switchTab=switchTab,window.closeModal=closeModal,window.toggleMission=toggleMission,window.toggleCollapse=toggleCollapse,window.mapReady=!1;const attrTooltips={STR:"力量 (STR)\n影响近战伤害、重武器使用能力以及负重上限。",DEX:"敏捷 (DEX)\n影响攻击速度、闪避率、潜行效果及格挡效率。",PER:"感知 (PER)\n影响远程射击精度、侦测潜行敌人的能力。",TGH:"体质 (TGH)\n决定生命值上限、伤害减免及对环境的抵抗力。",WIL:"意志 (WIL)\n影响士气、抵抗精神攻击及昏迷后的苏醒速度。",INT:"智力 (INT)\n决定学习技能的速度，影响工程与医疗效果。",CHA:"魅力 (CHA)\n影响交易价格及说服他人的成功率。"};function buildCharHTML(t,e=!1){if(!t)return"<div style='padding:20px; text-align:center; color:#666;'>暂无数据</div>";const a=_.get(t,"血量.当前",0),n=_.get(t,"血量.最大",100),s=_.get(t,"经验值.当前",0),i=_.get(t,"经验值.升级所需",100),o=_.get(t,"背包.负重.当前",0),d=_.get(t,"背包.负重.最大",100),l=_.get(t,"体型","1.75m"),c=_.get(t,"状态","正常"),r=_.get(t,"创伤",{}),p=_.get(r,"描述","无伤"),g=_.get(r,"等级",0),v=_.get(t,"攻击次数",1),m=_.get(t,"外貌","暂无外貌描述"),$=_.get(t,"属性点",0),h=_.get(t,"特质点",0),b=_.get(t,"属性.WIL",30),u=_.get(t,"立场","中立"),y=`${u} - ${_.get(t,"派系","无派系")}`;let w="var(--accent-yellow)";"敌方"===u&&(w="var(--accent-danger)"),"友方"===u&&(w="var(--accent-positive)");let f=Object.entries(_.get(t,"属性",{})).map(([t,e])=>`<div class="stat-item has-tooltip" data-tooltip="${attrTooltips[t]||`${t}: 核心属性`}"><b>${t}</b>${e}</div>`).join(""),x=Object.entries(_.get(t,"背包.物品",{})).map(([t,e])=>{const a=_.get(e,"介绍","无描述");return`<div class="item-tag has-tooltip" data-tooltip="${`${t}\n重量: ${_.get(e,"重量",0)}kg\n价值: ${_.get(e,"价值",0)} c.cat\n\n${a}`}">${t} x${_.get(e,"数量",1)}</div>`}).join("");const L=_.get(t,"特质",{}),E=_.get(t,"正面效果",{}),T=_.get(t,"负面效果",{});let k=[];Object.entries(E).forEach(([t,e])=>{k.push(`<span class="item-tag has-tooltip" style="border-color:var(--accent-positive); color:var(--accent-positive); background-color: rgba(46, 204, 113, 0.1);" data-tooltip="${t}\n\n${e}">${t}</span>`)}),Object.entries(T).forEach(([t,e])=>{k.push(`<span class="item-tag has-tooltip" style="border-color:var(--accent-danger); color:var(--accent-danger); background-color: rgba(231, 76, 60, 0.1);" data-tooltip="${t}\n\n${e}">${t}</span>`)}),Object.entries(L).forEach(([t,e])=>{k.push(`<span class="item-tag has-tooltip" data-tooltip="${t}\n\n${e}">${t}</span>`)});let M=k.join(""),j=`<span style="color:${g>0?"var(--accent-danger)":"#666"}">${p}</span>`;const I=_.get(t,"主武器",{}),O=_.get(t,"副手武器",{}),C=_.get(t,"护甲",{}),B=_.get(I,"名字")||_.get(I,"介绍")||"空手",H=`[主手] ${_.get(I,"品质","普通")} ${_.get(I,"种类","无")}\n伤害: ${_.get(I,"伤害骰","1d4")}\n价值: ${_.get(I,"价值",0)} c.cat\n介绍: ${_.get(I,"介绍","无")}\n\n[副手] ${_.get(O,"品质","普通")} ${_.get(O,"种类","无")}\n伤害: ${_.get(O,"伤害骰","0")}\n价值: ${_.get(O,"价值",0)} c.cat\n介绍: ${_.get(O,"介绍","无")}`,R=_.get(C,"防护能力(DR)","0");let A="";return"战斗中"===c||"休克"===c?A="danger":"警戒"!==c&&"逃跑中"!==c||(A="warn"),`\n                <div style="display:flex; justify-content:space-between; align-items:end; margin-bottom:15px; border-bottom:1px solid #444; padding-bottom:15px;">\n                    <div style="width:100%"><div style="font-family:var(--font-header); font-size:2.2em; color:var(--accent-gold);">${_.get(t,"id","未知")}</div><div style="color:var(--text-dim); margin-top:5px;">${_.get(t,"种族.名称","人类")} | Lv.${_.get(t,"等级",1)} | ${l}<span class="has-tooltip" data-tooltip="立场 - 派系" style="margin-left:10px; background:${w}; padding:2px 8px; font-size:0.8em; color:#fff; border-radius:2px;">${y}</span></div></div></div>\n                <div class="desc-text">"${m}"</div>\n                <div class="detail-grid">\n                    <div>\n                        <div class="section-box">\n                            <div class="section-title">状态监测</div>\n                            <div class="status-row">\n                                <div class="status-header"><span>生命值 (HP)<span class="status-badge ${A}">${c}</span></span><span>${a} / ${n}</span></div>\n                                <div class="bar-container"><div class="bar-fill bar-hp" style="width:${Math.min(a/n*100,100)}%"></div></div>\n                            </div>\n                            <div class="status-row">\n                                <div class="status-header"><span>经验值 (EXP)</span><span>${s} / ${i}</span></div>\n                                <div class="bar-container"><div class="bar-fill bar-exp" style="width:${Math.min(s/i*100,100)}%"></div></div>\n                            </div>\n                            <div class="status-row">\n                                <div class="status-header"><span>意志 (WIL)</span><span>${b} / 100</span></div>\n                                <div class="bar-container"><div class="bar-fill bar-morale" style="width:${b}%"></div></div>\n                            </div>\n                        </div>\n                        <div class="section-box">\n                            <div class="section-title">身体属性</div>\n                            <div class="points-summary"><span class="point-tag">属性点: ${$}</span><span class="point-tag">特质点: ${h}</span><span class="point-tag" style="border-color:var(--accent-danger); color:var(--accent-danger)">攻击次数: ${v}</span></div>\n                            <div class="stat-grid">${f}</div>\n                        </div>\n                    </div>\n                    <div>\n                        <div class="section-box">\n                            <div class="section-title">装备与特质</div>\n                            <div style="margin-bottom:10px;" class="has-tooltip" data-tooltip="${H}"><span style="color:#888">武器:</span> <span style="color:var(--text-main); border-bottom:1px dashed #666;">${B}</span></div>\n                            <div style="margin-bottom:15px;" class="has-tooltip" data-tooltip="防护等级(DR): ${R}\n\n${_.get(C,"介绍","无")}"><span style="color:#888">护甲:</span> <span style="color:var(--text-main); border-bottom:1px dashed #666;">${_.get(C,"种类","无")}</span></div>\n                            <div class="tag-box">${M||'<span style="color:#666">无特质</span>'}</div>\n                        </div>\n                        <div class="section-box">\n                            <div class="section-title">背包物品 (负重: ${o}/${d} kg)</div>\n                            <div class="tag-box">${x||'<span style="color:#666">背包为空</span>'}</div>\n                        </div>\n                        <div class="section-box">\n                            <div class="section-title">创伤状态</div>\n                            <div class="tag-box">${j}</div>\n                        </div>\n                    </div>\n                </div>`}function renderFactionList(t,e,a){if(t.empty(),!e||0===Object.keys(e).length)return void t.html('<span style="color:#666">无记录</span>');const n=a?"var(--accent-danger)":"var(--accent-positive)",s=Object.entries(e).map(([t,e])=>`<span class="faction-pill has-tooltip" data-tooltip="${e}" style="border-color:${n}; color:${n}">${t}</span>`).join("");t.html(s)}async function init(){await waitGlobalInitialized("Mvu");const t=()=>{const t=getAllVariables(),e=_.get(t,"stat_data",{}),a=_.get(e,"世界",{});$("#top-day").text(`第 ${_.get(a,"天数",1)} 天`);const n=`${_.get(a,"区域","未知区域")} - ${_.get(a,"城镇","荒野")} - ${_.get(a,"时间","--:--")}`;$("#top-loc").text(n),$("#top-money").text(_.get(a,"金钱",0)+" c.cat"),$("#my-faction").text(_.get(e,"我方派系名称","无派系"));const s=_.get(a,"当前事件","");$("#world-event").text(s&&""!==s?s:"当前无特殊事件"),$("#world-player").html(buildCharHTML(_.get(e,"当前角色"),!0));const i=$("#squad-list").empty(),o=_.get(e,"小队成员",{});0===Object.keys(o).length?i.html('<div style="text-align:center; padding:40px; color:#666;">当前没有小队成员</div>'):Object.entries(o).forEach(([t,e])=>{const a=$(`<div class="char-card"><div><span style="font-weight:bold">${t}</span></div><div>HP: ${_.get(e,"血量.当前")}</div></div>`);a.on("click",()=>{$("#modal-content-inner").html(buildCharHTML(e)),openModal()}),i.append(a)});const d=$("#view-list").empty(),l=_.get(e,"视野",{});0===Object.keys(l).length?d.html('<div style="text-align:center; padding:30px; color:#555;">视野内无其他成员</div>'):Object.entries(l).forEach(([t,e])=>{const a=_.get(e,"立场","中立"),n=_.get(e,"派系","无派系");let s="var(--accent-yellow)";"敌方"===a&&(s="var(--accent-danger)"),"友方"===a&&(s="var(--accent-positive)");const i=$(`<div class="char-card" style="border-left:3px solid ${s}"><div><span style="font-size:0.8em; color:${s}; margin-right:8px;">${`[${a} - ${n}]`}</span><span>${t}</span></div><div style="font-size:0.9em; color:#888;">${_.get(e,"种族.名称","")}</div></div>`);i.on("click",()=>{$("#modal-content-inner").html(buildCharHTML(e)),openModal()}),d.append(i)}),$("#intel-rumors").text(_.get(e,"闲言.当前内容","暂无传闻")),renderFactionList($("#intel-hostile"),_.get(e,"局势.敌对派系",{}),!0),renderFactionList($("#intel-ally"),_.get(e,"局势.友方派系",{}),!1);const c=$("#mission-list").empty(),r=_.get(e,"任务系统",{});0===Object.keys(r).length?c.html('<div style="text-align:center; padding:40px; color:#666;">当前无任务日志</div>'):Object.entries(r).forEach(([t,e])=>{const a=_.get(e,"主任务状态","状态未知");let n="";const s=_.get(e,"子任务",{});Object.keys(s).length>0&&(n='<ul class="subtask-list">',Object.entries(s).forEach(([t,e])=>{const a=_.get(e,"进度.当前",0),s=_.get(e,"进度.目标",1),i=_.get(e,"状态","进行中"),o=s>0?Math.min(a/s*100,100):0;n+=`<li class="subtask-item ${"已完成"===i?"completed":""}"><div class="subtask-name">${t}</div><div class="subtask-progress-container"><div class="subtask-progress-bar-container"><div class="subtask-progress-bar" style="width: ${o}%"></div></div><div class="subtask-progress-text">${a} / ${s}</div></div></li>`}),n+="</ul>");const i=`<div class="mission-description">${_.get(e,"描述","暂无描述。")}</div><div class="mission-reward">奖励: ${_.get(e,"奖励","无")}</div>${n}`;c.append(`<div class="mission-item"><div class="mission-header" onclick="toggleMission(this)"><span>${t}</span><span style="color:var(--accent-gold)">${a}</span></div><div class="mission-body">${i}</div></div>`)})};t(),eventOn(Mvu.events.VARIABLE_UPDATE_ENDED,t),$("#char-modal").on("click",function(t){t.target===this&&closeModal()}),$(document).on("keydown",function(t){"Escape"===t.key&&closeModal()});const e=$("#tooltip");$(document).on("mouseenter",".has-tooltip",function(t){const a=$(this).attr("data-tooltip");a&&(e.text(a).show(),e.css({top:t.clientY+15,left:t.clientX+15}))}).on("mouseleave",".has-tooltip",function(){e.hide()}).on("mousemove",function(t){if("none"!==e.css("display")){let a=t.clientY+15,n=t.clientX+15;n+e.outerWidth()>window.innerWidth&&(n=t.clientX-e.outerWidth()-10),a+e.outerHeight()>window.innerHeight&&(a=t.clientY-e.outerHeight()-10),e.css({top:a,left:n})}})}const mapFrame=document.getElementById("map-frame"),mapLoading=document.getElementById("map-loading");mapFrame&&mapLoading&&(mapFrame.addEventListener("load",()=>{window.mapReady=!0,mapLoading.classList.add("hidden"),window.mapLoadTimer&&clearTimeout(window.mapLoadTimer)}),mapFrame.addEventListener("error",()=>{window.mapReady=!1,mapLoading.classList.remove("hidden"),mapLoading.textContent="地图加载失败，请检查链接或资源",window.mapLoadTimer&&clearTimeout(window.mapLoadTimer)})),window.addEventListener("message",t=>{t&&t.data&&"kenshi-map-ready"===t.data.type&&(window.mapReady=!0,mapLoading&&mapLoading.classList.add("hidden"),window.mapLoadTimer&&clearTimeout(window.mapLoadTimer))}),$(errorCatched(init))</script><script type="module"></script></head><body><div class="main-container collapsed"><div class="top-bar"><div class="top-left"><span class="day-badge" id="top-day">第 1 天</span> <span class="location-info" id="top-loc">边境地带 - 枢纽城 - 下午</span></div><div class="top-right"><span id="my-faction" style="margin-right:15px;font-weight:400;color:var(--text-dim)"></span> <span id="top-money">0 c.cat</span> <button class="toggle-btn" onclick="toggleCollapse()">▼</button></div></div><div class="collapsible-content"><div class="nav-tabs"><div class="tab-btn active" onclick='switchTab("world")' data-tab="world">概览</div><div class="tab-btn" onclick='switchTab("squad")' data-tab="squad">小队</div><div class="tab-btn" onclick='switchTab("view")' data-tab="view">视野</div><div class="tab-btn" onclick='switchTab("intel")' data-tab="intel">情报</div><div class="tab-btn" onclick='switchTab("mission")' data-tab="mission">日志</div><div class="tab-btn" onclick='switchTab("map")' data-tab="map">地图</div></div><div class="content-area"><div id="pane-world" class="tab-pane active"><div class="section-box"><div class="section-title">当前事件</div><div id="world-event" class="event-text"></div></div><div id="world-player"></div></div><div id="pane-squad" class="tab-pane"><div class="section-title">小队成员</div><div id="squad-list"></div></div><div id="pane-view" class="tab-pane"><div class="section-title">周边环境</div><div id="view-list"></div></div><div id="pane-intel" class="tab-pane"><div class="section-box"><div class="section-title">世界局势</div><div style="margin-bottom:10px"><span style="color:#888;margin-right:10px">敌对:</span><span id="intel-hostile"></span></div><div><span style="color:#888;margin-right:10px">友方:</span><span id="intel-ally"></span></div></div><div class="section-box"><div class="section-title">街谈巷议</div><div id="intel-rumors" style="font-style:italic;color:#ccc"></div></div></div><div id="pane-mission" class="tab-pane"><div id="mission-list"></div></div><div id="pane-map" class="tab-pane"><div class="section-title">地图</div><div class="map-frame-wrap"><div id="map-loading" class="map-loading">地图加载中...</div><iframe id="map-frame" title="地图" loading="lazy"></iframe></div></div></div></div></div><div id="char-modal" class="modal-overlay"><div class="modal-content"><button class="close-btn" onclick="closeModal()">×</button><div id="modal-content-inner"></div></div></div><div id="tooltip"></div></body></html>
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>kenshi状态栏</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --bg-deep: rgba(12, 12, 15, 0.95);
+        --bg-panel: rgba(35, 33, 30, 0.6);
+        --accent-gold: #c1a35f;
+        --accent-bronze: #8b6d4d;
+        --accent-rust: #8b3a3a;
+        --accent-green: #2b8a3e;
+        --text-main: #e0dacc;
+        --text-dim: #9e968b;
+        --font-header: 'Cinzel', 'KaiTi', '楷体', serif;
+        --font-body: 'Georgia', 'serif', 'KaiTi';
+        --border-style: 1px solid rgba(193, 163, 95, 0.3);
+        --accent-danger: #e74c3c;
+        --accent-positive: #2ecc71;
+        --accent-yellow: #f1c40f;
+      }
+
+      body {
+        font-family: var(--font-body);
+        background: transparent;
+        margin: 0;
+        padding: 10px;
+        color: var(--text-main);
+        user-select: none;
+        overflow-x: hidden;
+        font-size: 16px;
+      }
+
+      .main-container {
+        width: 100%;
+        max-width: 1200px;
+        background: var(--bg-deep);
+        border: 1px solid var(--accent-bronze);
+        backdrop-filter: blur(8px);
+        box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
+        margin: 0 auto;
+        border-radius: 3px;
+        transition: all 0.4s ease;
+      }
+
+      .top-bar {
+        background: linear-gradient(180deg, rgba(30, 25, 20, 1), rgba(30, 25, 20, 0.5));
+        border-bottom: var(--border-style);
+        padding: 12px 25px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-family: var(--font-header);
+        position: relative;
+        z-index: 10;
+      }
+
+      .top-left {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+      }
+      .top-right {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        color: var(--accent-gold);
+        font-weight: bold;
+      }
+
+      .day-badge {
+        font-size: 1.2em;
+        color: var(--accent-gold);
+        border-right: 1px solid #555;
+        padding-right: 20px;
+      }
+      .location-info {
+        font-size: 1.1em;
+        color: var(--text-main);
+        letter-spacing: 0.5px;
+      }
+
+      .toggle-btn {
+        background: transparent;
+        border: 1px solid var(--accent-bronze);
+        color: var(--accent-gold);
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition:
+          transform 0.4s ease,
+          background 0.3s;
+        font-size: 0.8em;
+      }
+
+      .main-container.collapsed .toggle-btn {
+        transform: rotate(-90deg);
+      }
+      .collapsible-content {
+        max-height: 2000px;
+        overflow: hidden;
+        opacity: 1;
+        transition:
+          max-height 0.5s ease-in-out,
+          opacity 0.4s ease-in-out;
+      }
+      .main-container.collapsed .collapsible-content {
+        max-height: 0;
+        opacity: 0;
+      }
+
+      .nav-tabs {
+        display: flex;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0.4);
+        border-bottom: var(--border-style);
+        margin-bottom: 5px;
+      }
+      .tab-btn {
+        padding: 12px 30px;
+        cursor: pointer;
+        font-family: var(--font-header);
+        color: var(--text-dim);
+        transition: 0.3s;
+        border-bottom: 3px solid transparent;
+      }
+      .tab-btn.active {
+        color: var(--accent-gold);
+        border-bottom: 3px solid var(--accent-gold);
+        background: linear-gradient(to top, rgba(193, 163, 95, 0.1), transparent);
+      }
+
+      .content-area {
+        padding: 25px;
+        min-height: 650px;
+        max-height: 80vh;
+        overflow-y: auto;
+      }
+      .content-area::-webkit-scrollbar {
+        width: 6px;
+      }
+      .content-area::-webkit-scrollbar-thumb {
+        background: var(--accent-bronze);
+        border-radius: 3px;
+      }
+
+      .tab-pane {
+        display: none;
+      }
+      .tab-pane.active {
+        display: block;
+        animation: fadeIn 0.3s;
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      .section-box {
+        background: var(--bg-panel);
+        border: 1px solid rgba(193, 163, 95, 0.2);
+        padding: 20px;
+        margin-bottom: 20px;
+      }
+      .section-title {
+        font-family: var(--font-header);
+        color: var(--accent-gold);
+        font-size: 1.1em;
+        border-bottom: 1px solid rgba(193, 163, 95, 0.3);
+        margin-bottom: 15px;
+        padding-bottom: 5px;
+      }
+
+      .event-text {
+        font-style: italic;
+        line-height: 1.6;
+        color: var(--text-main);
+        padding: 10px;
+        border-left: 3px solid var(--accent-gold);
+        background: rgba(193, 163, 95, 0.05);
+      }
+
+      .desc-text {
+        color: #888;
+        font-size: 0.95em;
+        font-style: italic;
+        margin-bottom: 20px;
+        padding: 0 5px;
+        border-left: 2px solid #444;
+        line-height: 1.5;
+      }
+
+      .detail-grid {
+        display: grid;
+        grid-template-columns: 1.2fr 1fr;
+        gap: 20px;
+      }
+      .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+        gap: 10px;
+      }
+
+      .stat-item {
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid #444;
+        padding: 8px 4px;
+        text-align: center;
+        cursor: help;
+      }
+      .stat-item:hover {
+        border-color: var(--accent-gold);
+        background: rgba(193, 163, 95, 0.1);
+      }
+      .stat-item b {
+        display: block;
+        color: var(--accent-bronze);
+        font-size: 0.85em;
+        margin-bottom: 4px;
+      }
+
+      .points-summary {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 15px;
+        flex-wrap: wrap;
+        padding-bottom: 10px;
+        border-bottom: 1px dashed rgba(193, 163, 95, 0.2);
+      }
+      .point-tag {
+        background: rgba(193, 163, 95, 0.1);
+        border: 1px solid var(--accent-gold);
+        padding: 2px 10px;
+        font-size: 0.85em;
+        color: var(--accent-gold);
+        border-radius: 2px;
+      }
+
+      .status-badge {
+        font-size: 0.8em;
+        padding: 1px 6px;
+        border-radius: 2px;
+        margin-left: 8px;
+        vertical-align: middle;
+        border: 1px solid #555;
+        color: #aaa;
+      }
+      .status-badge.danger {
+        border-color: var(--accent-danger);
+        color: var(--accent-danger);
+      }
+      .status-badge.warn {
+        border-color: #f39c12;
+        color: #f39c12;
+      }
+
+      .status-row {
+        margin-bottom: 15px;
+      }
+      .status-header {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.9em;
+        margin-bottom: 5px;
+      }
+      .bar-container {
+        height: 8px;
+        background: #222;
+        border: 1px solid #444;
+      }
+      .bar-fill {
+        height: 100%;
+        box-shadow: 0 0 8px currentColor;
+        transition: width 0.4s;
+      }
+      .bar-hp {
+        background: #8b3a3a;
+        color: #8b3a3a;
+      }
+      .bar-exp {
+        background: #c1a35f;
+        color: #c1a35f;
+      }
+      .bar-morale {
+        background: #3498db;
+        color: #3498db;
+      }
+
+      .char-card {
+        background: linear-gradient(90deg, rgba(40, 40, 45, 0.9), rgba(30, 30, 35, 0.6));
+        border: 1px solid rgba(193, 163, 95, 0.2);
+        padding: 12px 20px;
+        margin-bottom: 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+      .char-card:hover {
+        border-color: var(--accent-gold);
+        transform: translateX(5px);
+      }
+
+      .tag-box {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .item-tag {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid #555;
+        padding: 3px 8px;
+        font-size: 0.9em;
+        cursor: help;
+      }
+      .item-tag:hover {
+        border-color: var(--accent-gold);
+        background: rgba(193, 163, 95, 0.1);
+      }
+
+      .faction-pill {
+        padding: 2px 8px;
+        border: 1px solid #555;
+        margin-right: 8px;
+        font-size: 0.8em;
+        cursor: help;
+      }
+
+      #tooltip {
+        position: fixed;
+        background: rgba(15, 15, 20, 0.98);
+        border: 1px solid var(--accent-gold);
+        color: #fff;
+        padding: 12px;
+        z-index: 99999;
+        display: none;
+        pointer-events: none;
+        font-size: 0.9em;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.8);
+        max-width: 300px;
+      }
+
+      .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.85);
+        z-index: 1000;
+        display: none;
+        justify-content: center;
+        align-items: center;
+        animation: fadeIn 0.2s;
+      }
+      .modal-content {
+        background: var(--bg-deep);
+        width: 90%;
+        max-width: 1200px;
+        border: 1px solid var(--accent-gold);
+        padding: 40px;
+        max-height: 90vh;
+        overflow-y: auto;
+        position: relative;
+        box-shadow: 0 10px 50px rgba(0, 0, 0, 0.8);
+      }
+      .close-btn {
+        position: absolute;
+        right: 20px;
+        top: 20px;
+        background: none;
+        border: none;
+        color: var(--accent-gold);
+        font-size: 2em;
+        cursor: pointer;
+      }
+
+      .mission-item {
+        border: 1px solid #444;
+        background: rgba(0, 0, 0, 0.2);
+        margin-bottom: 8px;
+      }
+      .mission-header {
+        padding: 12px;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        background: rgba(255, 255, 255, 0.03);
+      }
+      .mission-body {
+        display: none;
+        padding: 15px;
+        border-top: 1px solid #444;
+        font-size: 0.95em;
+        color: #ccc;
+      }
+      .mission-item.open .mission-body {
+        display: block;
+      }
+      .mission-description {
+        font-style: italic;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 1px dashed #444;
+      }
+      .mission-reward {
+        font-weight: bold;
+        color: var(--accent-gold);
+        margin-bottom: 15px;
+      }
+      .subtask-list {
+        list-style: none;
+        padding-left: 10px;
+        margin: 0;
+      }
+      .subtask-item {
+        margin-bottom: 12px;
+        padding-left: 15px;
+        border-left: 2px solid #555;
+      }
+      .subtask-item.completed {
+        border-left-color: var(--accent-green);
+      }
+      .subtask-item.completed .subtask-name {
+        color: #888;
+        text-decoration: line-through;
+      }
+      .subtask-name {
+        font-size: 0.9em;
+        margin-bottom: 4px;
+      }
+      .subtask-progress-container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .subtask-progress-bar-container {
+        flex-grow: 1;
+        height: 6px;
+        background: #222;
+        border: 1px solid #555;
+      }
+      .subtask-progress-bar {
+        height: 100%;
+        background: var(--accent-bronze);
+        transition: width 0.4s;
+      }
+      .subtask-progress-text {
+        font-size: 0.85em;
+        color: #888;
+        min-width: 50px;
+        text-align: right;
+      }
+
+      .map-frame-wrap {
+        border: 1px solid rgba(193, 163, 95, 0.25);
+        background: rgba(0, 0, 0, 0.35);
+        padding: 10px;
+        position: relative;
+      }
+      #map-frame {
+        width: 100%;
+        height: 70vh;
+        border: 1px solid #444;
+        background: #0c0c0f;
+      }
+      .map-loading {
+        position: absolute;
+        inset: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        color: var(--accent-gold);
+        font-family: var(--font-header);
+        letter-spacing: 0.5px;
+        background: rgba(12, 12, 15, 0.85);
+        border: 1px solid rgba(193, 163, 95, 0.25);
+        z-index: 2;
+      }
+      .map-loading.hidden {
+        display: none;
+      }
+    </style>
+
+    <script type="module">
+      function switchTab(tabName) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelector(`.tab-btn[data-tab="${tabName}"]`).classList.add('active');
+        document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+        document.getElementById(`pane-${tabName}`).classList.add('active');
+
+        if (tabName === 'map') {
+          const frame = document.getElementById('map-frame');
+          const loading = document.getElementById('map-loading');
+          if (frame) {
+            if (!frame.getAttribute('src')) {
+              window.mapReady = false;
+              frame.setAttribute('src', 'http://localhost:5500/dist/kenshi%E5%9C%B0%E5%9B%BE/index.html');
+            }
+            if (window.mapReady) {
+              if (loading) {
+                loading.classList.add('hidden');
+              }
+              if (window.mapLoadTimer) {
+                clearTimeout(window.mapLoadTimer);
+              }
+            } else {
+              if (loading) {
+                loading.classList.remove('hidden');
+                loading.textContent = '地图加载中...';
+              }
+              if (window.mapLoadTimer) {
+                clearTimeout(window.mapLoadTimer);
+              }
+              window.mapLoadTimer = setTimeout(() => {
+                if (loading && !loading.classList.contains('hidden')) {
+                  loading.textContent = '地图加载较慢，请稍候...';
+                }
+              }, 8000);
+            }
+          }
+        }
+      }
+      function closeModal() {
+        const modalContent = document.getElementById('modal-content-inner');
+        if (modalContent) modalContent.scrollTop = 0;
+        document.getElementById('char-modal').style.display = 'none';
+      }
+      function openModal() {
+        const modalContent = document.getElementById('modal-content-inner');
+        if (modalContent) modalContent.scrollTop = 0;
+        document.getElementById('char-modal').style.display = 'flex';
+      }
+
+      function toggleMission(ele) {
+        ele.parentElement.classList.toggle('open');
+      }
+      function toggleCollapse() {
+        $('.main-container').toggleClass('collapsed');
+      }
+
+      window.switchTab = switchTab;
+      window.closeModal = closeModal;
+      window.toggleMission = toggleMission;
+      window.toggleCollapse = toggleCollapse;
+      window.mapReady = false;
+
+      const attrTooltips = {
+        STR: '力量 (STR)\n影响近战伤害、重武器使用能力以及负重上限。',
+        DEX: '敏捷 (DEX)\n影响攻击速度、闪避率、潜行效果及格挡效率。',
+        PER: '感知 (PER)\n影响远程射击精度、侦测潜行敌人的能力。',
+        TGH: '体质 (TGH)\n决定生命值上限、伤害减免及对环境的抵抗力。',
+        WIL: '意志 (WIL)\n影响士气、抵抗精神攻击及昏迷后的苏醒速度。',
+        INT: '智力 (INT)\n决定学习技能的速度，影响工程与医疗效果。',
+        CHA: '魅力 (CHA)\n影响交易价格及说服他人的成功率。',
+      };
+
+      function buildCharHTML(data, isMain = false) {
+        if (!data) return "<div style='padding:20px; text-align:center; color:#666;'>暂无数据</div>";
+
+        const hpCur = _.get(data, '血量.当前', 0);
+        const hpMax = _.get(data, '血量.最大', 100);
+        const expCur = _.get(data, '经验值.当前', 0);
+        const expMax = _.get(data, '经验值.升级所需', 100);
+        const wCur = _.get(data, '背包.负重.当前', 0);
+        const wMax = _.get(data, '背包.负重.最大', 100);
+        const bodySize = _.get(data, '体型', '1.75m');
+        const status = _.get(data, '状态', '正常');
+        const trauma = _.get(data, '创伤', {});
+        const traumaDesc = _.get(trauma, '描述', '无伤');
+        const traumaLv = _.get(trauma, '等级', 0);
+        const atkCount = _.get(data, '攻击次数', 1);
+        const appearance = _.get(data, '外貌', '暂无外貌描述');
+        const attrPt = _.get(data, '属性点', 0);
+        const traitPt = _.get(data, '特质点', 0);
+        const wil = _.get(data, '属性.WIL', 30);
+        const stance = _.get(data, '立场', '中立');
+        const faction = _.get(data, '派系', '无派系');
+        const factionDisplay = `${stance} - ${faction}`;
+        let factionColor = 'var(--accent-yellow)';
+        if (stance === '敌方') factionColor = 'var(--accent-danger)';
+        if (stance === '友方') factionColor = 'var(--accent-positive)';
+
+        let attrHTML = Object.entries(_.get(data, '属性', {}))
+          .map(([k, v]) => {
+            const tip = attrTooltips[k] || `${k}: 核心属性`;
+            return `<div class="stat-item has-tooltip" data-tooltip="${tip}"><b>${k}</b>${v}</div>`;
+          })
+          .join('');
+
+        let itemHTML = Object.entries(_.get(data, '背包.物品', {}))
+          .map(([name, d]) => {
+            const desc = _.get(d, '介绍', '无描述');
+            const w = _.get(d, '重量', 0);
+            const val = _.get(d, '价值', 0);
+            const tip = `${name}\n重量: ${w}kg\n价值: ${val} c.cat\n\n${desc}`;
+            return `<div class="item-tag has-tooltip" data-tooltip="${tip}">${name} x${_.get(d, '数量', 1)}</div>`;
+          })
+          .join('');
+
+        /* 修改点：整合特质、正面效果和负面效果，并用不同颜色显示 */
+        const traits = _.get(data, '特质', {});
+        const positiveEffects = _.get(data, '正面效果', {});
+        const negativeEffects = _.get(data, '负面效果', {});
+        let allTraitsHTML = [];
+        /* 添加正面效果 (绿色) */
+        Object.entries(positiveEffects).forEach(([name, desc]) => {
+          allTraitsHTML.push(
+            `<span class="item-tag has-tooltip" style="border-color:var(--accent-positive); color:var(--accent-positive); background-color: rgba(46, 204, 113, 0.1);" data-tooltip="${name}\n\n${desc}">${name}</span>`,
+          );
+        });
+        /* 添加负面效果 (红色) */
+        Object.entries(negativeEffects).forEach(([name, desc]) => {
+          allTraitsHTML.push(
+            `<span class="item-tag has-tooltip" style="border-color:var(--accent-danger); color:var(--accent-danger); background-color: rgba(231, 76, 60, 0.1);" data-tooltip="${name}\n\n${desc}">${name}</span>`,
+          );
+        });
+        /* 添加普通特质 (默认色) */
+        Object.entries(traits).forEach(([name, desc]) => {
+          allTraitsHTML.push(`<span class="item-tag has-tooltip" data-tooltip="${name}\n\n${desc}">${name}</span>`);
+        });
+        let traitHTML = allTraitsHTML.join('');
+
+        let traumaDetailHTML = `<span style="color:${traumaLv > 0 ? 'var(--accent-danger)' : '#666'}">${traumaDesc}</span>`;
+
+        const mainWep = _.get(data, '主武器', {});
+        const subWep = _.get(data, '副手武器', {});
+        const arm = _.get(data, '护甲', {});
+        const mainName = _.get(mainWep, '名字') || _.get(mainWep, '介绍') || '空手';
+        /* 修改点：在武器tooltip中增加价值显示 */
+        const wepTooltip = `[主手] ${_.get(mainWep, '品质', '普通')} ${_.get(mainWep, '种类', '无')}\n伤害: ${_.get(mainWep, '伤害骰', '1d4')}\n价值: ${_.get(mainWep, '价值', 0)} c.cat\n介绍: ${_.get(mainWep, '介绍', '无')}\n\n[副手] ${_.get(subWep, '品质', '普通')} ${_.get(subWep, '种类', '无')}\n伤害: ${_.get(subWep, '伤害骰', '0')}\n价值: ${_.get(subWep, '价值', 0)} c.cat\n介绍: ${_.get(subWep, '介绍', '无')}`;
+        const armorDR = _.get(arm, '防护能力(DR)', '0');
+
+        let statusClass = '';
+        if (status === '战斗中' || status === '休克') statusClass = 'danger';
+        else if (status === '警戒' || status === '逃跑中') statusClass = 'warn';
+
+        return `
+                <div style="display:flex; justify-content:space-between; align-items:end; margin-bottom:15px; border-bottom:1px solid #444; padding-bottom:15px;">
+                    <div style="width:100%"><div style="font-family:var(--font-header); font-size:2.2em; color:var(--accent-gold);">${_.get(data, 'id', '未知')}</div><div style="color:var(--text-dim); margin-top:5px;">${_.get(data, '种族.名称', '人类')} | Lv.${_.get(data, '等级', 1)} | ${bodySize}<span class="has-tooltip" data-tooltip="立场 - 派系" style="margin-left:10px; background:${factionColor}; padding:2px 8px; font-size:0.8em; color:#fff; border-radius:2px;">${factionDisplay}</span></div></div></div>
+                <div class="desc-text">"${appearance}"</div>
+                <div class="detail-grid">
+                    <div>
+                        <div class="section-box">
+                            <div class="section-title">状态监测</div>
+                            <div class="status-row">
+                                <div class="status-header"><span>生命值 (HP)<span class="status-badge ${statusClass}">${status}</span></span><span>${hpCur} / ${hpMax}</span></div>
+                                <div class="bar-container"><div class="bar-fill bar-hp" style="width:${Math.min((hpCur / hpMax) * 100, 100)}%"></div></div>
+                            </div>
+                            <div class="status-row">
+                                <div class="status-header"><span>经验值 (EXP)</span><span>${expCur} / ${expMax}</span></div>
+                                <div class="bar-container"><div class="bar-fill bar-exp" style="width:${Math.min((expCur / expMax) * 100, 100)}%"></div></div>
+                            </div>
+                            <div class="status-row">
+                                <div class="status-header"><span>意志 (WIL)</span><span>${wil} / 100</span></div>
+                                <div class="bar-container"><div class="bar-fill bar-morale" style="width:${wil}%"></div></div>
+                            </div>
+                        </div>
+                        <div class="section-box">
+                            <div class="section-title">身体属性</div>
+                            <div class="points-summary"><span class="point-tag">属性点: ${attrPt}</span><span class="point-tag">特质点: ${traitPt}</span><span class="point-tag" style="border-color:var(--accent-danger); color:var(--accent-danger)">攻击次数: ${atkCount}</span></div>
+                            <div class="stat-grid">${attrHTML}</div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-box">
+                            <div class="section-title">装备与特质</div>
+                            <div style="margin-bottom:10px;" class="has-tooltip" data-tooltip="${wepTooltip}"><span style="color:#888">武器:</span> <span style="color:var(--text-main); border-bottom:1px dashed #666;">${mainName}</span></div>
+                            <div style="margin-bottom:15px;" class="has-tooltip" data-tooltip="防护等级(DR): ${armorDR}\n\n${_.get(arm, '介绍', '无')}"><span style="color:#888">护甲:</span> <span style="color:var(--text-main); border-bottom:1px dashed #666;">${_.get(arm, '种类', '无')}</span></div>
+                            <div class="tag-box">${traitHTML || '<span style="color:#666">无特质</span>'}</div>
+                        </div>
+                        <div class="section-box">
+                            <div class="section-title">背包物品 (负重: ${wCur}/${wMax} kg)</div>
+                            <div class="tag-box">${itemHTML || '<span style="color:#666">背包为空</span>'}</div>
+                        </div>
+                        <div class="section-box">
+                            <div class="section-title">创伤状态</div>
+                            <div class="tag-box">${traumaDetailHTML}</div>
+                        </div>
+                    </div>
+                </div>`;
+      }
+
+      function renderFactionList(container, factions, isHostile) {
+        container.empty();
+        if (!factions || Object.keys(factions).length === 0) {
+          container.html('<span style="color:#666">无记录</span>');
+          return;
+        }
+        const color = isHostile ? 'var(--accent-danger)' : 'var(--accent-positive)';
+        const html = Object.entries(factions)
+          .map(([name, desc]) => {
+            return `<span class="faction-pill has-tooltip" data-tooltip="${desc}" style="border-color:${color}; color:${color}">${name}</span>`;
+          })
+          .join('');
+        container.html(html);
+      }
+
+      async function init() {
+        await waitGlobalInitialized('Mvu');
+        const update = () => {
+          const raw = getAllVariables();
+          const data = _.get(raw, 'stat_data', {});
+          const world = _.get(data, '世界', {});
+          $('#top-day').text(`第 ${_.get(world, '天数', 1)} 天`);
+          const locationStr = `${_.get(world, '区域', '未知区域')} - ${_.get(world, '城镇', '荒野')} - ${_.get(world, '时间', '--:--')}`;
+          $('#top-loc').text(locationStr);
+          $('#top-money').text(_.get(world, '金钱', 0) + ' c.cat');
+          $('#my-faction').text(_.get(data, '我方派系名称', '无派系'));
+          const eventText = _.get(world, '当前事件', '');
+          $('#world-event').text(eventText && eventText !== '' ? eventText : '当前无特殊事件');
+          $('#world-player').html(buildCharHTML(_.get(data, '当前角色'), true));
+
+          const squadList = $('#squad-list').empty();
+          const squadData = _.get(data, '小队成员', {});
+          if (Object.keys(squadData).length === 0) {
+            squadList.html('<div style="text-align:center; padding:40px; color:#666;">当前没有小队成员</div>');
+          } else {
+            Object.entries(squadData).forEach(([k, v]) => {
+              const card = $(
+                `<div class="char-card"><div><span style="font-weight:bold">${k}</span></div><div>HP: ${_.get(v, '血量.当前')}</div></div>`,
+              );
+              card.on('click', () => {
+                $('#modal-content-inner').html(buildCharHTML(v));
+                openModal();
+              });
+              squadList.append(card);
+            });
+          }
+
+          const viewList = $('#view-list').empty();
+          const viewData = _.get(data, '视野', {});
+          if (Object.keys(viewData).length === 0)
+            viewList.html('<div style="text-align:center; padding:30px; color:#555;">视野内无其他成员</div>');
+          else {
+            Object.entries(viewData).forEach(([k, v]) => {
+              const stance = _.get(v, '立场', '中立');
+              const faction = _.get(v, '派系', '无派系');
+              const displayString = `[${stance} - ${faction}]`;
+
+              let color = 'var(--accent-yellow)';
+              if (stance === '敌方') color = 'var(--accent-danger)';
+              if (stance === '友方') color = 'var(--accent-positive)';
+
+              const card = $(
+                `<div class="char-card" style="border-left:3px solid ${color}"><div><span style="font-size:0.8em; color:${color}; margin-right:8px;">${displayString}</span><span>${k}</span></div><div style="font-size:0.9em; color:#888;">${_.get(v, '种族.名称', '')}</div></div>`,
+              );
+              card.on('click', () => {
+                $('#modal-content-inner').html(buildCharHTML(v));
+                openModal();
+              });
+              viewList.append(card);
+            });
+          }
+
+          $('#intel-rumors').text(_.get(data, '闲言.当前内容', '暂无传闻'));
+          renderFactionList($('#intel-hostile'), _.get(data, '局势.敌对派系', {}), true);
+          renderFactionList($('#intel-ally'), _.get(data, '局势.友方派系', {}), false);
+
+          const mList = $('#mission-list').empty();
+          const missions = _.get(data, '任务系统', {});
+          if (Object.keys(missions).length === 0) {
+            mList.html('<div style="text-align:center; padding:40px; color:#666;">当前无任务日志</div>');
+          } else {
+            Object.entries(missions).forEach(([mainMissionName, mainMissionData]) => {
+              const missionStatus = _.get(mainMissionData, '主任务状态', '状态未知');
+              let subtasksHTML = '';
+              const subtasks = _.get(mainMissionData, '子任务', {});
+              if (Object.keys(subtasks).length > 0) {
+                subtasksHTML = '<ul class="subtask-list">';
+                Object.entries(subtasks).forEach(([subtaskName, subtaskData]) => {
+                  const current = _.get(subtaskData, '进度.当前', 0);
+                  const target = _.get(subtaskData, '进度.目标', 1);
+                  const status = _.get(subtaskData, '状态', '进行中');
+                  const progressPercent = target > 0 ? Math.min((current / target) * 100, 100) : 0;
+                  const statusClass = status === '已完成' ? 'completed' : '';
+                  subtasksHTML += `<li class="subtask-item ${statusClass}"><div class="subtask-name">${subtaskName}</div><div class="subtask-progress-container"><div class="subtask-progress-bar-container"><div class="subtask-progress-bar" style="width: ${progressPercent}%"></div></div><div class="subtask-progress-text">${current} / ${target}</div></div></li>`;
+                });
+                subtasksHTML += '</ul>';
+              }
+              const missionBody = `<div class="mission-description">${_.get(mainMissionData, '描述', '暂无描述。')}</div><div class="mission-reward">奖励: ${_.get(mainMissionData, '奖励', '无')}</div>${subtasksHTML}`;
+              mList.append(
+                `<div class="mission-item"><div class="mission-header" onclick="toggleMission(this)"><span>${mainMissionName}</span><span style="color:var(--accent-gold)">${missionStatus}</span></div><div class="mission-body">${missionBody}</div></div>`,
+              );
+            });
+          }
+        };
+        update();
+        eventOn(Mvu.events.VARIABLE_UPDATE_ENDED, update);
+
+        $('#char-modal').on('click', function (e) {
+          if (e.target === this) {
+            closeModal();
+          }
+        });
+        $(document).on('keydown', function (e) {
+          if (e.key === 'Escape') {
+            closeModal();
+          }
+        });
+
+        const tip = $('#tooltip');
+        $(document)
+          .on('mouseenter', '.has-tooltip', function (e) {
+            const text = $(this).attr('data-tooltip');
+            if (text) {
+              tip.text(text).show();
+              tip.css({ top: e.clientY + 15, left: e.clientX + 15 });
+            }
+          })
+          .on('mouseleave', '.has-tooltip', function () {
+            tip.hide();
+          })
+          .on('mousemove', function (e) {
+            if (tip.css('display') !== 'none') {
+              let t = e.clientY + 15,
+                l = e.clientX + 15;
+              if (l + tip.outerWidth() > window.innerWidth) l = e.clientX - tip.outerWidth() - 10;
+              if (t + tip.outerHeight() > window.innerHeight) t = e.clientY - tip.outerHeight() - 10;
+              tip.css({ top: t, left: l });
+            }
+          });
+      }
+      const mapFrame = document.getElementById('map-frame');
+      const mapLoading = document.getElementById('map-loading');
+      if (mapFrame && mapLoading) {
+        mapFrame.addEventListener('load', () => {
+          window.mapReady = true;
+          mapLoading.classList.add('hidden');
+          if (window.mapLoadTimer) {
+            clearTimeout(window.mapLoadTimer);
+          }
+        });
+        mapFrame.addEventListener('error', () => {
+          window.mapReady = false;
+          mapLoading.classList.remove('hidden');
+          mapLoading.textContent = '地图加载失败，请检查链接或资源';
+          if (window.mapLoadTimer) {
+            clearTimeout(window.mapLoadTimer);
+          }
+        });
+      }
+      window.addEventListener('message', event => {
+        if (event && event.data && event.data.type === 'kenshi-map-ready') {
+          window.mapReady = true;
+          if (mapLoading) {
+            mapLoading.classList.add('hidden');
+          }
+          if (window.mapLoadTimer) {
+            clearTimeout(window.mapLoadTimer);
+          }
+        }
+      });
+      $(errorCatched(init));
+    </script>
+  <script type="module">var __webpack_modules__ = {
+  "./src/kenshi状态栏_备用/index.ts"(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
+    __webpack_require__.r(__webpack_exports__);
+  }
+};
+
+var __webpack_require__ = {};
+
+(() => {
+  __webpack_require__.r = exports => {
+    if (typeof Symbol !== "undefined" && Symbol.toStringTag) {
+      Object.defineProperty(exports, Symbol.toStringTag, {
+        value: "Module"
+      });
+    }
+    Object.defineProperty(exports, "__esModule", {
+      value: true
+    });
+  };
+})();
+
+var __webpack_exports__ = {};
+
+__webpack_modules__["./src/kenshi状态栏_备用/index.ts"](0, __webpack_exports__, __webpack_require__);</script></head>
+  <body>
+    <div class="main-container collapsed">
+      <div class="top-bar">
+        <div class="top-left">
+          <span class="day-badge" id="top-day">第 1 天</span>
+          <span class="location-info" id="top-loc">边境地带 - 枢纽城 - 下午</span>
+        </div>
+        <div class="top-right">
+          <span id="my-faction" style="margin-right: 15px; font-weight: normal; color: var(--text-dim)"></span>
+          <span id="top-money">0 c.cat</span>
+          <button class="toggle-btn" onclick="toggleCollapse()">▼</button>
+        </div>
+      </div>
+      <div class="collapsible-content">
+        <div class="nav-tabs">
+          <div class="tab-btn active" onclick="switchTab('world')" data-tab="world">概览</div>
+          <div class="tab-btn" onclick="switchTab('squad')" data-tab="squad">小队</div>
+          <div class="tab-btn" onclick="switchTab('view')" data-tab="view">视野</div>
+          <div class="tab-btn" onclick="switchTab('intel')" data-tab="intel">情报</div>
+          <div class="tab-btn" onclick="switchTab('mission')" data-tab="mission">日志</div>
+          <div class="tab-btn" onclick="switchTab('map')" data-tab="map">地图</div>
+        </div>
+        <div class="content-area">
+          <div id="pane-world" class="tab-pane active">
+            <div class="section-box">
+              <div class="section-title">当前事件</div>
+              <div id="world-event" class="event-text"></div>
+            </div>
+            <div id="world-player"></div>
+          </div>
+          <div id="pane-squad" class="tab-pane">
+            <div class="section-title">小队成员</div>
+            <div id="squad-list"></div>
+          </div>
+          <div id="pane-view" class="tab-pane">
+            <div class="section-title">周边环境</div>
+            <div id="view-list"></div>
+          </div>
+          <div id="pane-intel" class="tab-pane">
+            <div class="section-box">
+              <div class="section-title">世界局势</div>
+              <div style="margin-bottom: 10px">
+                <span style="color: #888; margin-right: 10px">敌对:</span><span id="intel-hostile"></span>
+              </div>
+              <div><span style="color: #888; margin-right: 10px">友方:</span><span id="intel-ally"></span></div>
+            </div>
+            <div class="section-box">
+              <div class="section-title">街谈巷议</div>
+              <div id="intel-rumors" style="font-style: italic; color: #ccc"></div>
+            </div>
+          </div>
+          <div id="pane-mission" class="tab-pane"><div id="mission-list"></div></div>
+          <div id="pane-map" class="tab-pane">
+            <div class="section-title">地图</div>
+            <div class="map-frame-wrap">
+              <div id="map-loading" class="map-loading">地图加载中...</div>
+              <iframe id="map-frame" title="地图" loading="lazy"></iframe>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="char-modal" class="modal-overlay">
+      <div class="modal-content">
+        <button class="close-btn" onclick="closeModal()">×</button>
+        <div id="modal-content-inner"></div>
+      </div>
+    </div>
+    <div id="tooltip"></div>
+  </body>
+</html>

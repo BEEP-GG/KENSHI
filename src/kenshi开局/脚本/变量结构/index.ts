@@ -366,7 +366,11 @@ const characterTransform = data => {
     }
   });
   data.血量.最大 = Math.floor(50 + finalAttrs.TGH * 2 + data.等级 * 1 + bodySizeHpModifier + hpTraitModifier);
-  const hpFixedRegex = /(?:最大生命值|最大血量|HP|血量).*(?:固定为|固定|设定为|就是)\s*(\d+)/i;
+
+  // 仅在“明确声明固定值”时才覆盖动态计算，避免把普通叙述里的数字误判为固定血量。
+  // 例如必须是“最大血量固定为121 / HP设定为121”这类句式，
+  // 不再接受宽松的“血量...就是121”模糊匹配。
+  const hpFixedRegex = /(?:最大生命值|最大血量|HP)\s*(?:固定为|固定|设定为)\s*(\d+)/i;
   for (const desc of allDescriptions) {
     if (!desc) continue;
     const match = desc.match(hpFixedRegex);

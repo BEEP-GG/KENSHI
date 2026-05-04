@@ -733,6 +733,8 @@ type MemberStatusData = {
 type CampLogSection = '休息交谈' | '训练终端' | '奴隶处置';
 
 type CampActionLog = {
+  memberId: string;
+  actionKey: string;
   section: CampLogSection;
   memberName: string;
   mainCategoryName: string;
@@ -1467,6 +1469,13 @@ export default function App() {
     const isTryingFullAction =
       subId === 'h1' || subId === 'co1' || subId === 'co2' || subId === 'in1' || subId === 'in3';
 
+    // 仅在开启“无限BEEP”时允许重roll同一动作；未开启时同动作也会占用行动次数
+    if (existingSameAction && !isInfiniteConfig) {
+      setToastMessage('未开启【无限BEEP】时，不能重复重roll同一行动');
+      setTimeout(() => setToastMessage(null), 3000);
+      return;
+    }
+
     // 无限beep：允许“同一条已做动作”重roll，但不允许突破数量规则
     if (hasFullAction && !existingSameAction) {
       setToastMessage('已进行需要耗费全轮的活动，本轮无法再进行任何活动');
@@ -1835,9 +1844,10 @@ export default function App() {
 
       const section: CampLogSection =
         page === 'training' ? '训练终端' : activeCategory?.id === 'slave_mgmt' ? '奴隶处置' : '休息交谈';
-      setCampActionLogs(prev => [
-        ...prev,
-        {
+      setCampActionLogs(prev => {
+        const newLog: CampActionLog = {
+          memberId: selectedMember,
+          actionKey,
           section,
           memberName: charName,
           mainCategoryName: activeCategory?.name || '',
@@ -1845,8 +1855,16 @@ export default function App() {
           resultType: type,
           resultDesc: desc,
           resultEffect: targetEffectStr || effectStr,
-        },
-      ]);
+        };
+
+        const idx = prev.findIndex(
+          log => log.memberId === selectedMember && log.section === section && log.actionKey === actionKey,
+        );
+        if (idx < 0) return [...prev, newLog];
+        const next = [...prev];
+        next[idx] = newLog;
+        return next;
+      });
 
       setMemberStatuses(prev => {
         const existing = prev[selectedMember] || {};

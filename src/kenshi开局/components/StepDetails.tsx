@@ -444,6 +444,23 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
 
   React.useEffect(() => {
     if (!allowSquadMembers) {
+      const hasResidualMembers = data.squadMembers.some(member => member.name || member.race || member.subrace);
+      if (hasResidualMembers) {
+        const resetMembers: SquadMemberData[] = Array.from({ length: 4 }, () => ({
+          race: '',
+          subrace: '',
+          level: 1,
+          attributes: { ...INITIAL_ATTRIBUTES },
+          name: '',
+          gender: 'male',
+          age: 25,
+          appearance: { ...INITIAL_APPEARANCE },
+          traits: [],
+          customTraitName: '',
+          customTraitDescription: '',
+        }));
+        updateData({ squadMembers: resetMembers });
+      }
       return;
     }
 
