@@ -29,6 +29,14 @@ type Attributes = {
   CHA: number;
 };
 
+type BackpackItem = {
+  介绍?: string;
+  数量?: number;
+  重量?: number;
+  价值?: number;
+  子分类?: string;
+};
+
 type BattleCharacter = {
   id: string;
   name: string;
@@ -36,7 +44,7 @@ type BattleCharacter = {
   hp: number;
   maxHp: number;
   startHp: number;
-  fractured: boolean;
+  fractureStacks: number;
   faction: Faction;
   subFaction?: SubFaction;
   intent?: string;
@@ -64,9 +72,10 @@ type BattleCharacter = {
   noBlockNextRound: boolean;
   defenseBonus: number;
   escaped: boolean;
+  lowHpTraumaBoostUsed: boolean;
   hitBonusAgainst: Record<string, number>;
   raceName: string;
-  backpackItems: Record<string, { 介绍?: string; 数量?: number; 重量?: number; 价值?: number }>;
+  backpackItems: Record<string, BackpackItem>;
   weaponRaw: any;
   subWeaponRaw: any;
   armorRaw: any;
@@ -83,6 +92,7 @@ type BattleState = {
   result: 'victory' | 'defeat' | null;
   endReason?: 'normal' | 'surrender';
   lastRoundAttackersCount: Record<string, number>;
+  nonLethalMode: 'all' | 'current' | null; // 非致命模式：'all'所有友方，'current'当前角色，null关闭
 };
 
 type BattleOutcome =
@@ -208,6 +218,9 @@ const BATTLE_RULES = `战斗轮结构:
 - 连击机制: 若角色拥有多次攻击次数，防御方在同一轮内防御后续攻击时，【最终防御成功率】每下累积 -10。
 - 大成功与大失败:
     攻击大成功 (01-07): 伤害结算x1.5且无法格挡。
+    武术例外:
+      速度型(DEX>=STR): 大成功区间01-10，触发额外攻击1次。
+      重击型(STR>DEX): 大成功区间01-07，伤害x2且无视5点DR。
     攻击大失败 (01-05): 攻击者失去平衡，下一轮无法执行格挡，且防御方可获得一次即时反击。
 - 濒死与韧性:
     倒地判定: 当 HP 归零时，角色需进行一次【体质】检定。
@@ -227,19 +240,20 @@ const WEAPON_CATEGORY_GUIDE = `武器类别详解：
 
 武士刀：
 - 每次对目标造成未被DR格挡的切割伤害时，对目标施加1层“流血”。流血每回合开始时造成1点直接伤害，可叠加。
+- 基础攻速为3。
 
 军刀：
-- 装备军刀类武器时，“武器格挡”基础值+7。
+- 装备军刀类武器时，“武器格挡”基础值+12。
 
 砍刀：
-- 无视对方5点DR。
-- 攻击检定大成功（01-07）时触发“破甲”：目标DR降低10。
+- 无视对方7点DR。
+- 攻击检定大成功（01-07）时触发“破甲”：目标DR降低8（可叠加，对该目标全局生效）。
 
 长柄类：
 - 每次攻击时可选择最多3个敌人进行攻击检定；每多一个目标，攻击检定-7。
 
 钝器：
-- 攻击检定大成功（01-07）时，强制目标进行一次【体质】中等检定；失败则进入“骨折”，逃跑检定-25、力量/敏捷-15，直到夹板包清除。
+- 攻击检定大成功（01-07）时，目标必定获得1层“骨折”；每层骨折使力量/敏捷-10、逃跑检定-15（可叠加，直到夹板包清除）。
 
 大型武器：
 - 每次攻击时对2个敌人进行攻击检定。
@@ -247,12 +261,22 @@ const WEAPON_CATEGORY_GUIDE = `武器类别详解：
 
 弩：
 - 基础效果：无视对方7点DR。
+- 基础攻速为1。
 - 大失败不会触发反击，而是误伤队友。
 - 弩矢效果后续补充。
 
 弓：
 - 大失败不会触发反击，而是误伤队友。
-- 箭矢效果后续补充。`;
+- 箭矢效果后续补充。
+- 当弓/弩作为主武器且无副武器时，防御时只能闪避不能格挡；若有副武器则可正常防御。
+- 对弓/弩攻击只能闪避，无法格挡。
+
+武术：
+- 识别种类为“武术”。
+- 速度型（DEX>=STR）：基础攻速3；大成功区间01-10，触发额外攻击1次。
+- 重击型（STR>DEX）：基础攻速2；无视5点DR；大成功区间01-07，伤害x2。
+- 两种武术的伤害比例均沿用变量中的伤害比例。
+- 大失败与其他武器一致。`;
 
 const TRAUMA_RULES = `创伤与状态详解：
 
@@ -261,12 +285,13 @@ const TRAUMA_RULES = `创伤与状态详解：
 - 阈值降到0会升级到下一等级，超额会继续抵扣下一等级阈值。
 
 升级条件（TGH=体质，HPmax=最大生命值）：
-- 0→1：攻击大成功 或 单次伤害 > TGH*0.6 或 阈值归零
-- 1→2：攻击大成功 或 单次伤害 > TGH*0.6 或 阈值归零
-- 2→3：单次伤害 > TGH*0.6 或 阈值归零
+- 0→1：攻击大成功 或 阈值归零（阈值=0.85*TGH）
+- 1→2：攻击大成功 或 单次伤害 > TGH*0.45 或 阈值归零（阈值=0.55*TGH）
+- 2→3：单次伤害 > TGH*0.4 或 阈值归零（阈值=0.45*TGH）
 - 3→4：单次伤害 > TGH*0.3 或 阈值归零
 - 任意等级→3：单次伤害 ≥ HPmax*0.5
 - 任意等级→4：单次伤害 ≥ HPmax*0.7
+- 低血加成：若本次受击后 HP ≤ HPmax*0.3，则整场战斗仅首次触发一次额外+1创伤升级（最多到4）
 
 创伤效果：
 - 0 无效果
@@ -335,6 +360,13 @@ const actions: ActionType[] = [
     icon: Crosshair,
     color: 'text-red-400 border-red-900/50 hover:bg-red-950/40 hover:border-red-500/50',
     glow: 'group-hover:shadow-[0_0_20px_rgba(248,113,113,0.3)]',
+  },
+  {
+    id: 'subdue',
+    label: '制服',
+    icon: Shield,
+    color: 'text-emerald-400 border-emerald-900/50 hover:bg-emerald-950/40 hover:border-emerald-500/50',
+    glow: 'group-hover:shadow-[0_0_20px_rgba(52,211,153,0.3)]',
   },
   {
     id: 'tactics',
@@ -426,10 +458,53 @@ const getDamageRatio = (weaponType: string, damageType: string) => {
 };
 
 const isRangedWeapon = (weaponType: string) => /(弓|弩|远程|枪)/.test(weaponType || '');
+const isBowOrCrossbow = (weaponType: string) => /(弓|弩)/.test(weaponType || '');
 
 const toNumber = (value: unknown, fallback = 0) => {
   const num = _.toNumber(value);
   return Number.isFinite(num) ? num : fallback;
+};
+
+const LEGACY_ITEM_SUBCATEGORY_MAP: Record<string, string> = {
+  装备: '护甲',
+  武器材料: '矿石',
+  护甲材料: '布料',
+};
+
+const normalizeItemSubCategory = (subCategory: unknown) => {
+  const value = String(subCategory || '').trim();
+  if (!value) return '';
+  return LEGACY_ITEM_SUBCATEGORY_MAP[value] || value;
+};
+
+const normalizeBackpackItems = (items: unknown): Record<string, BackpackItem> => {
+  if (!items || typeof items !== 'object') return {};
+  return Object.entries(items as Record<string, BackpackItem>).reduce<Record<string, BackpackItem>>(
+    (acc, [name, item]) => {
+      const source = item && typeof item === 'object' ? item : {};
+      acc[name] = {
+        ...source,
+        子分类: normalizeItemSubCategory((source as BackpackItem).子分类),
+      };
+      return acc;
+    },
+    {},
+  );
+};
+
+const MEDICAL_ITEM_NAMES = [
+  '基础急救包',
+  '标准急救包',
+  '高级急救包',
+  '普通夹板包',
+  '高级夹板包',
+  '骨人修理包',
+  '骨人修理箱',
+];
+
+const isMedicalBackpackItem = (name: string, item: BackpackItem | undefined) => {
+  if (MEDICAL_ITEM_NAMES.includes(name)) return true;
+  return normalizeItemSubCategory(item?.子分类) === '医疗用品';
 };
 
 const sumHpByFaction = (units: BattleCharacter[], faction: Faction, field: 'hp' | 'startHp') =>
@@ -588,8 +663,9 @@ const getBattleOutcome = (units: BattleCharacter[]): BattleOutcome => {
 
 const getTraumaThresholdByLevel = (tgh: number, level: number) => {
   if (level >= 4) return 0;
-  if (level <= 1) return tgh * 0.7;
-  if (level === 2) return tgh * 0.9;
+  if (level <= 0) return tgh * 0.85;
+  if (level === 1) return tgh * 0.55;
+  if (level === 2) return tgh * 0.45;
   return tgh * 0.4;
 };
 
@@ -636,8 +712,7 @@ const normalizeCharacter = (
   const subWeaponDamageType = _.get(subWeapon, ['伤害类型'], '');
   const armorRaw = _.get(raw, ['护甲'], {});
   const armorBaseDR = toNumber(_.get(armorRaw, ['防护能力(DR)']), toNumber(_.get(armorRaw, ['防护能力']), 0));
-  const armorFeatureDR = toNumber(_.get(armorRaw, ['特性', 'DR']), 0);
-  const armorDR = Math.max(0, armorBaseDR + armorFeatureDR);
+  const armorDR = Math.max(0, armorBaseDR);
   const traumaRaw = _.get(raw, ['创伤'], {});
   const getTraumaLevel = (part: '左臂' | '右臂' | '左腿' | '右腿') =>
     _.clamp(Math.floor(toNumber(_.get(traumaRaw, [part, '等级']), 0)), 0, 4);
@@ -659,12 +734,20 @@ const normalizeCharacter = (
   const shockTurns = Math.max(0, Math.floor(toNumber(_.get(raw, ['状态', '休克回合']), 0)));
   const baseAttackCount = Math.floor(toNumber(_.get(raw, ['攻击次数']), 0));
   const isHeavyOrBlunt = /大型|钝器/.test(weaponType);
-  const attackCount = Math.max(1, (isHeavyOrBlunt ? 1 : 2) + baseAttackCount);
+  const isMartialArts = /武术/.test(weaponType);
+  const martialBaseAttackRate = attributes.DEX >= attributes.STR ? 3 : 2;
+  const baseAttackRate = isMartialArts
+    ? martialBaseAttackRate
+    : /武士刀/.test(weaponType)
+      ? 3
+      : /弩/.test(weaponType)
+        ? 1
+        : isHeavyOrBlunt
+          ? 1
+          : 2;
+  const attackCount = Math.max(1, baseAttackRate + baseAttackCount);
   const raceName = String(_.get(raw, ['种族', '名称'], ''));
-  const backpackItems = (_.get(raw, ['背包', '物品'], {}) || {}) as Record<
-    string,
-    { 介绍?: string; 数量?: number; 重量?: number; 价值?: number }
-  >;
+  const backpackItems = normalizeBackpackItems(_.get(raw, ['背包', '物品'], {}) || {});
 
   return {
     id: String(_.get(raw, ['id'], name) || name),
@@ -673,7 +756,7 @@ const normalizeCharacter = (
     hp,
     maxHp,
     startHp: hp,
-    fractured: false,
+    fractureStacks: 0,
     faction,
     subFaction,
     intent: _.get(raw, ['意图'], undefined),
@@ -701,6 +784,7 @@ const normalizeCharacter = (
     noBlockNextRound: false,
     defenseBonus: 0,
     escaped: false,
+    lowHpTraumaBoostUsed: false,
     hitBonusAgainst: {},
     raceName,
     backpackItems,
@@ -843,7 +927,7 @@ const getDefensePenalty = (unit: BattleCharacter, useBlock: boolean) => {
 
 const getEscapePenalty = (unit: BattleCharacter) => {
   const penalty = getLegPenalty(getLegTraumaLevel(unit));
-  if (unit.fractured) return penalty + 25;
+  if ((unit.fractureStacks || 0) > 0) return penalty + unit.fractureStacks * 15;
   return penalty;
 };
 
@@ -863,7 +947,7 @@ const getEscapeStatusPenalty = (unit: BattleCharacter) => {
 };
 
 const getAttackAttribute = (attacker: BattleCharacter) => {
-  const fracturePenalty = attacker.fractured ? 15 : 0;
+  const fracturePenalty = (attacker.fractureStacks || 0) * 10;
   const str = Math.max(1, attacker.attributes.STR - fracturePenalty);
   const dex = Math.max(1, attacker.attributes.DEX - fracturePenalty);
   const base = isRangedWeapon(attacker.weapon.type) ? attacker.attributes.PER : (str + dex) / 2;
@@ -872,16 +956,24 @@ const getAttackAttribute = (attacker: BattleCharacter) => {
 };
 
 const getDefenseBase = (defender: BattleCharacter, useBlock: boolean) => {
-  const fracturePenalty = defender.fractured ? 15 : 0;
+  const fracturePenalty = (defender.fractureStacks || 0) * 10;
   const str = Math.max(1, defender.attributes.STR - fracturePenalty);
   const dex = Math.max(1, defender.attributes.DEX - fracturePenalty);
   const base = useBlock ? dex * 0.5 + str * 0.2 : dex * 0.6 + defender.attributes.PER * 0.2;
-  const blockBonus = useBlock && /军刀/.test(defender.weapon.type) ? 7 : 0;
+  const blockBonus = useBlock && /军刀/.test(defender.weapon.type) ? 12 : 0;
   const penalty = getDefensePenalty(defender, useBlock);
   return base + blockBonus + (defender.defenseBonus || 0) - penalty;
 };
 
-const getDefenseMode = (defender: BattleCharacter) => defender.weapon.type !== '无';
+const getDefenseMode = (defender: BattleCharacter, attackerWeaponType: string) => {
+  const hasMainWeapon = defender.weapon.type !== '无';
+  if (!hasMainWeapon) return false;
+  if (isBowOrCrossbow(attackerWeaponType)) return false;
+  const defenderMainIsBowOrCrossbow = isBowOrCrossbow(defender.weapon.type);
+  const hasSubWeapon = defender.subWeapon?.type && defender.subWeapon.type !== '无';
+  if (defenderMainIsBowOrCrossbow && !hasSubWeapon) return false;
+  return true;
+};
 
 const applyDamage = (defender: BattleCharacter, damage: number) => {
   const newHp = Math.max(0, _.round(defender.hp - damage, 2));
@@ -1153,6 +1245,7 @@ export default function App() {
     result: null,
     endReason: 'normal',
     lastRoundAttackersCount: {},
+    nonLethalMode: null,
   });
   const battleOutcome = useMemo(() => getBattleOutcome(battleState.units), [battleState.units]);
   const displayOutcome: BattleOutcome = battleState.endReason === 'surrender' ? '投降' : battleOutcome;
@@ -1179,6 +1272,7 @@ export default function App() {
   const [medicalActorId, setMedicalActorId] = useState<string | null>(null);
   const [selectedMedicalTargetId, setSelectedMedicalTargetId] = useState<string | null>(null);
   const [selectedMedicalItem, setSelectedMedicalItem] = useState<string | null>(null);
+  const [nonLethalMenuOpen, setNonLethalMenuOpen] = useState(false);
   const [roundLimit, setRoundLimit] = useState<number | null>(10);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -1190,7 +1284,7 @@ export default function App() {
     character: BattleCharacter;
   }>(null);
   const [tutorialStep, setTutorialStep] = useState(0);
-  const [targetingMode, setTargetingMode] = useState<'attack' | null>(null);
+  const [targetingMode, setTargetingMode] = useState<'attack' | 'subdue' | null>(null);
   const [attackSelectionIds, setAttackSelectionIds] = useState<string[]>([]);
   const [attackSelectionActorId, setAttackSelectionActorId] = useState<string | null>(null);
   const [spotlightRect, setSpotlightRect] = useState<null | {
@@ -1339,7 +1433,15 @@ export default function App() {
       const stat = _.get(mvuData, ['stat_data'], {});
       const { units, playerId } = buildUnitsFromStat(stat);
       if (cancelledRef.current) return;
-      setBattleState({ round: 1, units, logs: [], result: null, endReason: 'normal', lastRoundAttackersCount: {} });
+      setBattleState({
+        round: 1,
+        units,
+        logs: [],
+        result: null,
+        endReason: 'normal',
+        lastRoundAttackersCount: {},
+        nonLethalMode: null,
+      });
       setPlayerId(playerId);
       setResultConfirmed(false);
       setSelectedActorId(playerId);
@@ -1491,6 +1593,25 @@ export default function App() {
       setSurrenderConfirmOpen(true);
       return;
     }
+
+    if (actionId === 'subdue') {
+      if (targetingMode === 'subdue' && attackSelectionActorId === actorId && attackSelectionIds.length > 0) {
+        setPlannedActions(prev => ({
+          ...prev,
+          [actorId]: { actionId: 'subdue', targetIds: attackSelectionIds },
+        }));
+        updateUnitIntent(actorId, `制服 ${attackSelectionIds.join('、')}`);
+        setTargetingMode(null);
+        setAttackSelectionIds([]);
+        setAttackSelectionActorId(null);
+        return;
+      }
+      setTargetingMode('subdue');
+      setAttackSelectionActorId(actorId);
+      setAttackSelectionIds([]);
+      updateUnitIntent(actorId, '选择制服目标');
+      return;
+    }
   };
 
   const confirmSurrender = () => {
@@ -1600,6 +1721,73 @@ export default function App() {
     dodged?: boolean;
   };
 
+  const applySubdue = (
+    units: BattleCharacter[],
+    attacker: BattleCharacter,
+    defender: BattleCharacter,
+    logs: string[],
+    lastRoundAttackersCount: Record<string, number>,
+  ): AttackResult => {
+    appendLog(logs, `${attacker.name}: 尝试制服 ${defender.name}。`);
+
+    // 计算血量难度修正
+    const hpRatio = defender.hp / defender.maxHp;
+    let hpDifficulty = 0;
+    if (hpRatio > 0.2) {
+      hpDifficulty = 60;
+    } else if (hpRatio <= 0.2 && hpRatio > 0.1) {
+      hpDifficulty = 5;
+    } else if (hpRatio <= 0.1) {
+      hpDifficulty = -15;
+    }
+
+    // 计算等级差
+    const levelDiff = defender.level - attacker.level;
+
+    // 我方加成: D100 + 力量(每20属性+1修正) + 魅力(每5属性+1修正)
+    const myRoll = d100();
+    const myBonus = Math.round(attacker.attributes.STR / 20) + Math.round(attacker.attributes.CHA / 5);
+    const myTotal = Math.round(myRoll + myBonus);
+
+    // 敌方加成: D100 + 意志(每10属性+1修正) + 体质(每20属性+1修正) + 额外难度 - 双方等级差
+    const enemyRoll = d100();
+    const enemyBonus = Math.round(defender.attributes.WIL / 10) + Math.round(defender.attributes.TGH / 20);
+    const enemyTotal = Math.round(enemyRoll + enemyBonus + hpDifficulty - levelDiff);
+
+    appendLog(
+      logs,
+      `${attacker.name}: 制服检定 - 我方[${myRoll}+${myBonus}=${myTotal}] vs 敌方[${enemyRoll}+${enemyBonus}+${hpDifficulty}-${levelDiff}=${enemyTotal}]`,
+    );
+
+    if (myTotal > enemyTotal) {
+      // 制服成功
+      const updatedDefender = { ...defender, state: '已被制服' };
+      appendLog(logs, `${attacker.name}: 制服成功！${defender.name}（已被制服）。`);
+
+      const moraleUnits = applyMoraleOutcome(units, updatedDefender, logs, 'damage', lastRoundAttackersCount);
+      const nextUnits = replaceUnit(replaceUnit(moraleUnits, attacker), updatedDefender);
+
+      return {
+        units: nextUnits,
+        attacker,
+        defender: updatedDefender,
+      };
+    } else {
+      // 制服失败
+      appendLog(logs, `${attacker.name}: 制服失败。`);
+
+      // 制服失败可能使攻击者陷入失衡
+      if (d100() <= 20) {
+        const updatedAttacker = { ...attacker, defenseBonus: (attacker.defenseBonus || 0) - 10 };
+        appendLog(logs, `${attacker.name}: 制服失败导致失衡，防御检定-10。`);
+        const nextUnits = replaceUnit(units, updatedAttacker);
+        return { units: nextUnits, attacker: updatedAttacker, defender };
+      }
+
+      return { units, attacker, defender };
+    }
+  };
+
   const applyAttack = (
     units: BattleCharacter[],
     attacker: BattleCharacter,
@@ -1610,6 +1798,8 @@ export default function App() {
     attackPenaltyExtra = 0,
     targetIndex?: number,
     targetCount?: number,
+    allowMartialExtraAttack = true,
+    nonLethalMode: 'all' | 'current' | null = null,
   ): AttackResult => {
     const hitBonus = attacker.hitBonusAgainst[defender.id] || 0;
     if (attacker.hitBonusAgainst[defender.id]) {
@@ -1623,7 +1813,11 @@ export default function App() {
     const attackRoll = rawRoll + hitBonus - attackPenaltyExtra;
     const evadeBase = defender.attributes.DEX * 0.5 + defender.attributes.PER * 0.2;
     const evadeValue = Math.min(70, evadeBase);
-    const isCrit = rawRoll <= 7;
+    const isMartialArts = /武术/.test(attacker.weapon.type);
+    const isMartialSpeed = isMartialArts && attacker.attributes.DEX >= attacker.attributes.STR;
+    const isMartialHeavy = isMartialArts && attacker.attributes.STR > attacker.attributes.DEX;
+    const critThreshold = isMartialSpeed ? 10 : 7;
+    const isCrit = rawRoll <= critThreshold;
     const isHeavyWeapon = /大型/.test(attacker.weapon.type);
     const isFumble = rawRoll <= (isHeavyWeapon ? 10 : 5);
 
@@ -1677,7 +1871,7 @@ export default function App() {
 
     appendLog(logs, `${defender.name}: 闪避判定失败 (判定 ${attackRoll.toFixed(0)} >= ${evadeValue.toFixed(0)})`);
 
-    let useBlock = getDefenseMode(defender);
+    let useBlock = getDefenseMode(defender, attacker.weapon.type);
     if (defender.noBlockNextRound) useBlock = false;
     const defensePenalty = attackIndex * 10;
     const defenseBase = getDefenseBase(defender, useBlock);
@@ -1699,7 +1893,7 @@ export default function App() {
 
     const baseDamage = rollDice(attacker.weapon.damageDice) + (attacker.attributes.STR - 20) * 0.4;
     const rawDamage = Math.max(0, baseDamage);
-    const critMultiplier = isCrit ? 1.5 : 1;
+    const critMultiplier = isCrit ? (isMartialHeavy ? 2 : isMartialSpeed ? 1 : 1.5) : 1;
     const finalDamage = rawDamage * critMultiplier;
     const ratio = getDamageRatio(attacker.weapon.type, attacker.weapon.damageType);
     let cutDamage = Math.round(finalDamage * ratio.cut);
@@ -1710,14 +1904,37 @@ export default function App() {
       bluntDamage = Math.round(bluntDamage * 0.5);
     }
 
-    const drIgnore = /砍刀/.test(attacker.weapon.type) ? 5 : /弩/.test(attacker.weapon.type) ? 7 : 0;
+    const drIgnore = /砍刀/.test(attacker.weapon.type)
+      ? 7
+      : /弩/.test(attacker.weapon.type)
+        ? 7
+        : isMartialHeavy
+          ? 5
+          : 0;
     const effectiveDR = Math.max(0, defender.armorDR - drIgnore);
     const cutAfterDR = Math.max(0, Math.round(cutDamage - effectiveDR));
     const totalDamage = Math.round(cutAfterDR + bluntDamage);
     const armorAbsorbed = Math.round(Math.max(0, cutDamage - cutAfterDR));
 
     const hpBefore = defender.hp;
-    const updatedDefender = applyDamage(defender, totalDamage);
+    let actualDamage = totalDamage;
+
+    // 非致命模式：伤害使目标血量锁定为1
+    if (nonLethalMode && defender.faction !== attacker.faction) {
+      const isAttackerNonLethal =
+        (nonLethalMode === 'all' && attacker.subFaction === 'squad') ||
+        (nonLethalMode === 'current' && attacker.id === playerId);
+
+      if (isAttackerNonLethal) {
+        // 计算实际伤害，但确保目标血量不低于1
+        const potentialHpAfter = Math.max(0, defender.hp - totalDamage);
+        if (potentialHpAfter < 1) {
+          actualDamage = defender.hp - 1;
+        }
+      }
+    }
+
+    const updatedDefender = applyDamage(defender, actualDamage);
     const hpAfter = updatedDefender.hp;
     const hitPart = rollInjuryPart();
     const baseThreshold = getTraumaThresholdByLevel(defender.attributes.TGH, defender.traumaParts[hitPart] || 0);
@@ -1736,17 +1953,17 @@ export default function App() {
     }
 
     if (/砍刀/.test(attacker.weapon.type) && isCrit) {
-      const reduced = Math.max(0, updatedDefender.armorDR - 10);
+      const reduced = Math.max(0, updatedDefender.armorDR - 8);
       updatedDefender.armorDR = reduced;
-      appendLog(logs, `${defender.name}: 破甲效果触发，DR降低10。`);
+      appendLog(logs, `${defender.name}: 破甲效果触发，DR降低8。`);
     }
 
     if (/钝器/.test(attacker.weapon.type) && isCrit) {
-      const toughSuccess = getMediumCheckSuccess(defender.attributes.TGH);
-      if (!toughSuccess) {
-        updatedDefender.fractured = true;
-        appendLog(logs, `${defender.name}: 骨折！力量/敏捷-15，逃跑检定-25，需夹板包处理。`);
-      }
+      updatedDefender.fractureStacks = Math.max(0, (updatedDefender.fractureStacks || 0) + 1);
+      appendLog(
+        logs,
+        `${defender.name}: 骨折层数+1（当前${updatedDefender.fractureStacks}层，力量/敏捷每层-10，逃跑惩罚每层-15）。`,
+      );
     }
 
     const traumaThreshold = defender.attributes.TGH * 0.4;
@@ -1765,10 +1982,12 @@ export default function App() {
       const tgh = Math.max(1, defender.attributes.TGH || 1);
       let nextLevel = partLevel;
       let remaining = updatedDefender.traumaAccumulated[hitPart] || 0;
+      let lowHpBonusTrigger = hpAfter > 0 && hpAfter <= maxHp * 0.3 && !updatedDefender.lowHpTraumaBoostUsed;
 
       const immediateUpgrade =
-        (partLevel <= 1 && (isCrit || totalDamage > tgh * 0.6)) ||
-        (partLevel === 2 && totalDamage > tgh * 0.6) ||
+        (partLevel === 0 && isCrit) ||
+        (partLevel === 1 && (isCrit || totalDamage > tgh * 0.45)) ||
+        (partLevel === 2 && totalDamage > tgh * 0.4) ||
         (partLevel === 3 && totalDamage > tgh * 0.3);
       if (immediateUpgrade) remaining = Math.min(remaining, 0);
 
@@ -1787,6 +2006,20 @@ export default function App() {
           break;
         }
         remaining += getTraumaThresholdByLevel(tgh, nextLevel);
+      }
+
+      if (lowHpBonusTrigger && nextLevel <= partLevel) {
+        lowHpBonusTrigger = false;
+      }
+
+      if (lowHpBonusTrigger && nextLevel < 4) {
+        nextLevel += 1;
+        updatedDefender.lowHpTraumaBoostUsed = true;
+        if (nextLevel >= 4) {
+          remaining = 0;
+        } else {
+          remaining = Math.min(remaining, getTraumaThresholdByLevel(tgh, nextLevel));
+        }
       }
 
       updatedDefender.traumaAccumulated = {
@@ -1814,8 +2047,30 @@ export default function App() {
     }
 
     const moraleUnits = applyMoraleOutcome(units, updatedDefender, logs, 'damage', lastRoundAttackersCount);
+    const nextUnits = replaceUnit(replaceUnit(moraleUnits, attacker), updatedDefender);
+
+    if (isMartialSpeed && isCrit && allowMartialExtraAttack && updatedDefender.hp > 0 && attacker.hp > 0) {
+      appendLog(logs, `${attacker.name}: 武术大成功，触发额外攻击1次。`);
+      const nextAttacker = getUnit(nextUnits, attacker.id);
+      const nextDefender = getUnit(nextUnits, defender.id);
+      if (nextAttacker && nextDefender && nextAttacker.hp > 0 && nextDefender.hp > 0) {
+        return applyAttack(
+          nextUnits,
+          nextAttacker,
+          nextDefender,
+          0,
+          logs,
+          lastRoundAttackersCount,
+          0,
+          undefined,
+          undefined,
+          false,
+        );
+      }
+    }
+
     return {
-      units: replaceUnit(replaceUnit(moraleUnits, attacker), updatedDefender),
+      units: nextUnits,
       attacker,
       defender: updatedDefender,
     };
@@ -1878,7 +2133,10 @@ export default function App() {
         });
 
       const turnOrderIds = buildTurnOrder(workingUnits).map(unit => unit.id);
-      const attackPlans = new Map<string, { targetId?: string; plannedTargetIds?: string[]; targetFaction: Faction }>();
+      const attackPlans = new Map<
+        string,
+        { actionId: string; targetId?: string; plannedTargetIds?: string[]; targetFaction: Faction }
+      >();
 
       for (const actorId of turnOrderIds) {
         const actor = getUnit(workingUnits, actorId);
@@ -1921,15 +2179,10 @@ export default function App() {
                 return { ...unit, backpackItems: nextItems };
               };
 
-              const hasAnyItem = [
-                '基础急救包',
-                '标准急救包',
-                '高级急救包',
-                '普通夹板包',
-                '高级夹板包',
-                '骨人修理包',
-                '骨人修理箱',
-              ].some(name => actorItemCounts(name) > 0);
+              const hasAnyItem = Object.entries(actor.backpackItems || {}).some(([name, item]) => {
+                if (!isMedicalBackpackItem(name, item)) return false;
+                return actorItemCounts(name) > 0;
+              });
 
               if (!hasAnyItem) {
                 workingUnits = setUnitIntent(workingUnits, actor.id, '医疗失败');
@@ -1990,7 +2243,7 @@ export default function App() {
                 updatedTarget = {
                   ...updatedTarget,
                   traumaParts: { ...updatedTarget.traumaParts, [partToHeal]: nextLevel },
-                  fractured: false,
+                  fractureStacks: 0,
                 };
                 updatedActor = consumeItem(updatedActor, chosenItem);
                 appendLog(
@@ -2057,6 +2310,30 @@ export default function App() {
               };
             }
 
+            if (planned?.actionId === 'subdue') {
+              const plannedTargetIds = planned.targetIds || [];
+              let target: BattleCharacter | null = null;
+              if (planned.targetId) {
+                target = getUnit(workingUnits, planned.targetId) ?? null;
+              }
+              if (!target || target.hp <= 0 || target.escaped) {
+                target = pickRandomTarget(workingUnits, 'enemy');
+              }
+              if (!target) {
+                workingUnits = setUnitIntent(workingUnits, actor.id, '无有效目标');
+                continue;
+              }
+
+              workingUnits = setUnitIntent(workingUnits, actor.id, `制服 ${target.name}`);
+              attackPlans.set(actor.id, {
+                actionId: 'subdue',
+                targetId: target.id,
+                plannedTargetIds,
+                targetFaction: 'enemy',
+              });
+              continue;
+            }
+
             let target: BattleCharacter | null = null;
             const plannedTargetIds = planned?.actionId === 'attack' ? planned.targetIds || [] : [];
             if (planned?.actionId === 'attack' && planned.targetId) {
@@ -2072,6 +2349,7 @@ export default function App() {
 
             workingUnits = setUnitIntent(workingUnits, actor.id, `攻击 ${target.name}`);
             attackPlans.set(actor.id, {
+              actionId: 'attack',
               targetId: target.id,
               plannedTargetIds,
               targetFaction: 'enemy',
@@ -2083,7 +2361,12 @@ export default function App() {
               continue;
             }
             workingUnits = setUnitIntent(workingUnits, actor.id, `攻击 ${target.name}`);
-            attackPlans.set(actor.id, { targetId: target.id, plannedTargetIds: [], targetFaction: 'enemy' });
+            attackPlans.set(actor.id, {
+              actionId: 'attack',
+              targetId: target.id,
+              plannedTargetIds: [],
+              targetFaction: 'enemy',
+            });
           }
         } else {
           const targetId = enemyTargetMap[actor.id];
@@ -2092,7 +2375,12 @@ export default function App() {
             workingUnits = setUnitIntent(workingUnits, actor.id, '无有效目标');
             continue;
           }
-          attackPlans.set(actor.id, { targetId: target.id, plannedTargetIds: [], targetFaction: 'friendly' });
+          attackPlans.set(actor.id, {
+            actionId: 'attack',
+            targetId: target.id,
+            plannedTargetIds: [],
+            targetFaction: 'friendly',
+          });
         }
       }
 
@@ -2139,49 +2427,60 @@ export default function App() {
               : [target, ...extraTargets.slice(0, 2)]
             : [target];
 
-          for (const [index, poleTarget] of poleTargets.entries()) {
-            const extraPenalty = isPolearm ? index * 7 : 0;
-            const perAttackTargets = isHeavyWeapon
-              ? [
-                  poleTarget,
-                  ...workingUnits
-                    .filter(
-                      unit =>
-                        unit.faction === targetFaction && unit.id !== poleTarget.id && unit.hp > 0 && !unit.escaped,
-                    )
-                    .slice(0, 1),
-                ]
-              : [poleTarget];
-            let allDodged = isHeavyWeapon;
-            for (const [targetIndex, targetPick] of perAttackTargets.entries()) {
-              const result = applyAttack(
-                workingUnits,
-                actor,
-                targetPick,
-                attackIndex,
-                logs,
-                lastRoundAttackersCount,
-                extraPenalty,
-                targetIndex,
-                perAttackTargets.length,
-              );
-              workingUnits = result.units;
-              if (!result.dodged) {
-                const attackerSet = (lastRoundAttackersMap.get(targetPick.id) ?? new Set<string>()) as Set<string>;
-                attackerSet.add(actor.id);
-                lastRoundAttackersMap.set(targetPick.id, attackerSet);
-              }
-              if (isHeavyWeapon && !result.dodged) allDodged = false;
+          // 制服模式只攻击单个目标，不使用长柄或重武器的特殊逻辑
+          if (plan.actionId === 'subdue') {
+            const result = applySubdue(workingUnits, actor, target, logs, lastRoundAttackersCount);
+            workingUnits = result.units;
+            if (!result.dodged) {
+              const attackerSet = (lastRoundAttackersMap.get(target.id) ?? new Set<string>()) as Set<string>;
+              attackerSet.add(actor.id);
+              lastRoundAttackersMap.set(target.id, attackerSet);
             }
-            if (isHeavyWeapon && perAttackTargets.length > 0 && allDodged) {
-              const latestActor = getUnit(workingUnits, actor.id);
-              if (latestActor) {
-                const updatedActor = {
-                  ...latestActor,
-                  defenseBonus: (latestActor.defenseBonus || 0) - 15,
-                };
-                workingUnits = replaceUnit(workingUnits, updatedActor);
-                appendLog(logs, `${latestActor.name}: 被闪避导致失衡，防御检定-15。`);
+          } else {
+            for (const [index, poleTarget] of poleTargets.entries()) {
+              const extraPenalty = isPolearm ? index * 7 : 0;
+              const perAttackTargets = isHeavyWeapon
+                ? [
+                    poleTarget,
+                    ...workingUnits
+                      .filter(
+                        unit =>
+                          unit.faction === targetFaction && unit.id !== poleTarget.id && unit.hp > 0 && !unit.escaped,
+                      )
+                      .slice(0, 1),
+                  ]
+                : [poleTarget];
+              let allDodged = isHeavyWeapon;
+              for (const [targetIndex, targetPick] of perAttackTargets.entries()) {
+                const result = applyAttack(
+                  workingUnits,
+                  actor,
+                  targetPick,
+                  attackIndex,
+                  logs,
+                  lastRoundAttackersCount,
+                  extraPenalty,
+                  targetIndex,
+                  perAttackTargets.length,
+                );
+                workingUnits = result.units;
+                if (!result.dodged) {
+                  const attackerSet = (lastRoundAttackersMap.get(targetPick.id) ?? new Set<string>()) as Set<string>;
+                  attackerSet.add(actor.id);
+                  lastRoundAttackersMap.set(targetPick.id, attackerSet);
+                }
+                if (isHeavyWeapon && !result.dodged) allDodged = false;
+              }
+              if (isHeavyWeapon && perAttackTargets.length > 0 && allDodged) {
+                const latestActor = getUnit(workingUnits, actor.id);
+                if (latestActor) {
+                  const updatedActor = {
+                    ...latestActor,
+                    defenseBonus: (latestActor.defenseBonus || 0) - 15,
+                  };
+                  workingUnits = replaceUnit(workingUnits, updatedActor);
+                  appendLog(logs, `${latestActor.name}: 被闪避导致失衡，防御检定-15。`);
+                }
               }
             }
           }
@@ -2214,6 +2513,7 @@ export default function App() {
         result,
         endReason: result ? 'normal' : prev.endReason,
         lastRoundAttackersCount: nextLastRoundAttackersCount,
+        nonLethalMode: prev.nonLethalMode,
       };
     });
   };
@@ -2278,7 +2578,21 @@ export default function App() {
       const currentHp = Math.max(0, Math.round(unit.hp));
       const traumaLabel = getTraumaDetailLabel(unit);
       const expText = expMap.has(unit.id) ? `，获得${expMap.get(unit.id)}经验` : '';
-      return `${unit.name}: 受到伤害${damageTaken}, 当前血量${currentHp}, 创伤(${traumaLabel}), 状态${buildStatusLabel(unit)}${expText}`;
+      const consumedMedicalText = (() => {
+        const escapedName = _.escapeRegExp(unit.name);
+        const usage = battleState.logs.reduce<Record<string, number>>((acc, line) => {
+          const m = line.match(new RegExp(`^${escapedName}:\\s*对.+?使用(.+?)(?:，|,|。|$)`));
+          if (!m) return acc;
+          const itemName = (m[1] || '').trim();
+          if (!itemName) return acc;
+          acc[itemName] = (acc[itemName] || 0) + 1;
+          return acc;
+        }, {});
+        const entries = Object.entries(usage);
+        if (entries.length === 0) return '';
+        return `，消耗了${entries.map(([name, count]) => `${name}X${count}`).join('，')}`;
+      })();
+      return `${unit.name}: 受到伤害${damageTaken}, 当前血量${currentHp}, 创伤(${traumaLabel}), 状态${buildStatusLabel(unit)}${expText}${consumedMedicalText}`;
     };
 
     const friendLines = battleState.units
@@ -2315,7 +2629,7 @@ export default function App() {
     const states: string[] = [];
     if (getMaxTraumaLevel(unit) >= 1) states.push('失衡');
     if (unit.bleedLayers > 0) states.push(`流血${unit.bleedLayers}`);
-    if (unit.fractured) states.push('骨折');
+    if ((unit.fractureStacks || 0) > 0) states.push(`骨折${unit.fractureStacks}`);
     if (unit.state === '休克') states.push('休克');
     if (unit.state === '昏迷') states.push('眩晕');
     if (unit.state === '死亡') states.push('死亡');
@@ -2329,7 +2643,6 @@ export default function App() {
   const renderDetailContent = () => {
     if (!detailModal) return null;
     const { type, character } = detailModal;
-    const armorFeatureDR = toNumber(_.get(character.armorRaw, ['特性', 'DR']), 0);
     const armorBaseDR = toNumber(
       _.get(character.armorRaw, ['防护能力(DR)']),
       toNumber(_.get(character.armorRaw, ['防护能力']), 0),
@@ -2390,7 +2703,6 @@ export default function App() {
           <div className="space-y-2 font-mono text-stone-200">
             <div>总DR：{character.armorDR}</div>
             <div>基础DR：{armorBaseDR}</div>
-            <div>特性DR：{armorFeatureDR}</div>
           </div>
         </div>
       );
@@ -2650,7 +2962,7 @@ export default function App() {
       )}
 
       <main className="flex-1 min-h-0 relative z-10 flex flex-col lg:flex-row overflow-hidden">
-        {targetingMode === 'attack' && (
+        {(targetingMode === 'attack' || targetingMode === 'subdue') && (
           <div className="absolute inset-0 z-20 pointer-events-none">
             <div className="absolute left-0 top-0 h-full w-[28%] min-w-[300px] bg-black/50" />
           </div>
@@ -2794,13 +3106,11 @@ export default function App() {
                 key={unit.id}
                 character={unit}
                 isExpanded={expandedCharId === unit.id}
-                isSelected={
-                  selectedTargetId === unit.id || (targetingMode === 'attack' && attackSelectionIds.includes(unit.id))
-                }
+                isSelected={selectedTargetId === unit.id || (!!targetingMode && attackSelectionIds.includes(unit.id))}
                 onToggle={() => handleToggleExpand(unit.id)}
                 onSelect={() => {
                   setSelectedTargetId(unit.id);
-                  if (targetingMode === 'attack') {
+                  if (targetingMode === 'attack' || targetingMode === 'subdue') {
                     const actorId = selectedActorId || playerId;
                     const actor = actorId ? getUnit(battleState.units, actorId) : null;
                     if (
@@ -2811,7 +3121,16 @@ export default function App() {
                       unit.hp > 0 &&
                       !unit.escaped
                     ) {
-                      if (/长柄/.test(actor.weapon.type)) {
+                      if (targetingMode === 'subdue') {
+                        setPlannedActions(prev => ({
+                          ...prev,
+                          [actorId]: { actionId: 'subdue', targetId: unit.id },
+                        }));
+                        updateUnitIntent(actorId, `制服 ${unit.name}`);
+                        setTargetingMode(null);
+                        setAttackSelectionIds([]);
+                        setAttackSelectionActorId(null);
+                      } else if (/长柄/.test(actor.weapon.type)) {
                         setAttackSelectionIds(prev => {
                           const next = prev.includes(unit.id)
                             ? prev.filter(id => id !== unit.id)
@@ -2843,12 +3162,82 @@ export default function App() {
                 onOpenDetail={openDetailModal}
               />
             ))}
+            {enemyUnits.length === 0 && enemyAliveCount === 0 ? (
+              <div className="w-full min-w-[74vw] max-w-[320px] lg:min-w-0 lg:max-w-none rounded-sm border border-red-800/60 bg-red-950/25 px-3 py-4 text-center font-mono text-xs leading-relaxed text-red-200 shadow-[0_0_20px_rgba(220,38,38,0.25)]">
+                <span>【请查看状态栏“视野”是否有“</span>
+                <span className="text-red-400 font-semibold">敌对立场</span>
+                <span>”】</span>
+              </div>
+            ) : null}
           </div>
         </div>
       </main>
 
       <footer className="relative z-20 mt-10 lg:mt-0 border-t border-stone-800/50 bg-black/60 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]">
         <div className="max-w-4xl mx-auto p-2.5 lg:p-4 flex items-center justify-center gap-2.5 lg:gap-6">
+          <div className="relative">
+            <button
+              onClick={() => setNonLethalMenuOpen(!nonLethalMenuOpen)}
+              className="group relative flex flex-col items-center justify-center w-16 h-16 sm:w-24 sm:h-24 lg:w-28 lg:h-28 rounded-sm border bg-stone-900/40 backdrop-blur-md transition-all duration-300 text-fuchsia-300 border-fuchsia-900/50 hover:bg-fuchsia-950/40 hover:border-fuchsia-500/50 group-hover:shadow-[0_0_20px_rgba(217,70,239,0.3)] overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-current opacity-30 group-hover:opacity-100 transition-opacity"></div>
+              <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-current opacity-30 group-hover:opacity-100 transition-opacity"></div>
+              <Shield
+                size={22}
+                className="mb-2 sm:mb-3 group-hover:-translate-y-1 group-hover:scale-110 transition-transform duration-300"
+              />
+              <span className="text-[11px] sm:text-sm font-serif tracking-[0.15em]">非致命</span>
+            </button>
+            {nonLethalMenuOpen && (
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 rounded-sm border border-stone-700/60 bg-stone-900/95 shadow-[0_0_40px_rgba(0,0,0,0.8)] z-50 overflow-hidden">
+                <div className="p-2 space-y-1">
+                  <div className="text-xs font-mono text-stone-400 px-3 py-2 border-b border-stone-800/60">
+                    非致命模式
+                  </div>
+                  <button
+                    onClick={() => {
+                      setBattleState(prev => ({ ...prev, nonLethalMode: 'all' }));
+                      setNonLethalMenuOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-sm text-sm font-mono ${
+                      battleState.nonLethalMode === 'all'
+                        ? 'text-emerald-300 bg-emerald-900/30'
+                        : 'text-stone-300 hover:bg-stone-800/60'
+                    }`}
+                  >
+                    所有友方成员开启
+                  </button>
+                  <button
+                    onClick={() => {
+                      setBattleState(prev => ({ ...prev, nonLethalMode: 'current' }));
+                      setNonLethalMenuOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-sm text-sm font-mono ${
+                      battleState.nonLethalMode === 'current'
+                        ? 'text-emerald-300 bg-emerald-900/30'
+                        : 'text-stone-300 hover:bg-stone-800/60'
+                    }`}
+                  >
+                    当前角色开启
+                  </button>
+                  <button
+                    onClick={() => {
+                      setBattleState(prev => ({ ...prev, nonLethalMode: null }));
+                      setNonLethalMenuOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-sm text-sm font-mono ${
+                      battleState.nonLethalMode === null
+                        ? 'text-emerald-300 bg-emerald-900/30'
+                        : 'text-stone-300 hover:bg-stone-800/60'
+                    }`}
+                  >
+                    取消
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
           <button
             ref={autoSelectRef}
             onClick={autoSelectTargets}
@@ -3014,16 +3403,14 @@ export default function App() {
                 const items = actor.backpackItems || {};
                 const hasItem = (name: string) => toNumber(items[name]?.数量, 0) > 0;
                 const list: string[] = [];
-                [
-                  '基础急救包',
-                  '标准急救包',
-                  '高级急救包',
-                  '普通夹板包',
-                  '高级夹板包',
-                  '骨人修理包',
-                  '骨人修理箱',
-                ].forEach(name => {
+                MEDICAL_ITEM_NAMES.forEach(name => {
                   if (hasItem(name)) list.push(name);
+                });
+                Object.entries(items).forEach(([name, item]) => {
+                  if (list.includes(name)) return;
+                  if (isMedicalBackpackItem(name, item) && hasItem(name)) {
+                    list.push(name);
+                  }
                 });
                 if (list.length === 0) {
                   return <div className="text-stone-500">此角色背包没有可用医疗物品</div>;

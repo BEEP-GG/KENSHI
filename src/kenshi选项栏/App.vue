@@ -48,7 +48,7 @@ type OptionItem = {
 
 const options = ref<OptionItem[]>([]);
 const isSpecialMenuOpen = ref(false);
-const specialActions = ['百科全书', '暗杀', '偷窃', '休息', '医疗', '搜索', '交易', '战斗'];
+const specialActions = ['战斗', '营地系统'];
 
 const optionLineRegex = /^[^\S\n]*(?:[（(【]?\s*([A-Za-z])\s*[.、:：]\s*(.*?))(?:[）)】])?\s*$/;
 const optionFallbackLineRegex = /^[^\S\n]*([A-Za-z])\s+[、.．]\s*(.*?)\s*$/;
@@ -196,17 +196,17 @@ async function triggerFightBattle() {
   }
 }
 
-async function triggerBookPanel() {
+async function triggerCampSystem() {
   if (typeof triggerSlash !== 'function') {
-    console.warn('[kenshi选项栏] triggerSlash 不可用，无法触发百科全书');
+    console.warn('[kenshi选项栏] triggerSlash 不可用，无法触发营地系统');
     return;
   }
   const { name, avatar } = getCharacterMeta();
-  const command = `/sendas name="${name}"${avatar ? ` avatar="${avatar}"` : ''} <BOOK>`;
+  const command = `/sendas name="${name}"${avatar ? ` avatar="${avatar}"` : ''} <营地系统>`;
   try {
     await triggerSlash(command);
   } catch (error) {
-    console.error('[kenshi选项栏] 触发百科全书失败:', error);
+    console.error('[kenshi选项栏] 触发营地系统失败:', error);
   }
 }
 
@@ -229,8 +229,8 @@ function handleSpecialAction(action: string) {
     closeSpecialMenu();
     return;
   }
-  if (action === '百科全书') {
-    triggerBookPanel();
+  if (action === '营地系统') {
+    triggerCampSystem();
     closeSpecialMenu();
     return;
   }

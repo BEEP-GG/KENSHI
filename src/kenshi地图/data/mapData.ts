@@ -4326,6 +4326,14 @@ export const ruins: City[] = [
     coordinates: [7537, 4841],
     regionId: 'region-cheaters-run',
   },
+  {
+    id: 'ruin-destroyed-settlement',
+    name: '毁灭的定居点',
+    description: '已经成为废墟的定居点',
+    type: 'ruin',
+    coordinates: [4282, 3412],
+    regionId: 'region-skinners-roam',
+  },
 ];
 
 export const villages: City[] = [
@@ -4704,5 +4712,21 @@ export const villages: City[] = [
     type: 'village',
     coordinates: [1055, 4814],
     regionId: 'region-sinkuun',
+  },
+  {
+    id: 'village-desert-rose-town',
+    name: '沙漠玫瑰镇',
+    description: '游牧民的小镇',
+    type: 'village',
+    coordinates: [4745, 4292],
+    regionId: 'region-shem',
+  },
+  {
+    id: 'village-holy-rebel-base',
+    name: '圣国叛军基地',
+    description: '一个小型基地',
+    type: 'village',
+    coordinates: [4137, 2677],
+    regionId: 'region-border-zone',
   },
 ];

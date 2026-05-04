@@ -14,6 +14,7 @@ export interface Attributes {
 export interface SquadMemberData {
   race: string;
   subrace: string;
+  level: number;
   attributes: Attributes;
   name: string;
   gender: 'male' | 'female' | 'other';
@@ -29,6 +30,25 @@ export interface SquadMemberData {
   traits: string[];
   customTraitName: string;
   customTraitDescription: string;
+}
+
+export type CustomArmorType = '重甲' | '中甲' | '轻甲';
+export type CustomWeaponType = '武士刀类' | '钝器类' | '军刀类' | '砍刀类' | '长柄刀类' | '大型类' | '弓' | '弩';
+
+export interface CustomStartData {
+  script: string;
+  customRaceName: string;
+  customRaceDescription: string;
+  armorType: CustomArmorType;
+  armorDr: number;
+  weaponName: string;
+  weaponDiceSides: number;
+  weaponType: CustomWeaponType;
+  weaponCut: number;
+  weaponBlunt: number;
+  weaponValue: number;
+  weaponDescription: string;
+  customItems: string;
 }
 
 export interface CharacterData {
@@ -54,6 +74,7 @@ export interface CharacterData {
   traits: string[];
   customTraitName: string;
   customTraitDescription: string;
+  customStart: CustomStartData;
   squadMembers: SquadMemberData[];
 }
 
@@ -76,9 +97,26 @@ export const INITIAL_APPEARANCE = {
   description: '',
 };
 
+export const INITIAL_CUSTOM_START: CustomStartData = {
+  script: '',
+  customRaceName: '',
+  customRaceDescription: '',
+  armorType: '轻甲',
+  armorDr: 0,
+  weaponName: '',
+  weaponDiceSides: 10,
+  weaponType: '武士刀类',
+  weaponCut: 0.8,
+  weaponBlunt: 0.2,
+  weaponValue: 0,
+  weaponDescription: '',
+  customItems: '',
+};
+
 export const INITIAL_SQUAD_MEMBER: SquadMemberData = {
   race: '',
   subrace: '',
+  level: 1,
   attributes: INITIAL_ATTRIBUTES,
   name: '',
   gender: 'male',
@@ -119,5 +157,6 @@ export const INITIAL_CHARACTER: CharacterData = {
   traits: [],
   customTraitName: '',
   customTraitDescription: '',
+  customStart: { ...INITIAL_CUSTOM_START },
   squadMembers: Array.from({ length: 4 }, () => createInitialSquadMember()),
 };

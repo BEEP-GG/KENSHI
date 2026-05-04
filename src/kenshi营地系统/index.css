@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Noto Sans SC', system-ui, sans-serif;
+  --color-kenshi-rust: #ffffff;
+  --color-kenshi-sand: #b3b3b3;
+  --color-kenshi-dark: #000000;
+  --color-kenshi-steel: #0f0f0f;
+  --color-kenshi-gold: #e6e6e6;
+  --color-kenshi-danger: #666666;
+}
+
+@layer base {
+  body {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-kenshi-steel) var(--color-kenshi-dark);
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--color-kenshi-dark);
+    border-left: 1px solid var(--color-kenshi-steel);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-kenshi-steel);
+    border: 1px solid var(--color-kenshi-rust);
+    border-radius: 0px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-kenshi-rust);
+  }
+
+  ::selection {
+    background: var(--color-kenshi-rust);
+    color: var(--color-kenshi-dark);
+  }
+}

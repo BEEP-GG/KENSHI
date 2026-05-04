@@ -8,7 +8,8 @@ import { CharacterData, SquadMemberData } from '../types';
 const TOTAL_ATTRIBUTE_POINTS = 168;
 const SKELETON_ATTRIBUTE_POINTS = 144;
 const ATTRIBUTE_MIN = 1;
-const GOD_MODE_POINTS_PER_LEVEL = 7;
+const GOD_MODE_POINTS_PER_LEVEL = 5;
+const SQUAD_LEVEL_POINTS_PER_LEVEL = 5;
 
 interface FinalSummaryProps {
   data: CharacterData;
@@ -19,6 +20,27 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
   const [isStarting, setIsStarting] = React.useState(false);
 
   const storyBackgrounds: Record<string, string> = {
+    monster_hunter: `在遥远且人迹罕至的利维坦海岸，空气中常年飘散着巨兽的腥臊与海风的咸涩。
+你出身于一个古老且疯狂的家族，世世代代都以猎杀这片大陆上最庞大的生物为荣。
+从小到大，你的摇篮曲是野兽的濒死咆哮，玩具是沾满血污的重型斩马刀。
+长辈们将猎杀技巧死死刻入你的骨髓。
+如今，家族已经凋零，作为最后的传人，你独自站在满是如山丘般庞大的利维坦与狂暴野兽的海岸线上。
+你的目标不仅是剖出那些价值连城的利维坦珍珠，更是为了证明你才是这片废土食物链最顶端的终极掠食者。
+擦亮你的巨刃，去狩猎那些不可一世的怪物吧。`,
+    human_torso: `你绝对是这片大地上最倒霉、却又最命大的混蛋。
+前不久，你雄心勃勃地踏入被称为死亡蓝沙的“伽特”地区探险，却不幸遭遇了废土上最恐怖的噩梦——成群的喙嘴兽。
+在绝望的撕咬与怪啸中你痛晕了过去，本以为自己会化作一滩排泄物。
+但当你再次睁眼时，竟奇迹般地躺在沙漠某座旅馆的硬木板上。
+还没来得及狂喜，一种令人毛骨悚然的失重感瞬间击溃了你：你的四肢已经被那些长脖子怪物生生啃食殆尽，如今只剩下一个光秃秃的躯干！身无分文，连爬行都成了奢望。
+在这个毫无怜悯的世界里一具“人棍”该如何苟活？
+装上机械义肢向命运复仇？还是咬舌自尽重开人生？`,
+    slave_master: `你是联合帝国高高在上的贵族，含着金汤匙出生，习惯了将人命明码标价。
+此刻的你衣着考究，身后还用铁链拴着两个骨瘦如柴、眼神麻木的私人奴隶，随时准备为你端茶倒水、充当肉盾。
+然而，在这片废土上，奢靡与残忍是要付出代价的。
+你的傲慢做派成功激怒了“反蓄奴者”组织。反蓄奴着们已经对你下达了不死不休的暗杀悬赏。
+如今，走在黄沙漫天的城镇街道上，你总觉得暗处有无数双冰冷的眼睛正死死盯着你的脖颈。
+是利用财富和奴隶继续扩大你的罪恶帝国，还是在这场暗杀游戏中沦为一具华丽的尸体？
+全看你的手腕了。`,
     wanderer: `在这片残酷废土上，你只是微不足道的一粒沙尘。
 你没有显赫的背景，没有势力的庇护，兜里的开币也早已耗尽。
 此刻，全部身家只剩身上那件沾满污渍的破布单衣，以及紧紧攥在手里那把生锈卷刃、连野狗皮都未必能砍透的破铁剑。
@@ -132,12 +154,22 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
 回头望去，彼岸的故土已经沦为那些滑腻野兽的狂欢屠宰场。
 你是该放下过去，拖着疲惫的身躯远远逃离这片是非之地苟且偷生？还是拿起生锈的鱼叉，集结剩下的残兵败将反杀回那个地狱？
 抉择权，就在你的手中。`,
+    unknown_dream: `黄沙掩埋了无数旧时代的骨骸，而在这片残酷的废土上，此刻却迎来了一个绝对的“异类”。
+也许你是跨越星海的异世界来客，也许是远古废墟中苏醒的未知造物。你的种族不在任何势力的图鉴里，你的过往也没有任何剧本能够定义。
+荒野中孤身伫立的你。
+你的样貌、身份、甚至是行囊中那些根本不属于这个世界的奇特装备，全凭你一手捏造。这个世界对你的突兀降临毫无准备，但这正是你最大的特权。
+随心所欲地塑造你的化身吧，打破一切常理与束缚
+在这片焦土上，亲自执导属于你的第一场大戏。`,
   };
 
   const scenario = SCENARIOS.find(s => s.id === data.scenario);
   const region = REGIONS.find(r => r.id === data.region);
   const race = RACES.find(r => r.id === data.race);
   const subrace = race?.subraces.find(s => s.id === data.subrace);
+  const resolvedRaceTitle =
+    data.race === 'custom_race'
+      ? data.customStart.customRaceName?.trim() || '自定义种族'
+      : subrace?.title || race?.title || '人类';
 
   const attributeLabels: Record<keyof CharacterData['attributes'], string> = {
     strength: '力量',
@@ -181,6 +213,46 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
   };
 
   const buildEquipmentSummary = () => {
+    if (scenario?.id === 'unknown_dream') {
+      const cut = Math.max(0, Math.min(1, Number(data.customStart.weaponCut || 0)));
+      const blunt = Number((1 - cut).toFixed(2));
+      const diceSides = Math.max(1, Math.floor(Number(data.customStart.weaponDiceSides || 1)));
+      const weaponName = data.customStart.weaponName?.trim() || '未命名武器';
+      const weaponDesc = data.customStart.weaponDescription?.trim() || '无';
+      const weaponValue = Math.max(0, Number(data.customStart.weaponValue || 0));
+      const armorDr = Math.max(0, Number(data.customStart.armorDr || 0));
+
+      return {
+        主武器: {
+          名字: weaponName,
+          种类: data.customStart.weaponType,
+          品质: '普通',
+          介绍: weaponDesc,
+          伤害骰: `1d${diceSides}`,
+          伤害类型: `切割:${cut.toFixed(2)}/钝伤:${blunt.toFixed(2)}`,
+          特效: {},
+          价值: weaponValue,
+        },
+        副武器: {
+          名字: '无',
+          种类: '无',
+          品质: '普通',
+          介绍: '',
+          伤害骰: '1d4',
+          伤害类型: '钝伤:1.0',
+          特效: {},
+          价值: 0,
+        },
+        护甲: {
+          种类: data.customStart.armorType || '轻甲',
+          '防护能力(DR)': armorDr,
+          介绍: `自定义护甲（${data.customStart.armorType || '轻甲'}）`,
+          特性: {},
+        },
+        背包物品: [],
+      };
+    }
+
     const equipmentList = scenario?.equipment ?? [];
     const weaponItem = equipmentList.find(item => /刀|剑|棒|斧|弓|弩|锤|枪|矛/.test(item));
     const armorItem = equipmentList.find(item => /衣|甲|护|裤|靴|袍|盔|披风|披肩|衫/.test(item));
@@ -209,12 +281,14 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
 
     const resolveWeaponType = (item?: string) => {
       if (!item || item === '无') return '武术';
+      if (/弩/.test(item)) return '弩';
+      if (/弓/.test(item)) return '弓';
       if (/长柄|长枪|枪|矛|鱼矛/.test(item)) return '长柄刀类';
       if (/砍刀|弯刀/.test(item)) return '砍刀类';
       if (/军刀/.test(item)) return '军刀类';
       if (/野太刀|武士刀|太刀|佩刀|刀|剑/.test(item)) return '武士刀类';
       if (/棒|锤|锏/.test(item)) return '钝器类';
-      if (/斧|大剑|巨骨|巨|重|大锤/.test(item)) return '大型武器类';
+      if (/斧|大剑|巨骨|巨|重|大锤/.test(item)) return '大型类';
       return '武士刀类';
     };
 
@@ -234,7 +308,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
           type: '武士刀类',
           quality: '普通',
           dice: '1d8',
-          damage: '切割:0.8，钝伤:0.2',
+          damage: '切割:0.8/钝伤:0.2',
         };
       }
       if (/防身小刀/.test(item)) {
@@ -252,7 +326,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
           type: '武士刀类',
           quality: '普通',
           dice: '1d14',
-          damage: '切割:0.8，钝伤:0.2',
+          damage: '切割:0.8/钝伤:0.2',
         };
       }
       if (/砍刀/.test(item)) {
@@ -261,7 +335,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
           type: '砍刀类',
           quality: '普通',
           dice: '1d10',
-          damage: '切割:0.6，钝伤:0.4',
+          damage: '切割:0.6/钝伤:0.4',
         };
       }
       if (/弯刀/.test(item)) {
@@ -270,16 +344,16 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
           type: '军刀类',
           quality: '普通',
           dice: '1d10',
-          damage: '切割:0.8，钝伤:0.2',
+          damage: '切割:0.8/钝伤:0.2',
         };
       }
       if (/巨骨战斧/.test(item)) {
         return {
           name: '巨骨战斧',
-          type: '大型武器类',
+          type: '大型类',
           quality: '普通',
           dice: '1d12',
-          damage: '切割:0.6，钝伤:0.4',
+          damage: '切割:0.6/钝伤:0.4',
         };
       }
       if (/武士刀/.test(item)) {
@@ -288,16 +362,16 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
           type: '武士刀类',
           quality: '普通',
           dice: '1d14',
-          damage: '切割:0.8，钝伤:0.2',
+          damage: '切割:0.8/钝伤:0.2',
         };
       }
       if (/沙克大剑/.test(item)) {
         return {
           name: '沙克大剑',
-          type: '大型武器类',
+          type: '大型类',
           quality: '普通',
           dice: '1d15',
-          damage: '切割:0.7，钝伤:0.3',
+          damage: '切割:0.7/钝伤:0.3',
         };
       }
       if (/鱼矛/.test(item)) {
@@ -306,16 +380,25 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
           type: '长柄刀类',
           quality: '普通',
           dice: '1d12',
-          damage: '切割:0.7，钝伤:0.3',
+          damage: '切割:0.7/钝伤:0.3',
+        };
+      }
+      if (/利维坦狩猎之刃/.test(item)) {
+        return {
+          name: '利维坦狩猎之刃',
+          type: '大型类',
+          quality: '祖传',
+          dice: '1d38',
+          damage: '切割:0.3/钝伤:0.7',
         };
       }
       if (/大剑/.test(item)) {
         return {
           name: item.replace(/\s*\(.*?\)\s*/, ''),
-          type: '大型武器类',
+          type: '大型类',
           quality: /铭刃/.test(item) ? '铭刃' : '普通',
           dice: '1d30',
-          damage: '切割:0.2，钝伤:0.8',
+          damage: '切割:0.2/钝伤:0.8',
         };
       }
       return {
@@ -334,11 +417,11 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
       scenario?.id === 'holy_sword'
         ? {
             名字: '大剑',
-            种类: '大型武器类',
+            种类: '大型类',
             品质: '铭刃',
             介绍: '一把传奇之剑',
             伤害骰: '1d30',
-            伤害类型: '切割:0.2，钝伤:0.8',
+            伤害类型: '切割:0.2/钝伤:0.8',
             特效: {},
             价值: 99999,
           }
@@ -346,7 +429,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
             名字: weaponMeta.name,
             种类: weaponMeta.type,
             品质: weaponMeta.quality,
-            介绍: weaponItem ?? '',
+            介绍: /利维坦狩猎之刃/.test(weaponMeta.name) ? '巨刃如门板，刃背厚重，遍布古旧猎纹。' : (weaponItem ?? ''),
             伤害骰: weaponMeta.dice,
             伤害类型: weaponMeta.damage,
             特效: {},
@@ -371,7 +454,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
         介绍: armorMeta.desc,
         特性: {},
       },
-      背包物品: equipmentList.filter(item => item !== weaponItem && item !== armorItem),
+      背包物品: equipmentList.filter(item => item && item !== '无' && item !== weaponItem && item !== armorItem),
     };
   };
 
@@ -472,6 +555,13 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
     };
   };
 
+  const calcSquadRemainingPoints = (member: SquadMemberData) => {
+    const level = Math.max(1, Math.min(100, Number(member.level || 1)));
+    const totalPoints = TOTAL_ATTRIBUTE_POINTS + (level - 1) * SQUAD_LEVEL_POINTS_PER_LEVEL;
+    const usedPoints = Object.values(member.attributes).reduce((sum, value) => sum + (value - ATTRIBUTE_MIN), 0);
+    return Math.max(0, totalPoints - usedPoints);
+  };
+
   const updateMvuVariables = async (messageId: number | 'latest' = getCurrentMessageId()) => {
     await waitGlobalInitialized('Mvu');
     await waitUntil(() => _.has(getVariables({ type: 'message', message_id: messageId }), 'stat_data'));
@@ -501,11 +591,43 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
     _.set(mvuData, 'stat_data.当前角色.经验值.当前', 0);
     _.set(mvuData, 'stat_data.当前角色.经验值.升级所需', Math.floor(currentLevel * 10 + 100));
     _.set(mvuData, 'stat_data.当前角色.属性点', remainingPoints);
-    _.set(mvuData, 'stat_data.当前角色.种族.名称', subrace?.title || race?.title || '人类');
+    _.set(mvuData, 'stat_data.当前角色.种族.名称', resolvedRaceTitle);
+
+    const scenarioIdentityMap: Record<string, string> = {
+      wanderer: '流浪者',
+      unknown_dream: '未知来客',
+      slave_master: '奴隶主',
+      human_torso: '残躯求生者',
+      monster_hunter: '怪物猎人',
+      holy_sword: '通缉犯',
+      holy_commoner: '圣国平民',
+      rock_bottom: '落难者',
+      dark_daughter: '黑暗遗民',
+      officer_son: '军官遗孤',
+      slave: '矿坑奴隶',
+      male_slave: '男奴',
+      cannibal_hunter: '食人族猎手',
+      pirate_heir: '海盗学徒',
+      cannibal_unifier: '肉主族人',
+      brotherhood_prisoner: '掠夺者新兵',
+      freedom_seekers: '拓荒者',
+      mongrel_wanderer: '迷途者',
+      merchant: '流浪商人',
+      kral_choice: '王位挑战者',
+      fish_island_refugee: '渔岛难民',
+    };
+    _.set(mvuData, 'stat_data.当前角色.身份', scenarioIdentityMap[data.scenario] || '自由人');
+
     _.set(mvuData, 'stat_data.当前角色.属性', buildAttributesRecord());
     _.set(mvuData, 'stat_data.当前角色.特质', buildTraitsRecord());
     if (data.scenario === 'rock_bottom') {
       _.set(mvuData, 'stat_data.当前角色.创伤.左臂', { 等级: 4, 描述: '断肢' });
+    }
+    if (data.scenario === 'human_torso') {
+      _.set(mvuData, 'stat_data.当前角色.创伤.左臂', { 等级: 4, 描述: '被喙嘴兽吃掉啦' });
+      _.set(mvuData, 'stat_data.当前角色.创伤.右臂', { 等级: 4, 描述: '被喙嘴兽吃掉啦' });
+      _.set(mvuData, 'stat_data.当前角色.创伤.左腿', { 等级: 4, 描述: '被喙嘴兽吃掉啦' });
+      _.set(mvuData, 'stat_data.当前角色.创伤.右腿', { 等级: 4, 描述: '被喙嘴兽吃掉啦' });
     }
     if (data.scenario === 'slave') {
       _.set(mvuData, 'stat_data.当前角色.临时特质.囚犯', {
@@ -553,6 +675,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
         const memberSubrace = memberRace?.subraces.find(s => s.id === member.subrace);
         const squadEntry: Record<string, any> = {
           名字: member.name || `队员${index + 1}`,
+          等级: Math.max(1, Number(member.level || 1)),
           性别:
             member.race === 'skeleton'
               ? '无性别'
@@ -568,6 +691,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
             名称: memberSubrace?.title || memberRace?.title || '人类',
           },
           属性: buildSquadAttributesRecord(member),
+          属性点: calcSquadRemainingPoints(member),
           特质: buildSquadTraitsRecord(member),
         };
 
@@ -588,25 +712,131 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
 
     const hostileFactions = (scenario as any)?.hostileFactions ?? [];
     const alliedFactions = (scenario as any)?.alliedFactions ?? [];
-    const hostility: Record<string, string> = {};
-    const allies: Record<string, string> = {};
+    const hostility: Record<string, { 好感度: number; 敌对原因: string }> = {};
+    const allies: Record<string, { 好感度: number; 结盟原因: string }> = {};
+    const knownFactions: Record<string, { 好感度: number }> = {};
+
+    const scenarioFactionReasons: Record<
+      string,
+      {
+        hostile?: Record<string, string>;
+        allied?: Record<string, string>;
+      }
+    > = {
+      slave_master: {
+        hostile: {
+          反蓄奴者: '蓄奴贵族身份惹来追杀',
+        },
+        allied: {
+          联合城: '帝国贵族出身受其庇护',
+          商人行会: '财富往来紧密互惠互利',
+          奴隶商人: '奴隶交易利益高度一致',
+        },
+      },
+      holy_sword: {
+        hostile: {
+          联合帝国: '携传奇铭刃遭帝国通缉',
+          神圣教国: '窃取圣物触怒宗教势力',
+        },
+      },
+      holy_commoner: {
+        hostile: {
+          联合帝国: '圣国平民受两国战争影响',
+        },
+        allied: {
+          神圣教国: '奥克兰信徒受教国庇护',
+        },
+      },
+      dark_daughter: {
+        hostile: {
+          神圣教国: '圣骑士视其为异端秽物',
+        },
+        allied: {
+          娜尔可: '同族流亡者抱团求复兴',
+        },
+      },
+      officer_son: {
+        hostile: {
+          神圣教国: '帝国军官遗孤承袭旧怨',
+        },
+        allied: {
+          联合帝国: '父辈军功留下政治庇护',
+        },
+      },
+      male_slave: {
+        hostile: {
+          斯威士国: '触怒女权帝国沦为奴隶',
+        },
+      },
+      cannibal_hunter: {
+        hostile: {
+          食人族部落: '闯入其领地猎杀引血仇',
+        },
+      },
+      cannibal_unifier: {
+        hostile: {
+          大巫部落: '部落纷争争夺生存领地',
+          食人族猎手: '猎手屠其亲族誓要复仇',
+        },
+        allied: {
+          肉主部落: '本族出身为夺回家园而战',
+        },
+      },
+      brotherhood_prisoner: {
+        hostile: {
+          联合帝国: '反贵族立场直指帝国权贵',
+        },
+        allied: {
+          鲜血掠夺者: '被煽动入伙共同仇贵族',
+        },
+      },
+      kral_choice: {
+        hostile: {
+          沙克王国: '争夺王位否定现任女皇',
+        },
+        allied: {
+          克拉尔之选: '追随克拉尔血脉复兴派',
+        },
+      },
+      fish_island_refugee: {
+        hostile: {
+          鱼形人: '故乡被毁与其结下死仇',
+        },
+        allied: {
+          库尔林: '同为难民势力互相扶持',
+        },
+      },
+    };
+
+    const getFactionReason = (type: 'hostile' | 'allied', factionName: string) => {
+      const scenarioId = scenario?.id;
+      const scopedReason = scenarioId ? scenarioFactionReasons[scenarioId]?.[type]?.[factionName] : undefined;
+      if (scopedReason) return scopedReason;
+      return type === 'hostile' ? `与派系「${factionName}」存在利益冲突` : `与派系「${factionName}」存在共同利益`;
+    };
+
     hostileFactions.forEach((name: string) => {
-      hostility[name] = '敌对';
+      hostility[name] = {
+        好感度: -100,
+        敌对原因: getFactionReason('hostile', name),
+      };
+      knownFactions[name] = { 好感度: -100 };
     });
+
     alliedFactions.forEach((name: string) => {
-      allies[name] = '友好';
+      allies[name] = {
+        好感度: 100,
+        结盟原因: getFactionReason('allied', name),
+      };
+      knownFactions[name] = { 好感度: 100 };
     });
+
     _.set(mvuData, 'stat_data.局势.敌对派系', hostility);
     _.set(mvuData, 'stat_data.局势.友方派系', allies);
-    if (hostileFactions.length > 0 || alliedFactions.length > 0) {
-      _.set(
-        mvuData,
-        'stat_data.局势.世界局势',
-        `${hostileFactions.length > 0 ? `敌对：${hostileFactions.join('、')}` : ''}${
-          hostileFactions.length > 0 && alliedFactions.length > 0 ? '；' : ''
-        }${alliedFactions.length > 0 ? `友方：${alliedFactions.join('、')}` : ''}`,
-      );
-    }
+    _.set(mvuData, 'stat_data.局势.已知派系', knownFactions);
+
+    const primaryFaction = alliedFactions[0] || (scenario?.id === 'slave_master' ? '联合城' : '无派系');
+    _.set(mvuData, 'stat_data.我方派系名称', primaryFaction);
 
     await Mvu.replaceMvuData(mvuData, { type: 'message', message_id: messageId });
   };
@@ -637,9 +867,21 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
     lines.push(`角色名：${data.name || '无名氏'}`);
     lines.push(`性别：${data.gender === 'male' ? '男' : data.gender === 'female' ? '女' : '其他'}`);
     lines.push(`年龄：${data.age}`);
-    lines.push(`种族：${subrace?.title || race?.title || '未选择'}`);
+    lines.push(`种族：${resolvedRaceTitle || '未选择'}`);
     lines.push(`开局剧本：${scenario?.title || '未选择'}`);
     lines.push(`出生地：${region?.title || data.region || '未知区域'}。城镇：${data.town || '野外'}`);
+    if (scenario?.id === 'unknown_dream') {
+      const cut = Math.max(0, Math.min(1, Number(data.customStart.weaponCut || 0)));
+      const blunt = Number((1 - cut).toFixed(2));
+      lines.push(`自定义背景故事：${data.customStart.script?.trim() || '无'}`);
+      lines.push(
+        `自定义武器：${data.customStart.weaponName || '未命名'}（${data.customStart.weaponType}，1d${
+          data.customStart.weaponDiceSides || 1
+        }，切割:${cut.toFixed(2)}，钝伤:${blunt.toFixed(2)}，价值:${data.customStart.weaponValue || 0}）`,
+      );
+      lines.push(`自定义护甲：${data.customStart.armorType}（DR:${data.customStart.armorDr || 0}）`);
+      lines.push(`自定义物品：${data.customStart.customItems?.trim() || '无'}`);
+    }
     lines.push(`七维属性：${attributeLine}`);
     lines.push(
       `外貌描述：${data.appearance.description || '无'}；身高 ${(data.appearance.height / 100).toFixed(2)}m；体态 ${
@@ -700,7 +942,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
             </div>
             <div>
               <span className="text-xs uppercase text-white/40 tracking-wider">种族</span>
-              <div className="text-lg text-white/80">{subrace?.title || race?.title}</div>
+              <div className="text-lg text-white/80">{resolvedRaceTitle}</div>
             </div>
             <div>
               <span className="text-xs uppercase text-white/40 tracking-wider">开局</span>

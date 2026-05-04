@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -9,10 +9,140 @@ import { useEffect, useState } from 'react';
 import { FinalSummary } from './components/FinalSummary';
 import { CharacterData, INITIAL_CHARACTER } from './types';
 
+const TUTORIAL_GUIDE_URL =
+  'https://discord.com/channels/1380075940285124724/1490570229992919150/1497689482068103258';
+
+const EMPHASIS_LINE_RE = /^([^：:\n]{1,28})([：:])(.*)$/;
+
+const renderTutorialContent = (content: string, className: string) => {
+  const lines = content.split('\n');
+  return (
+    <div className={className}>
+      {lines.map((rawLine, index) => {
+        const line = rawLine.trimEnd();
+        const key = `${index}-${line}`;
+        if (!line.trim()) return <div key={key} className="h-3" />;
+
+        if (line.startsWith('【') && line.includes('】')) {
+          return (
+            <p key={key} className="pt-2 text-2xl md:text-3xl font-serif text-[#C2B280]">
+              {line}
+            </p>
+          );
+        }
+
+        const match = line.match(EMPHASIS_LINE_RE);
+        if (match) {
+          const [, prefix, separator, rest] = match;
+          return (
+            <p key={key} className="leading-relaxed">
+              <span className="text-xl md:text-2xl font-bold text-[#E7D8A6]">{prefix}</span>
+              <span className="text-xl md:text-2xl font-bold text-[#C2B280]">{separator}</span>
+              <span className="text-white/85">{rest}</span>
+            </p>
+          );
+        }
+
+        return (
+          <p key={key} className="leading-relaxed text-white/85">
+            {line}
+          </p>
+        );
+      })}
+    </div>
+  );
+};
+
 // Steps definition
 const STEPS = [{ id: 'summary', title: '完成' }];
 
 const TUTORIAL_TOPICS = [
+  {
+    id: 'play_tutorial',
+    title: '终末之诗：生存与进阶指南',
+    description:
+      '欢迎来到《终末之诗》！为了防止你在踏上旅途的第一天就因为搞不懂系统而原地去世，哔噗准备了这份“人教”版的新手指引。准备好了吗？beeeeeep！！！！！。',
+    subTopics: [
+      {
+        id: 'status_panel',
+        title: '状态栏',
+        content: `这里是你掌控全局的控制台，点开它，你能看到世界的一切：
+概览（查户口专用）： 这里是你（主角）的全部底细。兜里有几个子儿、穿的什么防具、拿的什么刀、当前是残血还是心情崩溃，甚至刚刚发生了什么倒霉突发事件，这里写得清清楚楚。
+小队（HR管理系统）： 你招募的伙伴都在这。你可以看他们的数据，也可以随时“优化”他们：
+踢出小队： 缘分已尽，对方会被扔进【视野】列表。
+暂时分别： 对方会被放入【异地】列表。这会直接影响你的【战斗栏】（打架的时候别指望他们能瞬移过来帮忙）。
+视野（立场探测器）： 路上遇到的所有人都在这里，无论他是想砍你的敌人、吃瓜的群众，还是你的盟友。
+重要提醒： 你可以点进去手动改变他们的立场。如果立场设为“敌对”，系统就会在战斗中把他们判定为识别变量。具体操作详情可参考DC教程。
+异地（队友云端寄存处）： 想跟小伙伴短暂分开？把他们丢这里就对了。比如你带一波人去探索右上角，把剩下的队友留在左下角。不用担心人物属性会丢失，后续可以根据剧情或主动召唤回来，且不会影响当前的战斗栏。
+情报（废土吃瓜周刊）： 你的敌对势力、盟友动向、世界局势，以及你走在路上听到的流言蜚语，统统记录在此。
+日志（打工人备忘录）： 你接下的所有任务都会按顺序记录在这里。
+往事（你的记仇本与回忆录）： 你干过的好事、坏事、跟谁结了缘、跟谁喝过酒、甚至顺手宰了谁，这里都会帮你记着。
+地图： 字面意思，终末之诗的世界全图。`,
+      },
+      {
+        id: 'combat_panel',
+        title: '战斗栏',
+        content: `触发方式： 只能通过【选项栏】里的“战斗”选项单独触发。
+不要指望系统会为了讨好玩家而开绿灯，所有的战斗数据完全基于脚本代码计算。战斗栏内置了详细教程，这里只强调一点：
+避坑指南：  如果你兴冲冲点开了【战斗栏】，却发现“拔剑四顾心茫然”（没有敌人）？请立刻去【状态栏】->【视野】里看看，是不是AI没有把对方的立场调成“敌对”！如果他还是中立，系统是不允许你乱砍人的（修改立场详情请看DC教程），你也可以点进去在其右上角的小齿轮处修改立场(是的，你甚至可以把卡特龙直接变成)。`,
+      },
+      {
+        id: 'option_panel',
+        title: '选项栏',
+        content: `非常重要： 游戏里几乎所有的前端内容和剧情推进都围绕着选项栏展开。
+留意右上角的“小齿轮”，里面藏着三大功能：战斗、营地、百科全书。
+它还会直接影响你掷骰子的剧情流程，想玩转剧情，记得去看DC教程。`,
+      },
+      {
+        id: 'camp_system',
+        title: '营地系统',
+        content: `这是作者“哔噗”最喜欢的系统。打打杀杀累了？来营地跟伙伴们聊聊天、互相慰藉。
+除了战斗和做任务，这里是获取属性的核心方式：在营地里进行训练，就能变强。
+官方外挂（内置工具栏）：
+营地里提供了两个任性选项：无限beep（无限重roll） 和 无惩罚模式（属性不会减损）。你可以通过选项栏随时召出营地系统来体验。`,
+      },
+      {
+        id: 'attribute_usage',
+        title: '属性用途',
+        content: `战斗栏里有详细的公式解析，这里只做最简单的科普：
+力量： 决定你砍人有多疼，以及你能背多少捡来的垃圾（负重）
+敏捷： 决定你闪避有多骚、攻速有多快，以及你的“第三只手”偷东西有多利索。
+体质： 决定血量上限。体质越高，命越硬。
+智力： 废土托尼·斯塔克专属。智力越高，你在营地里敲打出来的武器和防具就越极品。
+意志： 决定你的心情上限。意志高的人，泰山崩于前而面不改色；意志低的人，踩到狗屎都会emo一整天。
+魅力： 将来会影响NPC对你的初始好感度（没错，就是看脸，但目前还在画大饼，暂未实装）。`,
+      },
+      {
+        id: 'extra_model_parse',
+        title: '额外模型解析',
+        content: `关于跑团使用的AI模型，哔噗认为：
+3F： 绝对的下下策，哔噗写卡烦躁就是因为他。
+2.5p： 体验不错，beeep！推荐。
+小克（Claude）： 大神级别，有条件无脑选小克就完事儿了！`,
+      },
+      {
+        id: 'weapons_and_gear',
+        title: '武器与装备',
+        content: `武器和装备是本卡的灵魂！
+武器种类：
+武士刀、钝器、军刀、砍刀、长柄刀、大型类、弓、弩、武术，它们不仅影响剧情耍帅，攻速和效果也完全不同。
+天下武功，唯快不破： 武士刀 / 军刀（初始攻速 2，且可以+4）
+不快不慢，节奏正好： 砍刀 / 长柄刀（初始攻速 2，且可以额外+3）
+一力降十会： 钝器 / 大型类（初始攻速 1，且可以额外+2）
+
+装备（护甲）分类：
+无甲 | 轻甲 | 中甲 | 重甲。
+护甲越厚，DR（防护值）越高，但带来的敏捷惩罚也越重。
+战斗核心博弈（敲黑板必考！）：
+切割 vs 钝伤： 攻速越快的武器（比如武士刀），划人越疼（切割伤害高），但砸人没力气（钝伤低）；反之，攻速慢的武器（比如大锤），切割低，但一锤子下去能把人脑壳敲碎（钝伤高）。
+护甲的阿喀琉斯之踵： DR值（护甲）可以完美挡住所有“切割伤害”，但挡不住“钝伤”！
+这意味着什么？ 穿上重甲，别人拿武士刀砍你就像在刮痧；但如果对面掏出一把大铁锤砸过来，你的重甲就是个铁棺材。
+等价交换： DR越高，护甲越厚，你的敏捷就越低。当你决定穿上重甲成为一个肉盾时，你就必须接受自己跑得比乌龟还慢的现实。鱼和熊掌不可兼得哦！（各种武器的独立伤害详解，请去【百科全书】里查阅。）
+
+祝你在《终末之诗》活得久一点，BEEEEEP！`,
+      },
+    ],
+  },
   {
     id: 'history',
     title: '故事历史',
@@ -306,6 +436,19 @@ export default function App() {
                         return (
                           <>
                             <h2 className="text-5xl font-serif text-[#C2B280] mb-5">{selectedTopic?.title}</h2>
+                            {selectedTopic?.id === 'play_tutorial' && (
+                              <div className="mb-6 rounded-lg border border-[#C2B280]/50 bg-[#C2B280]/10 p-4">
+                                <div className="text-sm font-serif text-[#C2B280] mb-2">教程指引</div>
+                                <a
+                                  href={TUTORIAL_GUIDE_URL}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-sm break-all text-white/90 underline decoration-[#C2B280]/70 underline-offset-4 hover:text-[#C2B280] transition-colors"
+                                >
+                                  {TUTORIAL_GUIDE_URL}
+                                </a>
+                              </div>
+                            )}
                             {selectedTopic?.description && (
                               <p className="text-xl text-white/80 leading-relaxed mb-6 max-w-3xl whitespace-pre-line">
                                 {selectedTopic.description}
@@ -332,11 +475,11 @@ export default function App() {
                                     </button>
                                   ))}
                                 </div>
-                                {selectedSubTopic?.content && (
-                                  <p className="text-xl text-white/85 leading-relaxed whitespace-pre-line max-w-4xl">
-                                    {selectedSubTopic.content}
-                                  </p>
-                                )}
+                                {selectedSubTopic?.content &&
+                                  renderTutorialContent(
+                                    selectedSubTopic.content,
+                                    'text-xl text-white/85 max-w-5xl',
+                                  )}
                               </div>
                             ) : (
                               <div className="mt-auto text-xs text-white/40 font-mono">阅读完成后可返回标题。</div>

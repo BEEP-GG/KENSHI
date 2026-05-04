@@ -9,6 +9,111 @@ export const SCENARIOS = [
     money: 1000,
   },
   {
+    id: 'unknown_dream',
+    title: '未知梦想',
+    description: '你不被任何既定剧本束缚。自行决定来历、携带装备与开局物品，写下属于你的第一章。',
+    difficulty: '普通',
+    icon: 'Sparkles',
+    equipment: ['无'],
+    money: 0,
+  },
+  {
+    id: 'slave_master',
+    title: '奴隶主启程',
+    description:
+      '你生来就是联合帝国的上层贵族，财富、权势与奴仆唾手可得。如今你牵着两名私人奴隶踏入赫夫特城，表面风光无限，暗地里却已被反蓄奴者盯上。金钱能买来忠诚，也能买来仇恨——在刀锋与阴谋之间，守住你的地位。',
+    difficulty: '困难',
+    icon: 'Handcuffs',
+    equipment: ['贵族服饰', '短刀', '奴隶镣铐钥匙'],
+    money: 8000,
+    fixedRegion: 'great_desert',
+    fixedTown: '赫夫特城',
+    alliedFactions: ['联合城', '商人行会', '奴隶商人'],
+    hostileFactions: ['反蓄奴者'],
+    companions: [
+      {
+        race: 'human',
+        subrace: 'greenlander',
+        level: 1,
+        attributes: {
+          strength: 12,
+          dexterity: 12,
+          perception: 10,
+          constitution: 12,
+          will: 10,
+          intelligence: 8,
+          charisma: 6,
+        },
+        name: '私人奴隶A',
+        gender: 'male',
+        age: 22,
+        appearance: {
+          eyes: '',
+          hairStyle: '',
+          hairColor: '',
+          bodyType: '消瘦',
+          height: 172,
+          description: '骨瘦如柴，神情麻木，脖颈有明显镣铐磨痕。',
+        },
+        traits: [],
+        customTraitName: '',
+        customTraitDescription: '',
+      },
+      {
+        race: 'human',
+        subrace: 'scorchlander',
+        level: 1,
+        attributes: {
+          strength: 10,
+          dexterity: 13,
+          perception: 10,
+          constitution: 11,
+          will: 10,
+          intelligence: 8,
+          charisma: 6,
+        },
+        name: '私人奴隶B',
+        gender: 'female',
+        age: 21,
+        appearance: {
+          eyes: '',
+          hairStyle: '',
+          hairColor: '',
+          bodyType: '消瘦',
+          height: 168,
+          description: '长期营养不良，眼神空洞，行动谨慎而机械。',
+        },
+        traits: [],
+        customTraitName: '',
+        customTraitDescription: '',
+      },
+    ],
+  },
+  {
+    id: 'human_torso',
+    title: '人棍',
+    description:
+      '你从喙嘴兽的口中捡回一条命，却失去了全部四肢。如今你被困在目之地的沙尔维尔驿站，身无分文、寸步难行。是装上义肢向命运复仇，还是在黄沙中悄然腐朽？',
+    difficulty: '极难',
+    icon: 'Skull',
+    equipment: ['无'],
+    money: 0,
+    fixedRegion: 'eye_land',
+    fixedTown: '沙尔维尔驿站',
+  },
+  {
+    id: 'monster_hunter',
+    title: '怪物猎人',
+    description:
+      '你是没落巨兽猎人家族的最后传人，携祖传巨刃驻守利维坦观测站。面对如山般的巨兽与深海怪影，你要以狩猎证明谁才是这片海岸的终极掠食者。',
+    difficulty: '极难',
+    icon: 'Sword',
+    equipment: ['利维坦狩猎之刃'],
+    money: 300,
+    fixedRegion: 'leviathan_coast',
+    fixedTown: '利维坦观测站',
+  },
+  {
     id: 'holy_sword',
     title: '大剑',
     description: '你偷走了传说中的圣剑。现在，整个帝国都在追捕你。你拥有强大的武器，但没有未来。',
@@ -183,6 +288,7 @@ export const SCENARIOS = [
       {
         race: 'pack_beast',
         subrace: 'pack_beast',
+        level: 1,
         attributes: {
           strength: 1,
           dexterity: 1,
@@ -254,6 +360,7 @@ export const SCENARIOS = [
       {
         race: 'canine',
         subrace: 'stray_dog',
+        level: 1,
         attributes: {
           strength: 1,
           dexterity: 1,
@@ -294,6 +401,14 @@ export const SCENARIOS = [
 
 export const REGIONS = [
   {
+    id: 'leviathan_coast',
+    title: '利维坦海岸',
+    description:
+      '大陆西北角的辽阔滨海平原，紫色土壤与稀疏的紫林一路延展至发黑礁岸。地势开阔、水源充沛，巨型生物在此游弋繁衍，令整片海岸成为狩猎者与猎物共同的乐园。',
+    towns: ['利维坦观测站'],
+    danger: '极高',
+  },
+  {
     id: 'iron_valley',
     title: '铁之谷',
     description: '污秽与黑暗盘踞之地，娜尔可一族在此隐藏，等待复兴的火种。',
@@ -319,6 +434,14 @@ export const REGIONS = [
     title: '斯托伯的花园',
     description: '被遗忘的残垣与荒草蔓延，古代残迹在此沉眠。',
     towns: ['方舟'],
+    danger: '极高',
+  },
+  {
+    id: 'eye_land',
+    title: '目之地',
+    description:
+      '风沙永不停歇的荒芜沙海。传说一颗古老卫星曾坠毁于此，破碎残骸深埋地底，至今仍扰动着整片地域的气流与磁场，让沙暴终年不息。',
+    towns: ['沙尔维尔驿站'],
     danger: '极高',
   },
   {
@@ -445,6 +568,8 @@ export const TOWN_DESCRIPTIONS: Record<string, string> = {
   吉利之剑: '商人行会西南角的贸易城，金流与契约铺路。',
   科隆斯城: '无贵族的联合之城，自由与秩序在此角力。',
   开顿城: '高地上的联合之城，四周遍布巨兽骸骨。',
+  沙尔维尔驿站: '矗立于目之地风暴腹地的孤独旅馆，商旅、逃亡者与濒死之人都曾在此歇脚。',
+  利维坦观测站: '营地位于海岸高地，瞭望塔与简易帐篷拼接而成，是追踪巨兽动向的前线据点。',
 };
 
 export const RACES = [

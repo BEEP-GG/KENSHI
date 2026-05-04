@@ -40,6 +40,9 @@ export const StepScenario: React.FC<StepScenarioProps> = ({ data, updateData, on
     kral_choice: 572,
     fish_island_refugee: 573,
     bast_stray: 549,
+    unknown_dream: 749,
+    slave_master: 798,
+    human_torso: 799,
   };
   const ALL_SCENARIO_UIDS = Object.values(SCENARIO_WB_UIDS);
 

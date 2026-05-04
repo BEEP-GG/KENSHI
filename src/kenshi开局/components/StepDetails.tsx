@@ -6,6 +6,8 @@ import {
   Attribute,
   Attributes,
   CharacterData,
+  CustomArmorType,
+  CustomWeaponType,
   INITIAL_APPEARANCE,
   INITIAL_ATTRIBUTES,
   SquadMemberData,
@@ -21,7 +23,7 @@ const ATTRIBUTE_CONFIG: Record<Attribute, { label: string; icon: any; desc: stri
   dexterity: { label: '敏捷', icon: Zap, desc: '影响攻击速度和格挡几率' },
   perception: { label: '感知', icon: Eye, desc: '影响远程精度和侦察能力' },
   constitution: { label: '体质', icon: Heart, desc: '影响生命值和抗击打能力' },
-  will: { label: '意志', icon: Sparkles, desc: '影响战斗士气与胆量' },
+  will: { label: '意志', icon: Sparkles, desc: '影响心情值和胆量' },
   intelligence: { label: '智力', icon: Sparkles, desc: '影响科研速度和医疗效率' },
   charisma: { label: '魅力', icon: Activity, desc: '影响交易价格和招募成功率' },
 };
@@ -33,8 +35,12 @@ const ATTRIBUTE_MAX = 50;
 const GOD_MODE_ATTRIBUTE_MAX = 130;
 const GOD_MODE_MIN_LEVEL = 1;
 const GOD_MODE_MAX_LEVEL = 100;
-const GOD_MODE_POINTS_PER_LEVEL = 7;
-const CONTINUOUS_INTERVAL = 35;
+const GOD_MODE_POINTS_PER_LEVEL = 5;
+const SQUAD_LEVEL_POINTS_PER_LEVEL = 5;
+const CONTINUOUS_STEP_INTERVAL = 35;
+const CONTINUOUS_TICK_INTERVAL = 90;
+const CONTINUOUS_START_DELAY = 120;
+const CONTINUOUS_MAX_BATCH_STEPS = 3;
 
 const ATTRIBUTE_PRESETS: Array<{ id: string; label: string; values: Attributes; note: string }> = [
   {
@@ -76,6 +82,64 @@ const ATTRIBUTE_LABEL_TO_KEY: Record<string, Attribute> = {
   智力: 'intelligence',
   魅力: 'charisma',
 };
+
+const UNKNOWN_DREAM_SCENARIO_ID = 'unknown_dream';
+const UNKNOWN_DREAM_UID = 749;
+const UNKNOWN_DREAM_WEAPON_TYPES = ['武士刀类', '钝器类', '军刀类', '砍刀类', '长柄刀类', '大型类', '弓', '弩'];
+const UNKNOWN_DREAM_ARMOR_TYPES = ['轻甲', '中甲', '重甲'];
+const UNKNOWN_DREAM_TUTORIAL_STEPS = [
+  {
+    title: '武器名称',
+    content: '武器名字。点击下一步进入武器类别详解。',
+  },
+  {
+    title: '武器类别详解',
+    content: `武士刀：
+- 每次对目标造成未被DR格挡的切割伤害时，对目标施加1层“流血”。流血每回合开始时造成1点直接伤害，可叠加。
+- 基础攻速为3。
+
+军刀：
+- 装备军刀类武器时，“武器格挡”基础值+12。
+
+砍刀：
+- 无视对方7点DR。
+- 攻击检定大成功（01-07）时触发“破甲”：目标DR降低8（可叠加，对该目标全局生效）。
+
+长柄类：
+- 每次攻击时可选择最多3个敌人进行攻击检定；每多一个目标，攻击检定-7。
+
+钝器：
+- 攻击检定大成功（01-07）时，目标必定获得1层“骨折”；每层骨折使力量/敏捷-10、逃跑检定-15（可叠加，直到夹板包清除）。
+
+大型武器：
+- 每次攻击时对2个敌人进行攻击检定。
+- 攻击检定大失败（90-100）或两名目标均被【闪避】时，进入失衡，防御检定-15。
+
+弩：
+- 基础效果：无视对方7点DR。
+- 基础攻速为1。
+- 大失败不会触发反击，而是误伤队友。
+
+弓：
+- 大失败不会触发反击，而是误伤队友。
+- 当弓/弩作为主武器且无副武器时，防御时只能闪避不能格挡；若有副武器则可正常防御。
+- 对弓/弩攻击只能闪避，无法格挡。`,
+  },
+  {
+    title: '伤害面骰数',
+    content: '伤害面骰数，为一次攻击最高xx伤害。',
+  },
+  {
+    title: '切割占比 / 钝伤占比',
+    content: '切割占比：可以被护甲DR格挡的伤害；钝伤占比：不可被护甲格挡，即真实伤害。',
+  },
+];
+const BEEP_PRESET_UNKNOWN_DREAM_SCRIPT = `黄沙掩埋了无数旧时代的骨骸，而在这片残酷的废土上，此刻却迎来了一个绝对的“异类”。
+也许你是跨越星海的异世界来客，也许是远古废墟中苏醒的未知造物。你的种族不在任何势力的图鉴里，你的过往也没有任何剧本能够定义。
+荒野中孤身伫立的你。
+你的样貌、身份、甚至是行囊中那些根本不属于这个世界的奇特装备，全凭你一手捏造。这个世界对你的突兀降临毫无准备，但这正是你最大的特权。
+随心所欲地塑造你的化身吧，打破一切常理与束缚
+在这片焦土上，亲自执导属于你的第一场大戏。`;
 
 export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) => {
   const isSkeleton = data.race === 'skeleton';
@@ -163,6 +227,8 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
   }, [data.scenario]);
 
   const holdTimerRef = React.useRef<number | null>(null);
+  const holdDelayRef = React.useRef<number | null>(null);
+  const lastAdjustTimestampRef = React.useRef<number>(0);
   const attributesRef = React.useRef(data.attributes);
   const remainingRef = React.useRef(remainingPoints);
   const prevSkeletonRef = React.useRef(isSkeleton);
@@ -183,6 +249,10 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
   }, [data.attributes, isSkeleton, updateData]);
 
   const stopContinuousAdjust = React.useCallback(() => {
+    if (holdDelayRef.current !== null) {
+      window.clearTimeout(holdDelayRef.current);
+      holdDelayRef.current = null;
+    }
     if (holdTimerRef.current !== null) {
       window.clearInterval(holdTimerRef.current);
       holdTimerRef.current = null;
@@ -193,37 +263,40 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
     const stop = () => stopContinuousAdjust();
     window.addEventListener('mouseup', stop);
     window.addEventListener('touchend', stop);
+    window.addEventListener('touchcancel', stop);
     window.addEventListener('blur', stop);
+    document.addEventListener('visibilitychange', stop);
 
     return () => {
       window.removeEventListener('mouseup', stop);
       window.removeEventListener('touchend', stop);
+      window.removeEventListener('touchcancel', stop);
       window.removeEventListener('blur', stop);
+      document.removeEventListener('visibilitychange', stop);
       stopContinuousAdjust();
     };
   }, [stopContinuousAdjust]);
 
   const adjustByDelta = React.useCallback(
-    (attr: Attribute, delta: 1 | -1) => {
+    (attr: Attribute, delta: 1 | -1, requestedSteps: number = 1) => {
       if (isSkeleton && attr === 'will') return;
       const currentAttrs = attributesRef.current;
       const currentValue = currentAttrs[attr];
-
-      if (delta > 0 && (currentValue >= attributeUpperLimit || remainingRef.current <= 0)) {
+      const steps = Math.max(1, Math.min(CONTINUOUS_MAX_BATCH_STEPS, Math.floor(requestedSteps)));
+      const canIncrease = Math.min(attributeUpperLimit - currentValue, remainingRef.current);
+      const canDecrease = currentValue - ATTRIBUTE_MIN;
+      const appliedSteps = delta > 0 ? Math.min(steps, canIncrease) : Math.min(steps, canDecrease);
+      if (appliedSteps <= 0) {
         return;
       }
-      if (delta < 0 && currentValue <= ATTRIBUTE_MIN) {
-        return;
-      }
-
-      const nextValue = currentValue + delta;
+      const nextValue = currentValue + delta * appliedSteps;
       const nextAttrs = {
         ...currentAttrs,
         [attr]: nextValue,
       };
 
       attributesRef.current = nextAttrs;
-      remainingRef.current = remainingRef.current - delta;
+      remainingRef.current = remainingRef.current - delta * appliedSteps;
       updateData({ attributes: nextAttrs });
     },
     [attributeUpperLimit, isSkeleton, updateData],
@@ -232,9 +305,16 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
   const startContinuousAdjust = (attr: Attribute, delta: 1 | -1) => {
     adjustByDelta(attr, delta);
     stopContinuousAdjust();
-    holdTimerRef.current = window.setInterval(() => {
-      adjustByDelta(attr, delta);
-    }, CONTINUOUS_INTERVAL);
+    lastAdjustTimestampRef.current = performance.now();
+    holdDelayRef.current = window.setTimeout(() => {
+      holdTimerRef.current = window.setInterval(() => {
+        const now = performance.now();
+        const elapsed = now - lastAdjustTimestampRef.current;
+        const steps = Math.max(1, Math.round(elapsed / CONTINUOUS_STEP_INTERVAL));
+        lastAdjustTimestampRef.current = now;
+        adjustByDelta(attr, delta, steps);
+      }, CONTINUOUS_TICK_INTERVAL);
+    }, CONTINUOUS_START_DELAY);
   };
 
   const applyPreset = (presetValues: Attributes) => {
@@ -293,6 +373,54 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
   const allowSquadMembers = data.scenario === 'freedom_seekers' || companionMembers.length > 0;
   const subraceAllowedGenders = (selectedSubrace as { allowedGenders?: Array<CharacterData['gender']> })
     ?.allowedGenders;
+  const isUnknownDream = data.scenario === UNKNOWN_DREAM_SCENARIO_ID;
+  const [isSavingUnknownDreamScript, setIsSavingUnknownDreamScript] = React.useState(false);
+  const [unknownDreamScriptSaved, setUnknownDreamScriptSaved] = React.useState(false);
+  const [showBeepPresetConfirm, setShowBeepPresetConfirm] = React.useState(false);
+  const [showUnknownDreamTutorial, setShowUnknownDreamTutorial] = React.useState(false);
+  const [unknownDreamTutorialStep, setUnknownDreamTutorialStep] = React.useState(0);
+
+  const updateCustomStart = (updates: Partial<CharacterData['customStart']>) => {
+    setUnknownDreamScriptSaved(false);
+    updateData({
+      customStart: {
+        ...data.customStart,
+        ...updates,
+      },
+    });
+  };
+
+  const buildUnknownDreamWorldbookContent = () => {
+    const script = data.customStart.script?.trim() || '未填写';
+    return `这是对于【未知梦想】剧本的自定义背景故事：\n${script}`;
+  };
+
+  const saveUnknownDreamScript = async () => {
+    if (!isUnknownDream || isSavingUnknownDreamScript) return;
+    setIsSavingUnknownDreamScript(true);
+    setUnknownDreamScriptSaved(false);
+    try {
+      const charWorldbook = getCharWorldbookNames('current');
+      const wbName = charWorldbook.primary;
+      if (!wbName) throw new Error('worldbook not found');
+
+      const content = buildUnknownDreamWorldbookContent();
+      await updateWorldbookWith(wbName, entries =>
+        entries.map(entry => {
+          if (entry.uid === UNKNOWN_DREAM_UID) {
+            return { ...entry, enabled: true, content };
+          }
+          return entry;
+        }),
+      );
+      setUnknownDreamScriptSaved(true);
+    } catch (error) {
+      console.error('保存未知梦想设定失败', error);
+      toastr.error('保存失败，请查看控制台');
+    } finally {
+      setIsSavingUnknownDreamScript(false);
+    }
+  };
 
   React.useEffect(() => {
     if (isSkeleton && data.gender !== 'other') {
@@ -375,6 +503,7 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
       name: '',
       gender: 'male',
       age: 25,
+      level: 1,
       race: '',
       subrace: '',
       attributes: { ...INITIAL_ATTRIBUTES },
@@ -468,7 +597,7 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
             </div>
             <p className="text-[10px] text-white/40">
               按游戏加点逻辑：默认 1 点，+1 消耗 1 点，-1 返还 1 点；普通模式单项最高 50 点。上帝模式可设置等级 1-100，
-              每升 1 级额外 +7 属性点，单项上限提升到 130，且可直接输入数值分配。长按 +/- 可连续加点。
+              每升 1 级额外 +5 属性点，单项上限提升到 130，且可直接输入数值分配。长按 +/- 可连续加点。
             </p>
           </div>
 
@@ -595,6 +724,14 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
                 const memberRace = RACES.find(race => race.id === member.race);
                 const memberSubraces = memberRace?.subraces ?? [];
                 const memberSubrace = memberSubraces.find(subrace => subrace.id === member.subrace);
+                const memberLevel = Math.max(1, Math.min(100, Number(member.level || 1)));
+                const memberTotalAttributePoints =
+                  TOTAL_ATTRIBUTE_POINTS + (memberLevel - 1) * SQUAD_LEVEL_POINTS_PER_LEVEL;
+                const memberUsedPoints = Object.values(member.attributes).reduce(
+                  (sum, value) => sum + (value - ATTRIBUTE_MIN),
+                  0,
+                );
+                const memberRemainingPoints = memberTotalAttributePoints - memberUsedPoints;
                 const memberSubraceAllowedGenders = (
                   memberSubrace as { allowedGenders?: Array<CharacterData['gender']> }
                 )?.allowedGenders;
@@ -673,6 +810,26 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
                       </div>
                     </div>
 
+                    <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs text-white/60 mb-1">
+                          {data.scenario === 'slave_master' ? '奴隶等级' : '队员等级'}
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="100"
+                          value={member.level || 1}
+                          onChange={e =>
+                            updateSquadMember(index, {
+                              level: Math.max(1, Math.min(100, parseInt(e.target.value, 10) || 1)),
+                            })
+                          }
+                          className="w-full bg-black/50 border border-white/20 rounded p-2 text-white focus:border-[#C2B280] focus:outline-none"
+                        />
+                      </div>
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                       <div>
                         <label className="block text-xs text-white/60 mb-1">种族</label>
@@ -722,11 +879,7 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
                       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-white/60 mb-2">
                         <span>属性分配</span>
                         <span className="text-[#C2B280] font-mono">
-                          已分配{' '}
-                          {Object.values(member.attributes).reduce((sum, value) => sum + (value - ATTRIBUTE_MIN), 0)} /
-                          剩余{' '}
-                          {TOTAL_ATTRIBUTE_POINTS -
-                            Object.values(member.attributes).reduce((sum, value) => sum + (value - ATTRIBUTE_MIN), 0)}
+                          已分配 {memberUsedPoints} / 剩余 {memberRemainingPoints}
                         </span>
                         <button
                           type="button"
@@ -765,7 +918,9 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
                         ))}
                       </div>
                       <p className="text-[10px] text-white/40 mt-2">
-                        每位队员同样拥有 168 点基础属性点；可手动分配，或点击“随机该队员”生成。
+                        每位队员基础 168 点属性；等级每提升 1 级额外 +5 点（当前等级 {memberLevel}，总计{' '}
+                        {memberTotalAttributePoints}
+                        点）；可手动分配，或点击“随机该队员”生成。
                       </p>
                     </div>
 
@@ -933,6 +1088,219 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
 
       {/* Right Column: Identity & Appearance */}
       <div className="space-y-8">
+        {isUnknownDream && (
+          <div className="bg-black/40 border border-[#C2B280]/30 rounded-xl p-6">
+            <h3 className="text-2xl font-serif text-[#C2B280] mb-4">未知梦想详细设定</h3>
+            <p className="text-xs text-white/50 mb-4">
+              保存按钮仅会把“自定义背景故事”写入世界书 UID749。武器/护甲等参数会用于变量，不走世界书保存。
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-white/60 mb-2">自定义背景故事</label>
+                <textarea
+                  value={data.customStart.script}
+                  onChange={e => updateCustomStart({ script: e.target.value })}
+                  rows={4}
+                  className="w-full resize-y rounded border border-white/20 bg-black/50 p-3 text-sm text-white focus:border-[#C2B280] focus:outline-none"
+                  placeholder="写入你这次未知梦想开局的背景故事"
+                />
+                <div className="mt-2 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setShowBeepPresetConfirm(true)}
+                    className="rounded border border-white/20 px-3 py-1.5 text-xs text-white/80 hover:border-[#C2B280] hover:text-[#C2B280]"
+                  >
+                    哔噗写好的
+                  </button>
+                </div>
+                {showBeepPresetConfirm && (
+                  <div className="mt-2 rounded border border-[#C2B280]/30 bg-black/60 p-3">
+                    <div className="text-xs text-white/80 mb-2">beep？确定替换当前背景故事吗？</div>
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowBeepPresetConfirm(false)}
+                        className="rounded border border-white/20 px-3 py-1 text-xs text-white/70 hover:border-white/40"
+                      >
+                        取消
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          updateCustomStart({ script: BEEP_PRESET_UNKNOWN_DREAM_SCRIPT });
+                          setShowBeepPresetConfirm(false);
+                        }}
+                        className="rounded border border-[#C2B280]/60 px-3 py-1 text-xs text-[#C2B280] hover:bg-[#C2B280]/10"
+                      >
+                        确定替换
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <label className="block text-sm text-white/60">自定义武器名称</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUnknownDreamTutorialStep(0);
+                        setShowUnknownDreamTutorial(true);
+                      }}
+                      className="text-xs text-[#C2B280] hover:text-[#D8C79A]"
+                    >
+                      【自定义教程】
+                    </button>
+                  </div>
+                  <input
+                    value={data.customStart.weaponName}
+                    onChange={e => updateCustomStart({ weaponName: e.target.value })}
+                    className="w-full rounded border border-white/20 bg-black/50 p-3 text-sm text-white focus:border-[#C2B280] focus:outline-none"
+                    placeholder="例如：裂星刃"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-white/60 mb-2">武器类型</label>
+                  <select
+                    value={data.customStart.weaponType}
+                    onChange={e => updateCustomStart({ weaponType: e.target.value as CustomWeaponType })}
+                    className="w-full rounded border border-white/20 bg-black/50 p-3 text-sm text-white focus:border-[#C2B280] focus:outline-none"
+                  >
+                    {UNKNOWN_DREAM_WEAPON_TYPES.map(type => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-white/60 mb-2">伤害骰面数</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={data.customStart.weaponDiceSides}
+                    onChange={e =>
+                      updateCustomStart({ weaponDiceSides: Math.max(1, parseInt(e.target.value || '1', 10)) })
+                    }
+                    className="w-full rounded border border-white/20 bg-black/50 p-3 text-sm text-white focus:border-[#C2B280] focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-white/60 mb-2">武器价值</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={data.customStart.weaponValue}
+                    onChange={e => updateCustomStart({ weaponValue: Math.max(0, parseInt(e.target.value || '0', 10)) })}
+                    className="w-full rounded border border-white/20 bg-black/50 p-3 text-sm text-white focus:border-[#C2B280] focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-white/60 mb-2">切割占比（0-1）</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={data.customStart.weaponCut}
+                    onChange={e => {
+                      const cut = Math.max(0, Math.min(1, Number(e.target.value || 0)));
+                      updateCustomStart({ weaponCut: cut, weaponBlunt: Number((1 - cut).toFixed(2)) });
+                    }}
+                    className="w-full rounded border border-white/20 bg-black/50 p-3 text-sm text-white focus:border-[#C2B280] focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-white/60 mb-2">钝伤占比（0-1）</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={data.customStart.weaponBlunt}
+                    onChange={e => {
+                      const blunt = Math.max(0, Math.min(1, Number(e.target.value || 0)));
+                      updateCustomStart({ weaponBlunt: blunt, weaponCut: Number((1 - blunt).toFixed(2)) });
+                    }}
+                    className="w-full rounded border border-white/20 bg-black/50 p-3 text-sm text-white focus:border-[#C2B280] focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm text-white/60 mb-2">武器介绍</label>
+                <textarea
+                  value={data.customStart.weaponDescription}
+                  onChange={e => updateCustomStart({ weaponDescription: e.target.value })}
+                  rows={3}
+                  className="w-full resize-y rounded border border-white/20 bg-black/50 p-3 text-sm text-white focus:border-[#C2B280] focus:outline-none"
+                  placeholder="这把武器的背景、外观、手感"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm text-white/60 mb-2">护甲类型</label>
+                  <select
+                    value={data.customStart.armorType}
+                    onChange={e => updateCustomStart({ armorType: e.target.value as CustomArmorType })}
+                    className="w-full rounded border border-white/20 bg-black/50 p-3 text-sm text-white focus:border-[#C2B280] focus:outline-none"
+                  >
+                    {UNKNOWN_DREAM_ARMOR_TYPES.map(type => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-white/60 mb-2">护甲 DR</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={data.customStart.armorDr}
+                    onChange={e => updateCustomStart({ armorDr: Math.max(0, parseInt(e.target.value || '0', 10)) })}
+                    className="w-full rounded border border-white/20 bg-black/50 p-3 text-sm text-white focus:border-[#C2B280] focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm text-white/60 mb-2">自定义物品（每行一条）</label>
+                <textarea
+                  value={data.customStart.customItems}
+                  onChange={e => updateCustomStart({ customItems: e.target.value })}
+                  rows={4}
+                  className="w-full resize-y rounded border border-white/20 bg-black/50 p-3 text-sm text-white focus:border-[#C2B280] focus:outline-none"
+                  placeholder={'例如：\n古代能量芯片\n褪色地图\n未知药剂'}
+                />
+              </div>
+
+              <div className="rounded border border-white/10 bg-black/40 p-3 text-xs text-white/70 whitespace-pre-line">
+                {buildUnknownDreamWorldbookContent()}
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={saveUnknownDreamScript}
+                  disabled={isSavingUnknownDreamScript}
+                  className="rounded border border-[#C2B280]/60 px-4 py-2 text-sm text-[#C2B280] hover:bg-[#C2B280]/10 disabled:opacity-50"
+                >
+                  {isSavingUnknownDreamScript
+                    ? '保存中...'
+                    : unknownDreamScriptSaved
+                      ? '已保存背景到 UID749'
+                      : '保存背景故事'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="bg-black/40 border border-white/10 rounded-xl p-6">
           <h3 className="text-2xl font-serif text-[#C2B280] mb-6">身份设定</h3>
 
@@ -1213,6 +1581,65 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
           </div>
         </div>
       </div>
+
+      {isUnknownDream && showUnknownDreamTutorial && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-[1px] px-4">
+          <div className="w-full max-w-3xl rounded-xl border border-[#C2B280]/35 bg-black/85 p-5 md:p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="text-xs text-white/50">
+                  自定义教程 {unknownDreamTutorialStep + 1}/{UNKNOWN_DREAM_TUTORIAL_STEPS.length}
+                </div>
+                <h3 className="mt-1 text-xl font-serif text-[#C2B280]">
+                  {UNKNOWN_DREAM_TUTORIAL_STEPS[unknownDreamTutorialStep].title}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowUnknownDreamTutorial(false)}
+                className="rounded border border-white/20 px-2 py-1 text-xs text-white/70 hover:border-white/40"
+              >
+                关闭
+              </button>
+            </div>
+
+            <div className="mt-4 max-h-[55vh] overflow-auto whitespace-pre-line rounded border border-white/10 bg-black/40 p-4 text-sm leading-7 text-white/85">
+              {UNKNOWN_DREAM_TUTORIAL_STEPS[unknownDreamTutorialStep].content}
+            </div>
+
+            <div className="mt-4 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setUnknownDreamTutorialStep(step => Math.max(0, step - 1))}
+                disabled={unknownDreamTutorialStep === 0}
+                className="rounded border border-white/20 px-3 py-1.5 text-xs text-white/80 hover:border-white/40 disabled:opacity-40"
+              >
+                上一步
+              </button>
+
+              {unknownDreamTutorialStep < UNKNOWN_DREAM_TUTORIAL_STEPS.length - 1 ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setUnknownDreamTutorialStep(step => Math.min(UNKNOWN_DREAM_TUTORIAL_STEPS.length - 1, step + 1))
+                  }
+                  className="rounded border border-[#C2B280]/60 px-4 py-1.5 text-xs text-[#C2B280] hover:bg-[#C2B280]/10"
+                >
+                  下一步
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowUnknownDreamTutorial(false)}
+                  className="rounded border border-[#C2B280]/60 px-4 py-1.5 text-xs text-[#C2B280] hover:bg-[#C2B280]/10"
+                >
+                  完成
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
