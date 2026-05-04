@@ -46,6 +46,7 @@ export const StepScenario: React.FC<StepScenarioProps> = ({ data, updateData, on
     monster_hunter: 800,
   };
   const ALL_SCENARIO_UIDS = Object.values(SCENARIO_WB_UIDS);
+  const ALL_SCENARIO_UID_SET = new Set(ALL_SCENARIO_UIDS);
 
   const applyScenarioWorldbook = async (scenarioId: string) => {
     const uid = SCENARIO_WB_UIDS[scenarioId];
@@ -54,14 +55,20 @@ export const StepScenario: React.FC<StepScenarioProps> = ({ data, updateData, on
       const charWorldbook = getCharWorldbookNames('current');
       const wbName = charWorldbook.primary;
       if (!wbName) return;
+      let foundTargetUid = false;
       await updateWorldbookWith(wbName, entries =>
         entries.map(entry => {
-          if (ALL_SCENARIO_UIDS.includes(entry.uid)) {
-            return { ...entry, enabled: entry.uid === uid };
+          const entryUid = Number(entry.uid);
+          if (ALL_SCENARIO_UID_SET.has(entryUid)) {
+            if (entryUid === uid) foundTargetUid = true;
+            return { ...entry, enabled: entryUid === uid };
           }
           return entry;
         }),
       );
+      if (!foundTargetUid) {
+        console.warn(`Scenario worldbook uid not found: ${uid} (scenario=${scenarioId})`);
+      }
     } catch (error) {
       console.error('切换剧本世界书条目失败', error);
     }
