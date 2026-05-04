@@ -92,7 +92,7 @@ type BattleState = {
   result: 'victory' | 'defeat' | null;
   endReason?: 'normal' | 'surrender';
   lastRoundAttackersCount: Record<string, number>;
-  nonLethalMode: 'all' | 'current' | null; // 非致命模式：'all'所有友方，'current'当前角色，null关闭
+  nonLethalActorIds: string[]; // 非致命模式：按角色挂钩
 };
 
 type BattleOutcome =
@@ -837,7 +837,7 @@ const buildUnitsFromStat = (stat: any) => {
 
 const buildTurnOrder = (units: BattleCharacter[]) =>
   [...units]
-    .filter(unit => unit.hp > 0 && !unit.escaped)
+    .filter(unit => unit.hp > 0 && !unit.escaped && !['死亡', '休克', '昏迷', '已被制服'].includes(unit.state))
     .sort((a, b) => {
       if (a.attributes.DEX !== b.attributes.DEX) return b.attributes.DEX - a.attributes.DEX;
       if (a.attributes.PER !== b.attributes.PER) return b.attributes.PER - a.attributes.PER;
@@ -907,8 +907,11 @@ const setUnitIntent = (units: BattleCharacter[], id: string, intent: string) => 
   return replaceUnit(units, { ...unit, intent });
 };
 
+const isCombatReadyUnit = (unit: BattleCharacter) =>
+  unit.hp > 0 && !unit.escaped && !['死亡', '休克', '昏迷', '已被制服'].includes(unit.state);
+
 const pickRandomTarget = (units: BattleCharacter[], faction: Faction) => {
-  const candidates = units.filter(unit => unit.faction === faction && unit.hp > 0 && !unit.escaped);
+  const candidates = units.filter(unit => unit.faction === faction && isCombatReadyUnit(unit));
   if (candidates.length === 0) return null;
   return candidates[_.random(0, candidates.length - 1)];
 };
@@ -988,6 +991,7 @@ const CharacterCard = ({
   character,
   isExpanded,
   isSelected,
+  nonLethalEnabled,
   onToggle,
   onSelect,
   onOpenDetail,
@@ -995,6 +999,7 @@ const CharacterCard = ({
   character: BattleCharacter;
   isExpanded: boolean;
   isSelected: boolean;
+  nonLethalEnabled?: boolean;
   onToggle: () => void;
   onSelect?: () => void;
   onOpenDetail?: (type: 'weapon' | 'armor' | 'attributes' | 'trauma', character: BattleCharacter) => void;
@@ -1040,6 +1045,7 @@ const CharacterCard = ({
         <div>
           <h3 className="text-lg font-serif text-stone-200 tracking-wider drop-shadow-md">
             {character.name}
+            {nonLethalEnabled ? <span className="ml-2 text-xs text-fuchsia-300">（开启非致命）</span> : null}
             {character.escaped ? <span className="ml-2 text-xs text-stone-500">(已逃跑)</span> : null}
             {statusLabel ? <span className="ml-2 text-xs text-rose-300">({statusLabel})</span> : null}
           </h3>
@@ -1245,7 +1251,7 @@ export default function App() {
     result: null,
     endReason: 'normal',
     lastRoundAttackersCount: {},
-    nonLethalMode: null,
+    nonLethalActorIds: [],
   });
   const battleOutcome = useMemo(() => getBattleOutcome(battleState.units), [battleState.units]);
   const displayOutcome: BattleOutcome = battleState.endReason === 'surrender' ? '投降' : battleOutcome;
@@ -1331,13 +1337,13 @@ export default function App() {
   }, [battleState.units]);
   const friendlyAliveCount = useMemo(
     () =>
-      friendlyUnits.filter(unit => unit.hp > 0 && !unit.escaped && unit.state !== '死亡' && unit.state !== '休克')
+      friendlyUnits.filter(unit => isCombatReadyUnit(unit))
         .length,
     [friendlyUnits],
   );
   const enemyAliveCount = useMemo(
     () =>
-      enemyUnits.filter(unit => unit.hp > 0 && !unit.escaped && unit.state !== '死亡' && unit.state !== '休克').length,
+      enemyUnits.filter(unit => isCombatReadyUnit(unit)).length,
     [enemyUnits],
   );
   const displayedLogs = useMemo(() => {
@@ -1440,7 +1446,7 @@ export default function App() {
         result: null,
         endReason: 'normal',
         lastRoundAttackersCount: {},
-        nonLethalMode: null,
+        nonLethalActorIds: [],
       });
       setPlayerId(playerId);
       setResultConfirmed(false);
@@ -1651,7 +1657,7 @@ export default function App() {
 
     if (tactic === 'taunt') {
       const target = selectedTargetId ? getUnit(battleState.units, selectedTargetId) : null;
-      if (target && target.faction === 'enemy' && !target.escaped) {
+      if (target && target.faction === 'enemy' && isCombatReadyUnit(target)) {
         setPlannedActions(prev => ({
           ...prev,
           [actorId]: { actionId: 'tactics', tactic: 'taunt', targetId: target.id },
@@ -1673,13 +1679,19 @@ export default function App() {
     setTacticsOpen(false);
   };
 
-  const applyBleedAndShock = (units: BattleCharacter[], logs: string[]) => {
+  const applyBleedAndShock = (
+    units: BattleCharacter[],
+    logs: string[],
+    nonLethalActorIds: string[] = [],
+  ) => {
     let working = units;
     working.forEach(unit => {
       if (unit.escaped) return;
       if (unit.bleedLayers > 0) {
         const bleedDamage = unit.bleedLayers;
-        const newHp = Math.max(0, unit.hp - bleedDamage);
+        const shouldKeepAlive = nonLethalActorIds.length > 0 && unit.faction === 'enemy';
+        const hpFloor = shouldKeepAlive ? 1 : 0;
+        const newHp = Math.max(hpFloor, unit.hp - bleedDamage);
         const updated = { ...unit, hp: newHp };
         working = replaceUnit(working, updated);
         appendLog(logs, `${unit.name}: 流血造成 ${bleedDamage} 伤害。`);
@@ -1799,7 +1811,7 @@ export default function App() {
     targetIndex?: number,
     targetCount?: number,
     allowMartialExtraAttack = true,
-    nonLethalMode: 'all' | 'current' | null = null,
+    nonLethalActorIds: string[] = [],
   ): AttackResult => {
     const hitBonus = attacker.hitBonusAgainst[defender.id] || 0;
     if (attacker.hitBonusAgainst[defender.id]) {
@@ -1825,7 +1837,7 @@ export default function App() {
       appendLog(logs, `${attacker.name}: 攻击检定大失败 (判定 ${rawRoll})`);
       if (/(弩|弓)/.test(attacker.weapon.type)) {
         const allyTargets = units.filter(
-          unit => unit.faction === attacker.faction && unit.id !== attacker.id && unit.hp > 0 && !unit.escaped,
+          unit => unit.faction === attacker.faction && unit.id !== attacker.id && isCombatReadyUnit(unit),
         );
         const ally = allyTargets.length ? allyTargets[_.random(0, allyTargets.length - 1)] : null;
         if (ally) {
@@ -1859,7 +1871,7 @@ export default function App() {
       }
       appendLog(logs, `${attacker.name}: 大失败！下一轮无法格挡，触发${defender.name}反击。`);
       attacker.noBlockNextRound = true;
-      return applyAttack(units, defender, attacker, 0, logs, lastRoundAttackersCount);
+      return applyAttack(units, defender, attacker, 0, logs, lastRoundAttackersCount, 0, undefined, undefined, true, nonLethalActorIds);
     }
 
     appendLog(logs, `${attacker.name}: 攻击${defender.name}（第${attackIndex + 1}击${targetLabel}：判定 ${rawRoll}）`);
@@ -1920,16 +1932,14 @@ export default function App() {
     let actualDamage = totalDamage;
 
     // 非致命模式：伤害使目标血量锁定为1
-    if (nonLethalMode && defender.faction !== attacker.faction) {
-      const isAttackerNonLethal =
-        (nonLethalMode === 'all' && attacker.subFaction === 'squad') ||
-        (nonLethalMode === 'current' && attacker.id === playerId);
+    if (nonLethalActorIds.length > 0 && defender.faction !== attacker.faction) {
+      const isAttackerNonLethal = nonLethalActorIds.includes(attacker.id);
 
       if (isAttackerNonLethal) {
         // 计算实际伤害，但确保目标血量不低于1
         const potentialHpAfter = Math.max(0, defender.hp - totalDamage);
         if (potentialHpAfter < 1) {
-          actualDamage = defender.hp - 1;
+          actualDamage = Math.max(0, defender.hp - 1);
         }
       }
     }
@@ -2065,6 +2075,7 @@ export default function App() {
           undefined,
           undefined,
           false,
+          nonLethalActorIds,
         );
       }
     }
@@ -2086,7 +2097,7 @@ export default function App() {
       const lastRoundAttackersCount: Record<string, number> = { ...prev.lastRoundAttackersCount };
       const lastRoundAttackersMap = new Map<string, Set<string>>();
       appendLog(logs, `--- 第 ${prev.round} 回合 ---`);
-      workingUnits = applyBleedAndShock(workingUnits, logs);
+      workingUnits = applyBleedAndShock(workingUnits, logs, prev.nonLethalActorIds);
       workingUnits = workingUnits.reduce(
         (acc, unit) => applyMoraleOutcome(acc, unit, logs, 'round', lastRoundAttackersCount),
         workingUnits,
@@ -2110,7 +2121,7 @@ export default function App() {
         if (action.actionId === 'tactics' && action.tactic === 'taunt' && action.targetId) {
           const target = getUnit(workingUnits, action.targetId);
           const actor = getUnit(workingUnits, actorId);
-          if (target && actor && !target.escaped && !actor.escaped && target.hp > 0 && actor.hp > 0) {
+          if (target && actor && isCombatReadyUnit(target) && isCombatReadyUnit(actor)) {
             tauntTargets[target.id] = actor.id;
           }
         }
@@ -2118,7 +2129,7 @@ export default function App() {
 
       const enemyTargetMap: Record<string, string> = {};
       workingUnits
-        .filter(unit => unit.faction === 'enemy' && unit.hp > 0 && !unit.escaped)
+        .filter(unit => unit.faction === 'enemy' && isCombatReadyUnit(unit))
         .forEach(enemy => {
           const tauntedBy = tauntTargets[enemy.id];
           const taunter = tauntedBy ? getUnit(workingUnits, tauntedBy) : null;
@@ -2140,7 +2151,7 @@ export default function App() {
 
       for (const actorId of turnOrderIds) {
         const actor = getUnit(workingUnits, actorId);
-        if (!actor || actor.hp <= 0) continue;
+        if (!actor || !isCombatReadyUnit(actor)) continue;
 
         if (actor.faction === 'friendly') {
           if (actor.subFaction === 'squad') {
@@ -2316,7 +2327,7 @@ export default function App() {
               if (planned.targetId) {
                 target = getUnit(workingUnits, planned.targetId) ?? null;
               }
-              if (!target || target.hp <= 0 || target.escaped) {
+              if (!target || !isCombatReadyUnit(target)) {
                 target = pickRandomTarget(workingUnits, 'enemy');
               }
               if (!target) {
@@ -2339,7 +2350,7 @@ export default function App() {
             if (planned?.actionId === 'attack' && planned.targetId) {
               target = getUnit(workingUnits, planned.targetId) ?? null;
             }
-            if (!target || target.hp <= 0 || target.escaped) {
+            if (!target || !isCombatReadyUnit(target)) {
               target = pickRandomTarget(workingUnits, 'enemy');
             }
             if (!target) {
@@ -2397,12 +2408,12 @@ export default function App() {
           const plan = attackPlans.get(actorId);
           if (!plan) continue;
           const actor = getUnit(workingUnits, actorId);
-          if (!actor || actor.hp <= 0 || actor.escaped) continue;
+          if (!actor || !isCombatReadyUnit(actor)) continue;
           if (attackIndex >= actor.attackCount) continue;
 
           const targetFaction = actor.faction === 'friendly' ? 'enemy' : 'friendly';
           let target = plan.targetId ? getUnit(workingUnits, plan.targetId) : null;
-          if (!target || target.hp <= 0 || target.escaped || target.faction !== targetFaction) {
+          if (!target || !isCombatReadyUnit(target) || target.faction !== targetFaction) {
             target = pickRandomTarget(workingUnits, targetFaction);
             plan.targetId = target?.id;
           }
@@ -2414,11 +2425,11 @@ export default function App() {
           const explicitTargets = plannedTargetIds
             .map((id: string) => getUnit(workingUnits, id))
             .filter((unit: BattleCharacter | undefined | null): unit is BattleCharacter =>
-              Boolean(unit && unit.hp > 0 && !unit.escaped),
+              Boolean(unit && isCombatReadyUnit(unit)),
             );
           const extraTargets = isPolearm
             ? workingUnits.filter(
-                unit => unit.faction === targetFaction && unit.id !== target.id && unit.hp > 0 && !unit.escaped,
+                unit => unit.faction === targetFaction && unit.id !== target.id && isCombatReadyUnit(unit),
               )
             : [];
           const poleTargets = isPolearm
@@ -2445,7 +2456,9 @@ export default function App() {
                     ...workingUnits
                       .filter(
                         unit =>
-                          unit.faction === targetFaction && unit.id !== poleTarget.id && unit.hp > 0 && !unit.escaped,
+                          unit.faction === targetFaction &&
+                          unit.id !== poleTarget.id &&
+                          isCombatReadyUnit(unit),
                       )
                       .slice(0, 1),
                   ]
@@ -2462,6 +2475,8 @@ export default function App() {
                   extraPenalty,
                   targetIndex,
                   perAttackTargets.length,
+                  true,
+                  prev.nonLethalActorIds,
                 );
                 workingUnits = result.units;
                 if (!result.dodged) {
@@ -2487,8 +2502,8 @@ export default function App() {
         }
       }
 
-      const friendAlive = workingUnits.some(unit => unit.faction === 'friendly' && unit.hp > 0 && !unit.escaped);
-      const enemyAlive = workingUnits.some(unit => unit.faction === 'enemy' && unit.hp > 0 && !unit.escaped);
+      const friendAlive = workingUnits.some(unit => unit.faction === 'friendly' && isCombatReadyUnit(unit));
+      const enemyAlive = workingUnits.some(unit => unit.faction === 'enemy' && isCombatReadyUnit(unit));
       let result: BattleState['result'] = enemyAlive ? (friendAlive ? null : 'defeat') : 'victory';
 
       if (roundLimit && prev.round >= roundLimit) {
@@ -2513,7 +2528,7 @@ export default function App() {
         result,
         endReason: result ? 'normal' : prev.endReason,
         lastRoundAttackersCount: nextLastRoundAttackersCount,
-        nonLethalMode: prev.nonLethalMode,
+        nonLethalActorIds: prev.nonLethalActorIds,
       };
     });
   };
@@ -2530,6 +2545,7 @@ export default function App() {
   const handleCopyLogs = async () => {
     const buildStatusLabel = (unit: BattleCharacter) => {
       if (unit.escaped) return '已逃跑';
+      if (unit.state === '已被制服') return '【被制服】';
       if (unit.state === '死亡') return '死亡';
       if (unit.state === '休克') return '休克';
       if (unit.state === '昏迷') return '昏迷';
@@ -2987,6 +3003,7 @@ export default function App() {
                 character={unit}
                 isExpanded={expandedCharId === unit.id}
                 isSelected={medicalSelecting ? selectedMedicalTargetId === unit.id : selectedActorId === unit.id}
+                nonLethalEnabled={battleState.nonLethalActorIds.includes(unit.id)}
                 onToggle={() => handleToggleExpand(unit.id)}
                 onSelect={() => {
                   if (medicalSelecting) {
@@ -3107,6 +3124,7 @@ export default function App() {
                 character={unit}
                 isExpanded={expandedCharId === unit.id}
                 isSelected={selectedTargetId === unit.id || (!!targetingMode && attackSelectionIds.includes(unit.id))}
+                nonLethalEnabled={false}
                 onToggle={() => handleToggleExpand(unit.id)}
                 onSelect={() => {
                   setSelectedTargetId(unit.id);
@@ -3117,9 +3135,8 @@ export default function App() {
                       actorId &&
                       actor &&
                       actor.subFaction === 'squad' &&
-                      !actor.escaped &&
-                      unit.hp > 0 &&
-                      !unit.escaped
+                      isCombatReadyUnit(actor) &&
+                      isCombatReadyUnit(unit)
                     ) {
                       if (targetingMode === 'subdue') {
                         setPlannedActions(prev => ({
@@ -3197,11 +3214,18 @@ export default function App() {
                   </div>
                   <button
                     onClick={() => {
-                      setBattleState(prev => ({ ...prev, nonLethalMode: 'all' }));
+                      setBattleState(prev => ({
+                        ...prev,
+                        nonLethalActorIds: prev.units
+                          .filter(unit => unit.faction === 'friendly')
+                          .map(unit => unit.id),
+                      }));
                       setNonLethalMenuOpen(false);
                     }}
                     className={`w-full text-left px-3 py-2 rounded-sm text-sm font-mono ${
-                      battleState.nonLethalMode === 'all'
+                      battleState.nonLethalActorIds.length > 0 &&
+                      friendlyUnits.length > 0 &&
+                      friendlyUnits.every(unit => battleState.nonLethalActorIds.includes(unit.id))
                         ? 'text-emerald-300 bg-emerald-900/30'
                         : 'text-stone-300 hover:bg-stone-800/60'
                     }`}
@@ -3210,11 +3234,20 @@ export default function App() {
                   </button>
                   <button
                     onClick={() => {
-                      setBattleState(prev => ({ ...prev, nonLethalMode: 'current' }));
+                      const actorId = selectedActorId || playerId;
+                      if (!actorId) return;
+                      setBattleState(prev => {
+                        const next = new Set(prev.nonLethalActorIds);
+                        next.add(actorId);
+                        return { ...prev, nonLethalActorIds: Array.from(next) };
+                      });
                       setNonLethalMenuOpen(false);
                     }}
                     className={`w-full text-left px-3 py-2 rounded-sm text-sm font-mono ${
-                      battleState.nonLethalMode === 'current'
+                      (() => {
+                        const actorId = selectedActorId || playerId;
+                        return !!actorId && battleState.nonLethalActorIds.includes(actorId);
+                      })()
                         ? 'text-emerald-300 bg-emerald-900/30'
                         : 'text-stone-300 hover:bg-stone-800/60'
                     }`}
@@ -3223,16 +3256,24 @@ export default function App() {
                   </button>
                   <button
                     onClick={() => {
-                      setBattleState(prev => ({ ...prev, nonLethalMode: null }));
+                      const actorId = selectedActorId || playerId;
+                      if (!actorId) return;
+                      setBattleState(prev => ({
+                        ...prev,
+                        nonLethalActorIds: prev.nonLethalActorIds.filter(id => id !== actorId),
+                      }));
                       setNonLethalMenuOpen(false);
                     }}
                     className={`w-full text-left px-3 py-2 rounded-sm text-sm font-mono ${
-                      battleState.nonLethalMode === null
+                      (() => {
+                        const actorId = selectedActorId || playerId;
+                        return !!actorId && !battleState.nonLethalActorIds.includes(actorId);
+                      })()
                         ? 'text-emerald-300 bg-emerald-900/30'
                         : 'text-stone-300 hover:bg-stone-800/60'
                     }`}
                   >
-                    取消
+                    当前角色关闭
                   </button>
                 </div>
               </div>

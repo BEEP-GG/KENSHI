@@ -254,7 +254,9 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
     }
 
     const equipmentList = scenario?.equipment ?? [];
-    const weaponItem = equipmentList.find(item => /刀|剑|棒|斧|弓|弩|锤|枪|矛/.test(item));
+    const scenarioForcedWeapon = scenario?.id === 'monster_hunter' ? '利维坦狩猎之刃' : undefined;
+    const weaponItem =
+      scenarioForcedWeapon ?? equipmentList.find(item => /刀|剑|棒|斧|弓|弩|锤|枪|矛|刃/.test(item));
     const armorItem = equipmentList.find(item => /衣|甲|护|裤|靴|袍|盔|披风|披肩|衫/.test(item));
 
     const resolveArmorType = (item?: string) => {
@@ -389,7 +391,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
           type: '大型类',
           quality: '祖传',
           dice: '1d38',
-          damage: '切割:0.3/钝伤:0.7',
+          damage: '切割:0.4/钝伤:0.6',
         };
       }
       if (/大剑/.test(item)) {
@@ -429,7 +431,9 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
             名字: weaponMeta.name,
             种类: weaponMeta.type,
             品质: weaponMeta.quality,
-            介绍: /利维坦狩猎之刃/.test(weaponMeta.name) ? '巨刃如门板，刃背厚重，遍布古旧猎纹。' : (weaponItem ?? ''),
+            介绍: /利维坦狩猎之刃/.test(weaponMeta.name)
+              ? '以利维坦尸骨锻造的重型狩猎巨刃，刃纹如潮痕蜿蜒。护锷镶嵌一颗利维坦宝珠，幽光在战斗时如深海心跳般脉动。'
+              : (weaponItem ?? ''),
             伤害骰: weaponMeta.dice,
             伤害类型: weaponMeta.damage,
             特效: {},
