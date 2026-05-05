@@ -255,8 +255,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
 
     const equipmentList = scenario?.equipment ?? [];
     const scenarioForcedWeapon = scenario?.id === 'monster_hunter' ? '利维坦狩猎之刃' : undefined;
-    const weaponItem =
-      scenarioForcedWeapon ?? equipmentList.find(item => /刀|剑|棒|斧|弓|弩|锤|枪|矛|刃/.test(item));
+    const weaponItem = scenarioForcedWeapon ?? equipmentList.find(item => /刀|剑|棒|斧|弓|弩|锤|枪|矛|刃/.test(item));
     const armorItem = equipmentList.find(item => /衣|甲|护|裤|靴|袍|盔|披风|披肩|衫/.test(item));
 
     const resolveArmorType = (item?: string) => {
@@ -887,13 +886,38 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
       lines.push(`自定义物品：${data.customStart.customItems?.trim() || '无'}`);
     }
     lines.push(`七维属性：${attributeLine}`);
+    const mainAppearanceDescription =
+      data.appearance.description?.trim() || `默认${resolvedRaceTitle || '该种族'}的外貌`;
     lines.push(
-      `外貌描述：${data.appearance.description || '无'}；身高 ${(data.appearance.height / 100).toFixed(2)}m；体态 ${
-        data.appearance.bodyType || '无'
-      }；眼睛 ${data.appearance.eyes || '无'}；发型 ${data.appearance.hairStyle || '无'}；发色 ${
-        data.appearance.hairColor || '无'
+      `外貌描述：${mainAppearanceDescription}；身高 ${(data.appearance.height / 100).toFixed(2)}m；体态 ${
+        data.appearance.bodyType || ''
+      }；眼睛 ${data.appearance.eyes || ''}；发型 ${data.appearance.hairStyle || ''}；发色 ${
+        data.appearance.hairColor || ''
       }`,
     );
+
+    const hasNamedSquadMembers = data.squadMembers.some(member => member.name?.trim());
+    if (hasNamedSquadMembers) {
+      data.squadMembers
+        .filter(member => member.name?.trim())
+        .forEach(member => {
+          const memberRace = RACES.find(r => r.id === member.race);
+          const memberSubrace = memberRace?.subraces.find(s => s.id === member.subrace);
+          const memberRaceTitle = memberSubrace?.title || memberRace?.title || '该种族';
+          const memberAppearanceDescription = member.appearance.description?.trim() || `默认${memberRaceTitle}的外貌`;
+
+          lines.push('');
+          lines.push(`【${member.name.trim()}】`);
+          lines.push(
+            `外貌描述：${memberAppearanceDescription}；身高 ${((member.appearance.height || 0) / 100).toFixed(2)}m；体态 ${
+              member.appearance.bodyType || ''
+            }；眼睛 ${member.appearance.eyes || ''}；发型 ${member.appearance.hairStyle || ''}；发色 ${
+              member.appearance.hairColor || ''
+            }`,
+          );
+        });
+    }
+
     lines.push('根据上述角色设定以及开局剧本，创建故事开局以及更新形容角色外貌。');
     return lines.join('\n');
   };

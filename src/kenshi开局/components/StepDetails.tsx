@@ -366,11 +366,16 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
   const raceTraitSource = [selectedRace?.description ?? '', selectedSubrace?.description ?? ''].join(' ');
   const raceTraits = Array.from(new Set(raceTraitSource.match(/[^。！？\n]+（[^）]+）/g) || []));
   const selectedScenario = SCENARIOS.find(scenario => scenario.id === data.scenario) as
-    | { allowedGenders?: Array<CharacterData['gender']>; companions?: SquadMemberData[] }
+    | {
+        allowedGenders?: Array<CharacterData['gender']>;
+        companions?: SquadMemberData[];
+        lockCompanionRaceSubrace?: boolean;
+      }
     | undefined;
   const allowedGenders = selectedScenario?.allowedGenders;
   const companionMembers = selectedScenario?.companions ?? [];
   const allowSquadMembers = data.scenario === 'freedom_seekers' || companionMembers.length > 0;
+  const lockCompanionRaceSubrace = selectedScenario?.lockCompanionRaceSubrace ?? false;
   const subraceAllowedGenders = (selectedSubrace as { allowedGenders?: Array<CharacterData['gender']> })
     ?.allowedGenders;
   const isUnknownDream = data.scenario === UNKNOWN_DREAM_SCENARIO_ID;
@@ -748,7 +753,7 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
                   (sum, value) => sum + (value - ATTRIBUTE_MIN),
                   0,
                 );
-                const memberRemainingPoints = memberTotalAttributePoints - memberUsedPoints;
+                const memberRemainingPoints = Math.max(0, memberTotalAttributePoints - memberUsedPoints);
                 const memberSubraceAllowedGenders = (
                   memberSubrace as { allowedGenders?: Array<CharacterData['gender']> }
                 )?.allowedGenders;
@@ -854,7 +859,7 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
                           value={member.race}
                           onChange={e => updateSquadMember(index, { race: e.target.value, subrace: '' })}
                           className="w-full bg-black/50 border border-white/20 rounded p-2 text-white focus:border-[#C2B280] focus:outline-none"
-                          disabled={companionMembers.length > 0}
+                          disabled={companionMembers.length > 0 && lockCompanionRaceSubrace}
                         >
                           <option value="">未选择</option>
                           {(companionMembers.length > 0
@@ -880,7 +885,7 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
                             updateSquadMember(index, { subrace: nextSubrace, gender: nextGender });
                           }}
                           className="w-full bg-black/50 border border-white/20 rounded p-2 text-white focus:border-[#C2B280] focus:outline-none"
-                          disabled={!member.race || companionMembers.length > 0}
+                          disabled={!member.race || (companionMembers.length > 0 && lockCompanionRaceSubrace)}
                         >
                           <option value="">未选择</option>
                           {memberSubraces.map(subrace => (
