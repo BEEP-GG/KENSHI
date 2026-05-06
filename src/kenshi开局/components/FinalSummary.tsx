@@ -908,6 +908,12 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
 
           lines.push('');
           lines.push(`【${member.name.trim()}】`);
+          lines.push(`性别：${member.gender === 'male' ? '男' : member.gender === 'female' ? '女' : '其他'}`);
+          lines.push(`年龄：${member.age}`);
+          lines.push(`种族：${memberRaceTitle}`);
+          if (scenario?.id === 'slave_master') {
+            lines.push(`身份：奴隶`);
+          }
           lines.push(
             `外貌描述：${memberAppearanceDescription}；身高 ${((member.appearance.height || 0) / 100).toFixed(2)}m；体态 ${
               member.appearance.bodyType || ''
