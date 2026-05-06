@@ -1649,10 +1649,29 @@ export default function App() {
         else if (type === '成功') effectStr = `获得物资`;
         else if (type === '大成功') effectStr = `大丰收`;
       } else if (activeCategory?.id === 'bond') {
-        if (type === '大失败') effectStr = `心情值-25`;
-        else if (type === '失败') effectStr = `心情值-15`;
-        else if (type === '成功') effectStr = `心情值+20`;
-        else if (type === '大成功') effectStr = `心情值+30`;
+        const memberName = currentMember?.name || '你';
+        let bondTargetName = '';
+        if (targetId) {
+          if (Array.isArray(targetId)) {
+            bondTargetName = targetId
+              .map(id =>
+                id === 'stranger' ? '陌生人' : id === 'self' ? memberName : members.find(m => m.id === id)?.name || id,
+              )
+              .join(', ');
+          } else {
+            bondTargetName =
+              targetId === 'stranger'
+                ? '陌生人'
+                : targetId === 'self'
+                  ? memberName
+                  : members.find(m => m.id === targetId)?.name || '';
+          }
+        }
+        const bondEffectPrefix = bondTargetName ? `${memberName}和${bondTargetName}的心情值` : '心情值';
+        if (type === '大失败') effectStr = `${bondEffectPrefix}-25`;
+        else if (type === '失败') effectStr = `${bondEffectPrefix}-15`;
+        else if (type === '成功') effectStr = `${bondEffectPrefix}+20`;
+        else if (type === '大成功') effectStr = `${bondEffectPrefix}+30`;
       } else if (activeCategory?.id === 'fun') {
         if (type === '大失败') effectStr = `心情值-20`;
         else if (type === '失败') effectStr = `心情值-10`;
