@@ -321,21 +321,26 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
     updateData({ attributes: { ...presetValues, will: isSkeleton ? 100 : presetValues.will } });
   };
 
-  const buildRandomAttributesByTotalPoints = (targetTotalPoints: number, lockWillTo100: boolean): Attributes => {
+  const buildRandomAttributesByTotalPoints = (
+    targetTotalPoints: number,
+    lockWillTo100: boolean,
+    maxPerAttribute: number,
+  ): Attributes => {
     const keys = (Object.keys(INITIAL_ATTRIBUTES) as Attribute[]).filter(attr => !(lockWillTo100 && attr === 'will'));
     const attributes = (Object.keys(INITIAL_ATTRIBUTES) as Attribute[]).reduce((acc, key) => {
       acc[key] = ATTRIBUTE_MIN;
       return acc;
     }, {} as Attributes);
+
     if (lockWillTo100) {
       attributes.will = 100;
     }
 
-    const pointsCapacity = keys.length * (ATTRIBUTE_MAX - ATTRIBUTE_MIN);
+    const pointsCapacity = keys.length * (maxPerAttribute - ATTRIBUTE_MIN);
     let remaining = Math.max(0, Math.min(pointsCapacity, Math.floor(targetTotalPoints)));
 
     while (remaining > 0) {
-      const available = keys.filter(key => attributes[key] < ATTRIBUTE_MAX);
+      const available = keys.filter(key => attributes[key] < maxPerAttribute);
       if (available.length === 0) break;
       const selected = available[Math.floor(Math.random() * available.length)];
       attributes[selected] += 1;
@@ -347,7 +352,7 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
 
   const randomizeMainAttributes = () => {
     updateData({
-      attributes: buildRandomAttributesByTotalPoints(totalAttributePoints, isSkeleton),
+      attributes: buildRandomAttributesByTotalPoints(totalAttributePoints, isSkeleton, attributeUpperLimit),
     });
   };
 
@@ -449,6 +454,19 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
     });
   }, [data.traits, drawTraitCards]);
 
+  const redrawMainTraitCategory = React.useCallback(
+    (category: 'attribute' | 'life' | 'fun') => {
+      setMainTraitCards(prev => ({
+        ...prev,
+        [category]: drawTraitCards(
+          TRAITS[category],
+          data.traits.filter(id => TRAITS[category].some(t => t.id === id)),
+        ).map(t => t.id),
+      }));
+    },
+    [data.traits, drawTraitCards],
+  );
+
   React.useEffect(() => {
     if (mainTraitCards.attribute.length === 0 && mainTraitCards.life.length === 0 && mainTraitCards.fun.length === 0) {
       redrawMainTraitCards();
@@ -497,6 +515,22 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
           fun: drawTraitCards(
             TRAITS.fun,
             member.traits.filter(id => TRAITS.fun.some(t => t.id === id)),
+          ).map(t => t.id),
+        },
+      }));
+    },
+    [drawTraitCards],
+  );
+
+  const redrawSquadTraitCategory = React.useCallback(
+    (memberIndex: number, member: SquadMemberData, category: 'attribute' | 'life' | 'fun') => {
+      setSquadTraitCards(prev => ({
+        ...prev,
+        [memberIndex]: {
+          ...(prev[memberIndex] ?? { attribute: [], life: [], fun: [] }),
+          [category]: drawTraitCards(
+            TRAITS[category],
+            member.traits.filter(id => TRAITS[category].some(t => t.id === id)),
           ).map(t => t.id),
         },
       }));
@@ -660,7 +694,7 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
   const buildRandomMemberAttributes = (memberLevel: number): Attributes => {
     const clampedLevel = Math.max(1, Math.min(100, Number(memberLevel || 1)));
     const memberTotalPoints = TOTAL_ATTRIBUTE_POINTS + (clampedLevel - 1) * SQUAD_LEVEL_POINTS_PER_LEVEL;
-    return buildRandomAttributesByTotalPoints(memberTotalPoints, false);
+    return buildRandomAttributesByTotalPoints(memberTotalPoints, false, ATTRIBUTE_MAX);
   };
 
   return (
@@ -1138,7 +1172,7 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
                               <div className="text-[10px] text-white/50">属性类</div>
                               <button
                                 type="button"
-                                onClick={() => redrawSquadTraitCards(realIndex, member)}
+                                onClick={() => redrawSquadTraitCategory(realIndex, member, 'attribute')}
                                 className="inline-flex items-center justify-center rounded border border-[#C2B280]/40 p-1 text-[#C2B280] hover:bg-[#C2B280]/10"
                                 title="重抽属性类"
                               >
@@ -1174,7 +1208,7 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
                               <div className="text-[10px] text-white/50">生活类</div>
                               <button
                                 type="button"
-                                onClick={() => redrawSquadTraitCards(realIndex, member)}
+                                onClick={() => redrawSquadTraitCategory(realIndex, member, 'life')}
                                 className="inline-flex items-center justify-center rounded border border-[#C2B280]/40 p-1 text-[#C2B280] hover:bg-[#C2B280]/10"
                                 title="重抽生活类"
                               >
@@ -1210,7 +1244,7 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
                               <div className="text-[10px] text-white/50">整活类</div>
                               <button
                                 type="button"
-                                onClick={() => redrawSquadTraitCards(realIndex, member)}
+                                onClick={() => redrawSquadTraitCategory(realIndex, member, 'fun')}
                                 className="inline-flex items-center justify-center rounded border border-[#C2B280]/40 p-1 text-[#C2B280] hover:bg-[#C2B280]/10"
                                 title="重抽整活类"
                               >
@@ -1592,7 +1626,7 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
                   <div className="text-xs text-white/60">属性类</div>
                   <button
                     type="button"
-                    onClick={redrawMainTraitCards}
+                    onClick={() => redrawMainTraitCategory('attribute')}
                     className="inline-flex items-center justify-center rounded border border-[#C2B280]/40 p-1 text-[#C2B280] hover:bg-[#C2B280]/10"
                     title="重抽属性类"
                   >
@@ -1627,7 +1661,7 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
                   <div className="text-xs text-white/60">生活类</div>
                   <button
                     type="button"
-                    onClick={redrawMainTraitCards}
+                    onClick={() => redrawMainTraitCategory('life')}
                     className="inline-flex items-center justify-center rounded border border-[#C2B280]/40 p-1 text-[#C2B280] hover:bg-[#C2B280]/10"
                     title="重抽生活类"
                   >
@@ -1662,7 +1696,7 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
                   <div className="text-xs text-white/60">整活类</div>
                   <button
                     type="button"
-                    onClick={redrawMainTraitCards}
+                    onClick={() => redrawMainTraitCategory('fun')}
                     className="inline-flex items-center justify-center rounded border border-[#C2B280]/40 p-1 text-[#C2B280] hover:bg-[#C2B280]/10"
                     title="重抽整活类"
                   >
