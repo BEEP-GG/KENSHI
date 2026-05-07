@@ -809,7 +809,7 @@ const buildUnitsFromStat = (stat: any) => {
   };
 
   const current = _.get(stat, ['当前角色']);
-  const currentName = _.get(current, ['id'], '玩家') || '玩家';
+  const currentName = _.get(current, ['名字'], _.get(current, ['名称'], _.get(current, ['id'], '当前角色'))) || '当前角色';
   pushUnit(normalizeCharacter(current, currentName, 'friendly', 'squad'));
 
   const squad = _.get(stat, ['小队成员'], {});
@@ -831,7 +831,7 @@ const buildUnitsFromStat = (stat: any) => {
 
   return {
     units,
-    playerId: String(_.get(current, ['id'], currentName || '玩家')),
+    playerId: String(_.get(current, ['id'], currentName || '当前角色')),
   };
 };
 
@@ -973,8 +973,7 @@ const getDefenseMode = (defender: BattleCharacter, attackerWeaponType: string) =
   if (!hasMainWeapon) return false;
   if (isBowOrCrossbow(attackerWeaponType)) return false;
   const defenderMainIsBowOrCrossbow = isBowOrCrossbow(defender.weapon.type);
-  const hasSubWeapon = defender.subWeapon?.type && defender.subWeapon.type !== '无';
-  if (defenderMainIsBowOrCrossbow && !hasSubWeapon) return false;
+  if (defenderMainIsBowOrCrossbow) return false;
   return true;
 };
 
@@ -1626,7 +1625,7 @@ export default function App() {
     const name = actor?.name ? `${actor.name}` : '我军';
     setBattleState(prev => ({
       ...prev,
-      logs: [...prev.logs, `${name}: 选择投降，战斗结束。`],
+      logs: [...prev.logs, `${name}: 选择投降，战斗结束。`, SETTLEMENT_LOG],
       result: 'defeat',
       endReason: 'surrender',
     }));
@@ -1692,7 +1691,7 @@ export default function App() {
         const shouldKeepAlive = nonLethalActorIds.length > 0 && unit.faction === 'enemy';
         const hpFloor = shouldKeepAlive ? 1 : 0;
         const newHp = Math.max(hpFloor, unit.hp - bleedDamage);
-        const updated = { ...unit, hp: newHp };
+        const updated = { ...unit, hp: newHp, bleedLayers: 0 };
         working = replaceUnit(working, updated);
         appendLog(logs, `${unit.name}: 流血造成 ${bleedDamage} 伤害。`);
       }
@@ -1804,7 +1803,7 @@ export default function App() {
     units: BattleCharacter[],
     attacker: BattleCharacter,
     defender: BattleCharacter,
-    attackIndex: number,
+    defenseIndex: number,
     logs: string[],
     lastRoundAttackersCount: Record<string, number>,
     attackPenaltyExtra = 0,
@@ -1824,7 +1823,8 @@ export default function App() {
     const rawRoll = d100();
     const attackRoll = rawRoll + hitBonus - attackPenaltyExtra;
     const evadeBase = defender.attributes.DEX * 0.5 + defender.attributes.PER * 0.2;
-    const evadeValue = Math.min(70, evadeBase);
+    const multiTargetPenalty = Math.max(0, (lastRoundAttackersCount[defender.id] || 0) - 1) * 8;
+    const evadeValue = Math.max(0, Math.min(70, evadeBase) - multiTargetPenalty);
     const isMartialArts = /武术/.test(attacker.weapon.type);
     const isMartialSpeed = isMartialArts && attacker.attributes.DEX >= attacker.attributes.STR;
     const isMartialHeavy = isMartialArts && attacker.attributes.STR > attacker.attributes.DEX;
@@ -1854,7 +1854,7 @@ export default function App() {
           const drIgnore = /弩/.test(attacker.weapon.type) ? 7 : 0;
           const effectiveDR = Math.max(0, ally.armorDR - drIgnore);
           const cutAfterDR = Math.max(0, Math.round(cutDamage - effectiveDR));
-          const bluntScale = /钝器/.test(attacker.weapon.type) ? 1 : 0.8;
+          const bluntScale = /钝器/.test(attacker.weapon.type) ? 1 : /弩/.test(attacker.weapon.type) ? 1.2 : /武士刀/.test(attacker.weapon.type) ? 0.5 : /(军刀|长柄)/.test(attacker.weapon.type) ? 0.6 : 0.8;
     const bluntAfterScale = Math.round(bluntDamage * bluntScale);
     const totalDamage = Math.round(cutAfterDR + bluntAfterScale);
           const updatedAlly = applyDamage(ally, totalDamage);
@@ -1876,7 +1876,7 @@ export default function App() {
       return applyAttack(units, defender, attacker, 0, logs, lastRoundAttackersCount, 0, undefined, undefined, true, nonLethalActorIds);
     }
 
-    appendLog(logs, `${attacker.name}: 攻击${defender.name}（第${attackIndex + 1}击${targetLabel}：判定 ${rawRoll}）`);
+    appendLog(logs, `${attacker.name}: 攻击${defender.name}（第${defenseIndex + 1}击${targetLabel}：判定 ${rawRoll}）`);
 
     if (attackRoll < evadeValue) {
       appendLog(logs, `${attacker.name}: 攻击落空 (判定 ${attackRoll.toFixed(0)} < ${evadeValue.toFixed(0)})`);
@@ -1887,9 +1887,13 @@ export default function App() {
 
     let useBlock = getDefenseMode(defender, attacker.weapon.type);
     if (defender.noBlockNextRound) useBlock = false;
-    const defensePenalty = attackIndex * 10;
+    const defensePenalty = defenseIndex * 10;
     const defenseBase = getDefenseBase(defender, useBlock);
-    const defenseChance = defenseBase + (defender.attributes.DEX - attacker.attributes.DEX) - defensePenalty;
+    const defenseChance =
+      defenseBase +
+      (defender.attributes.DEX - attacker.attributes.DEX) -
+      defensePenalty -
+      multiTargetPenalty;
     const defenseRoll = d100();
     const defenseSuccess = defenseRoll <= defenseChance && !(isCrit && useBlock);
 
@@ -1927,7 +1931,7 @@ export default function App() {
           : 0;
     const effectiveDR = Math.max(0, defender.armorDR - drIgnore);
     const cutAfterDR = Math.max(0, Math.round(cutDamage - effectiveDR));
-    const bluntScale = /钝器/.test(attacker.weapon.type) ? 1 : 0.8;
+    const bluntScale = /钝器/.test(attacker.weapon.type) ? 1 : /弩/.test(attacker.weapon.type) ? 1.2 : /武士刀/.test(attacker.weapon.type) ? 0.5 : /(军刀|长柄)/.test(attacker.weapon.type) ? 0.6 : 0.8;
           const bluntAfterScale = Math.round(bluntDamage * bluntScale);
     const totalDamage = Math.round(cutAfterDR + bluntAfterScale);
     const armorAbsorbed = Math.round(Math.max(0, cutDamage - cutAfterDR));
@@ -1953,12 +1957,15 @@ export default function App() {
     const hitPart = rollInjuryPart();
     const baseThreshold = getTraumaThresholdByLevel(defender.attributes.TGH, defender.traumaParts[hitPart] || 0);
     const currentRemaining = updatedDefender.traumaAccumulated?.[hitPart] ?? baseThreshold;
-    const newRemaining = currentRemaining - totalDamage;
+    const limbCutScale = /砍刀/.test(attacker.weapon.type) ? 1.4 : 1.2;
+    const limbBluntScale = /钝器/.test(attacker.weapon.type) ? 1.4 : 1;
+    const limbDamage = _.round(cutAfterDR * limbCutScale + bluntAfterScale * limbBluntScale, 2);
+    const newRemaining = currentRemaining - limbDamage;
     updatedDefender.traumaAccumulated = {
       ...updatedDefender.traumaAccumulated,
       [hitPart]: _.round(newRemaining, 2),
     };
-    const damageText = `造成 ${totalDamage} 伤害 (切割 ${cutDamage}(减伤${armorAbsorbed}) / 破甲 ${bluntDamage})`;
+    const damageText = `造成 ${totalDamage} 伤害 (切割 ${cutDamage}(减伤${armorAbsorbed}) / 破甲 ${bluntDamage})，肢体伤害 ${limbDamage}`;
     appendLog(logs, `${attacker.name}: 命中${defender.name}(${hitPart})，${damageText}`);
 
     if (/武士刀/.test(attacker.weapon.type) && cutAfterDR > 0) {
@@ -2098,6 +2105,7 @@ export default function App() {
       if (prev.result) return prev;
       const logs: string[] = [];
       let workingUnits = cloneUnits(prev.units).map(unit => ({ ...unit, defenseBonus: 0 }));
+      const defenderDefenseCount: Record<string, number> = {};
       const lastRoundAttackersCount: Record<string, number> = { ...prev.lastRoundAttackersCount };
       const lastRoundAttackersMap = new Map<string, Set<string>>();
       appendLog(logs, `--- 第 ${prev.round} 回合 ---`);
@@ -2107,9 +2115,11 @@ export default function App() {
         workingUnits,
       );
 
-      const player = getUnit(workingUnits, playerId);
-      if (!player || player.hp <= 0) {
-        appendLog(logs, '玩家无法行动。');
+      const friendlySquadReady = workingUnits.some(
+        unit => unit.faction === 'friendly' && unit.subFaction === 'squad' && isCombatReadyUnit(unit),
+      );
+      if (!friendlySquadReady) {
+        appendLog(logs, '我方已无人可战。');
         appendLog(logs, SETTLEMENT_LOG);
         return {
           ...prev,
@@ -2469,11 +2479,13 @@ export default function App() {
                 : [poleTarget];
               let allDodged = isHeavyWeapon;
               for (const [targetIndex, targetPick] of perAttackTargets.entries()) {
+                const defenseSeq = defenderDefenseCount[targetPick.id] || 0;
+                defenderDefenseCount[targetPick.id] = defenseSeq + 1;
                 const result = applyAttack(
                   workingUnits,
                   actor,
                   targetPick,
-                  attackIndex,
+                  defenseSeq,
                   logs,
                   lastRoundAttackersCount,
                   extraPenalty,
@@ -2592,12 +2604,43 @@ export default function App() {
       expMap.set(unit.id, perMemberExp);
     });
 
+    const damageDealtMap = new Map<string, number>();
+    const killMap = new Map<string, number>();
+    const lastAttackerByTarget = new Map<string, string>();
+
+    battleState.logs.forEach(line => {
+      const hit = line.match(/^([^:：]+)[:：]\s*命中([^（(，,：:]+).*?造成\s*(\d+)\s*伤害/);
+      if (hit) {
+        const attackerName = (hit[1] || '').trim();
+        const defenderName = (hit[2] || '').trim();
+        const dmg = Number(hit[3] || 0);
+        if (attackerName) {
+          damageDealtMap.set(attackerName, (damageDealtMap.get(attackerName) || 0) + (Number.isFinite(dmg) ? dmg : 0));
+        }
+        if (attackerName && defenderName) {
+          lastAttackerByTarget.set(defenderName, attackerName);
+        }
+        return;
+      }
+      const death = line.match(/^([^:：]+)[:：].*确认死亡/);
+      if (death) {
+        const deadName = (death[1] || '').trim();
+        const killer = deadName ? lastAttackerByTarget.get(deadName) : undefined;
+        if (killer) {
+          killMap.set(killer, (killMap.get(killer) || 0) + 1);
+        }
+      }
+    });
+
     const summarizeUnit = (unit: BattleCharacter) => {
       const baseHp = Number.isFinite(unit.startHp) ? unit.startHp : unit.hp;
       const damageTaken = Math.max(0, Math.round(baseHp - unit.hp));
       const currentHp = Math.max(0, Math.round(unit.hp));
       const traumaLabel = getTraumaDetailLabel(unit);
       const expText = expMap.has(unit.id) ? `，获得${expMap.get(unit.id)}经验` : '';
+      const dealtDamage = Math.max(0, Math.round(damageDealtMap.get(unit.name) || 0));
+      const killCount = Math.max(0, Math.round(killMap.get(unit.name) || 0));
+      const combatStatText = `，造成伤害${dealtDamage}，击杀${killCount}`;
       const consumedMedicalText = (() => {
         const escapedName = _.escapeRegExp(unit.name);
         const usage = battleState.logs.reduce<Record<string, number>>((acc, line) => {
@@ -2612,7 +2655,7 @@ export default function App() {
         if (entries.length === 0) return '';
         return `，消耗了${entries.map(([name, count]) => `${name}X${count}`).join('，')}`;
       })();
-      return `${unit.name}: 受到伤害${damageTaken}, 当前血量${currentHp}, 创伤(${traumaLabel}), 状态${buildStatusLabel(unit)}${expText}${consumedMedicalText}`;
+      return `${unit.name}: 受到伤害${damageTaken}, 当前血量${currentHp}, 创伤(${traumaLabel}), 状态${buildStatusLabel(unit)}${combatStatText}${expText}${consumedMedicalText}`;
     };
 
     const friendLines = battleState.units
@@ -2627,7 +2670,7 @@ export default function App() {
     const outcome = displayOutcome;
     const outcomeDescription = OUTCOME_DESCRIPTIONS[outcome];
 
-    const summary = `战斗总结\n\n【${outcome}】：${outcomeDescription}\n\n我方：\n${friendLines || '无'}\n\n敌方：\n${enemyLines || '无'}\n\n请根据以上战后内容，描写述说这一战斗过程，不要在正文出现数值相关内容，这场战斗我方【${outcome}】`;
+    const summary = `【战斗总结】\n\n【${outcome}】：${outcomeDescription}\n\n我方：\n${friendLines || '无'}\n\n敌方：\n${enemyLines || '无'}\n\n请根据以上战后内容，描写述说这一战斗过程，不要在正文出现数值相关内容，这场战斗我方【${outcome}】`;
 
     try {
       await createChatMessages([{ role: 'user', message: summary }]);
