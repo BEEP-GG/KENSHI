@@ -2,7 +2,7 @@ import * as Icons from 'lucide-react';
 import { motion } from 'motion/react';
 import React from 'react';
 import { SCENARIOS } from '../data';
-import { CharacterData } from '../types';
+import { CharacterData, INITIAL_CUSTOM_START } from '../types';
 
 interface StepScenarioProps {
   data: CharacterData;
@@ -125,7 +125,12 @@ export const StepScenario: React.FC<StepScenarioProps> = ({ data, updateData, on
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: index * 0.1 }}
               onClick={() => {
-                updateData({ scenario: scenario.id, region: '', town: '' });
+                updateData({
+                  scenario: scenario.id,
+                  region: '',
+                  town: '',
+                  customStart: { ...INITIAL_CUSTOM_START },
+                });
                 applyScenarioWorldbook(scenario.id);
               }}
               className={`

@@ -1,4 +1,4 @@
-import { Activity, Eye, Heart, Minus, Plus, Shield, Sparkles, Users, Zap } from 'lucide-react';
+import { Activity, Eye, Heart, Minus, Plus, RotateCcw, Shield, Sparkles, Users, Zap } from 'lucide-react';
 import { motion } from 'motion/react';
 import React from 'react';
 import { RACES, SCENARIOS, TRAITS } from '../data';
@@ -321,6 +321,36 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
     updateData({ attributes: { ...presetValues, will: isSkeleton ? 100 : presetValues.will } });
   };
 
+  const buildRandomAttributesByTotalPoints = (targetTotalPoints: number, lockWillTo100: boolean): Attributes => {
+    const keys = (Object.keys(INITIAL_ATTRIBUTES) as Attribute[]).filter(attr => !(lockWillTo100 && attr === 'will'));
+    const attributes = (Object.keys(INITIAL_ATTRIBUTES) as Attribute[]).reduce((acc, key) => {
+      acc[key] = ATTRIBUTE_MIN;
+      return acc;
+    }, {} as Attributes);
+    if (lockWillTo100) {
+      attributes.will = 100;
+    }
+
+    const pointsCapacity = keys.length * (ATTRIBUTE_MAX - ATTRIBUTE_MIN);
+    let remaining = Math.max(0, Math.min(pointsCapacity, Math.floor(targetTotalPoints)));
+
+    while (remaining > 0) {
+      const available = keys.filter(key => attributes[key] < ATTRIBUTE_MAX);
+      if (available.length === 0) break;
+      const selected = available[Math.floor(Math.random() * available.length)];
+      attributes[selected] += 1;
+      remaining -= 1;
+    }
+
+    return attributes;
+  };
+
+  const randomizeMainAttributes = () => {
+    updateData({
+      attributes: buildRandomAttributesByTotalPoints(totalAttributePoints, isSkeleton),
+    });
+  };
+
   const handleGodModeAttributeInput = (attr: Attribute, rawValue: string) => {
     if (!data.godModeEnabled) return;
     if (isSkeleton && attr === 'will') return;
@@ -351,13 +381,6 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
       updateData({ traits: currentTraits.filter(t => t !== traitId) });
       return;
     }
-    const selectedTraits = currentTraits
-      .map(id => [...TRAITS.attribute, ...TRAITS.life, ...TRAITS.fun].find(trait => trait.id === id))
-      .filter(Boolean) as Array<{ category: 'attribute' | 'life' | 'fun' }>;
-    const attributeCount = selectedTraits.filter(trait => trait.category === 'attribute').length;
-    const lifeCount = selectedTraits.filter(trait => trait.category === 'life').length;
-    if (category === 'attribute' && attributeCount >= 2) return;
-    if (category === 'life' && lifeCount >= 2) return;
     updateData({ traits: [...currentTraits, traitId] });
   };
 
@@ -384,6 +407,102 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
   const [showBeepPresetConfirm, setShowBeepPresetConfirm] = React.useState(false);
   const [showUnknownDreamTutorial, setShowUnknownDreamTutorial] = React.useState(false);
   const [unknownDreamTutorialStep, setUnknownDreamTutorialStep] = React.useState(0);
+  const [currentSquadPage, setCurrentSquadPage] = React.useState(0);
+  const [mainTraitCards, setMainTraitCards] = React.useState<{ attribute: string[]; life: string[]; fun: string[] }>({
+    attribute: [],
+    life: [],
+    fun: [],
+  });
+  const [squadTraitCards, setSquadTraitCards] = React.useState<
+    Record<number, { attribute: string[]; life: string[]; fun: string[] }>
+  >({});
+
+  const drawTraitCards = React.useCallback(
+    <T extends { id: string }>(source: T[], selectedIds: string[], count: number = 5): T[] => {
+      const selectedSet = new Set(selectedIds);
+      const selected = source.filter(item => selectedSet.has(item.id));
+      const unselected = source.filter(item => !selectedSet.has(item.id));
+      const shuffled = [...unselected];
+      for (let i = shuffled.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      return [...selected, ...shuffled].slice(0, Math.min(count, source.length));
+    },
+    [],
+  );
+
+  const redrawMainTraitCards = React.useCallback(() => {
+    setMainTraitCards({
+      attribute: drawTraitCards(
+        TRAITS.attribute,
+        data.traits.filter(id => TRAITS.attribute.some(t => t.id === id)),
+      ).map(t => t.id),
+      life: drawTraitCards(
+        TRAITS.life,
+        data.traits.filter(id => TRAITS.life.some(t => t.id === id)),
+      ).map(t => t.id),
+      fun: drawTraitCards(
+        TRAITS.fun,
+        data.traits.filter(id => TRAITS.fun.some(t => t.id === id)),
+      ).map(t => t.id),
+    });
+  }, [data.traits, drawTraitCards]);
+
+  React.useEffect(() => {
+    if (mainTraitCards.attribute.length === 0 && mainTraitCards.life.length === 0 && mainTraitCards.fun.length === 0) {
+      redrawMainTraitCards();
+    }
+  }, [mainTraitCards.attribute.length, mainTraitCards.fun.length, mainTraitCards.life.length, redrawMainTraitCards]);
+
+  const ensureSquadTraitCards = React.useCallback(
+    (memberIndex: number, member: SquadMemberData) => {
+      setSquadTraitCards(prev => {
+        if (prev[memberIndex]) return prev;
+        return {
+          ...prev,
+          [memberIndex]: {
+            attribute: drawTraitCards(
+              TRAITS.attribute,
+              member.traits.filter(id => TRAITS.attribute.some(t => t.id === id)),
+            ).map(t => t.id),
+            life: drawTraitCards(
+              TRAITS.life,
+              member.traits.filter(id => TRAITS.life.some(t => t.id === id)),
+            ).map(t => t.id),
+            fun: drawTraitCards(
+              TRAITS.fun,
+              member.traits.filter(id => TRAITS.fun.some(t => t.id === id)),
+            ).map(t => t.id),
+          },
+        };
+      });
+    },
+    [drawTraitCards],
+  );
+
+  const redrawSquadTraitCards = React.useCallback(
+    (memberIndex: number, member: SquadMemberData) => {
+      setSquadTraitCards(prev => ({
+        ...prev,
+        [memberIndex]: {
+          attribute: drawTraitCards(
+            TRAITS.attribute,
+            member.traits.filter(id => TRAITS.attribute.some(t => t.id === id)),
+          ).map(t => t.id),
+          life: drawTraitCards(
+            TRAITS.life,
+            member.traits.filter(id => TRAITS.life.some(t => t.id === id)),
+          ).map(t => t.id),
+          fun: drawTraitCards(
+            TRAITS.fun,
+            member.traits.filter(id => TRAITS.fun.some(t => t.id === id)),
+          ).map(t => t.id),
+        },
+      }));
+    },
+    [drawTraitCards],
+  );
 
   const updateCustomStart = (updates: Partial<CharacterData['customStart']>) => {
     setUnknownDreamScriptSaved(false);
@@ -449,6 +568,9 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
 
   React.useEffect(() => {
     if (!allowSquadMembers) {
+      if (currentSquadPage !== 0) {
+        setCurrentSquadPage(0);
+      }
       const hasResidualMembers = data.squadMembers.some(member => member.name || member.race || member.subrace);
       if (hasResidualMembers) {
         const resetMembers: SquadMemberData[] = Array.from({ length: 4 }, () => ({
@@ -487,7 +609,13 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
     if (changed) {
       updateData({ squadMembers: nextMembers });
     }
-  }, [allowSquadMembers, companionMembers, data.squadMembers, updateData]);
+  }, [allowSquadMembers, companionMembers, currentSquadPage, data.squadMembers, updateData]);
+
+  React.useEffect(() => {
+    if (currentSquadPage > data.squadMembers.length - 1) {
+      setCurrentSquadPage(Math.max(0, data.squadMembers.length - 1));
+    }
+  }, [currentSquadPage, data.squadMembers.length]);
 
   const updateSquadMemberAppearance = (index: number, updates: Partial<SquadMemberData['appearance']>) => {
     const member = data.squadMembers[index];
@@ -510,13 +638,6 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
       updateSquadMember(index, { traits: currentTraits.filter(t => t !== traitId) });
       return;
     }
-    const selectedTraits = currentTraits
-      .map(id => [...TRAITS.attribute, ...TRAITS.life, ...TRAITS.fun].find(trait => trait.id === id))
-      .filter(Boolean) as Array<{ category: 'attribute' | 'life' | 'fun' }>;
-    const attributeCount = selectedTraits.filter(trait => trait.category === 'attribute').length;
-    const lifeCount = selectedTraits.filter(trait => trait.category === 'life').length;
-    if (category === 'attribute' && attributeCount >= 2) return;
-    if (category === 'life' && lifeCount >= 2) return;
     updateSquadMember(index, { traits: [...currentTraits, traitId] });
   };
 
@@ -536,24 +657,10 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
     });
   };
 
-  const buildRandomMemberAttributes = (): Attributes => {
-    const keys = Object.keys(INITIAL_ATTRIBUTES) as Attribute[];
-    const attributes = keys.reduce((acc, key) => {
-      acc[key] = ATTRIBUTE_MIN;
-      return acc;
-    }, {} as Attributes);
-    let remaining = TOTAL_ATTRIBUTE_POINTS;
-    const perMax = ATTRIBUTE_MAX - ATTRIBUTE_MIN;
-
-    while (remaining > 0) {
-      const available = keys.filter(key => attributes[key] - ATTRIBUTE_MIN < perMax);
-      if (available.length === 0) break;
-      const selected = available[Math.floor(Math.random() * available.length)];
-      attributes[selected] += 1;
-      remaining -= 1;
-    }
-
-    return attributes;
+  const buildRandomMemberAttributes = (memberLevel: number): Attributes => {
+    const clampedLevel = Math.max(1, Math.min(100, Number(memberLevel || 1)));
+    const memberTotalPoints = TOTAL_ATTRIBUTE_POINTS + (clampedLevel - 1) * SQUAD_LEVEL_POINTS_PER_LEVEL;
+    return buildRandomAttributesByTotalPoints(memberTotalPoints, false);
   };
 
   return (
@@ -616,6 +723,12 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
                   {preset.label}
                 </button>
               ))}
+              <button
+                onClick={randomizeMainAttributes}
+                className="rounded border border-[#C2B280]/40 px-3 py-1.5 text-xs text-[#C2B280] transition-colors hover:bg-[#C2B280]/10"
+              >
+                随机属性点
+              </button>
             </div>
             <p className="text-[10px] text-white/40">
               按游戏加点逻辑：默认 1 点，+1 消耗 1 点，-1 返还 1 点；普通模式单项最高 50 点。上帝模式可设置等级 1-100，
@@ -742,367 +855,417 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
 
           {allowSquadMembers && (
             <div className="space-y-6">
-              {data.squadMembers.map((member, index) => {
-                const memberRace = RACES.find(race => race.id === member.race);
-                const memberSubraces = memberRace?.subraces ?? [];
-                const memberSubrace = memberSubraces.find(subrace => subrace.id === member.subrace);
-                const memberLevel = Math.max(1, Math.min(100, Number(member.level || 1)));
-                const memberTotalAttributePoints =
-                  TOTAL_ATTRIBUTE_POINTS + (memberLevel - 1) * SQUAD_LEVEL_POINTS_PER_LEVEL;
-                const memberUsedPoints = Object.values(member.attributes).reduce(
-                  (sum, value) => sum + (value - ATTRIBUTE_MIN),
-                  0,
-                );
-                const memberRemainingPoints = Math.max(0, memberTotalAttributePoints - memberUsedPoints);
-                const memberSubraceAllowedGenders = (
-                  memberSubrace as { allowedGenders?: Array<CharacterData['gender']> }
-                )?.allowedGenders;
-                return (
-                  <div key={index} className="border border-white/10 rounded-xl p-4 bg-black/30">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="text-sm text-[#C2B280] font-serif">队员 {index + 1}</div>
-                      {companionMembers.length > 0 ? (
-                        <span className="text-xs text-white/40">固定成员</span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => resetSquadMember(index)}
-                          className="text-xs text-white/40 hover:text-white transition-colors"
-                        >
-                          重置
-                        </button>
-                      )}
-                    </div>
+              <div className="flex items-center justify-between rounded-lg border border-white/10 bg-black/30 px-3 py-2">
+                <button
+                  type="button"
+                  onClick={() => setCurrentSquadPage(prev => Math.max(0, prev - 1))}
+                  disabled={currentSquadPage === 0}
+                  className="rounded border border-white/20 px-3 py-1 text-xs text-white/70 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white/10"
+                >
+                  上一位
+                </button>
+                <div className="text-xs text-[#C2B280] font-mono">
+                  队员 {Math.min(currentSquadPage + 1, data.squadMembers.length)} / {data.squadMembers.length}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCurrentSquadPage(prev => Math.min(data.squadMembers.length - 1, prev + 1))}
+                  disabled={currentSquadPage === data.squadMembers.length - 1}
+                  className="rounded border border-white/20 px-3 py-1 text-xs text-white/70 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white/10"
+                >
+                  下一位
+                </button>
+              </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs text-white/60 mb-1">姓名</label>
-                        <input
-                          type="text"
-                          value={member.name}
-                          onChange={e => updateSquadMember(index, { name: e.target.value })}
-                          className="w-full bg-black/50 border border-white/20 rounded p-2 text-white focus:border-[#C2B280] focus:outline-none"
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-xs text-white/60 mb-1">性别</label>
-                          <select
-                            value={member.gender}
-                            onChange={e => updateSquadMember(index, { gender: e.target.value as any })}
-                            className="w-full bg-black/50 border border-white/20 rounded p-2 text-white focus:border-[#C2B280] focus:outline-none"
+              {data.squadMembers
+                .filter((_, index) => index === currentSquadPage)
+                .map((member, index) => {
+                  const realIndex = currentSquadPage;
+                  const memberRace = RACES.find(race => race.id === member.race);
+                  const memberSubraces = memberRace?.subraces ?? [];
+                  const memberSubrace = memberSubraces.find(subrace => subrace.id === member.subrace);
+                  const memberLevel = Math.max(1, Math.min(100, Number(member.level || 1)));
+                  const memberTotalAttributePoints =
+                    TOTAL_ATTRIBUTE_POINTS + (memberLevel - 1) * SQUAD_LEVEL_POINTS_PER_LEVEL;
+                  const memberUsedPoints = Object.values(member.attributes).reduce(
+                    (sum, value) => sum + (value - ATTRIBUTE_MIN),
+                    0,
+                  );
+                  const memberRemainingPoints = Math.max(0, memberTotalAttributePoints - memberUsedPoints);
+                  const memberSubraceAllowedGenders = (
+                    memberSubrace as { allowedGenders?: Array<CharacterData['gender']> }
+                  )?.allowedGenders;
+                  return (
+                    <div key={realIndex} className="border border-white/10 rounded-xl p-4 bg-black/30">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="text-sm text-[#C2B280] font-serif">队员 {realIndex + 1}</div>
+                        {companionMembers.length > 0 ? (
+                          <span className="text-xs text-white/40">固定成员</span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => resetSquadMember(realIndex)}
+                            className="text-xs text-white/40 hover:text-white transition-colors"
                           >
-                            <option
-                              value="male"
-                              disabled={
-                                memberSubraceAllowedGenders ? !memberSubraceAllowedGenders.includes('male') : false
-                              }
-                            >
-                              男性
-                            </option>
-                            <option
-                              value="female"
-                              disabled={
-                                memberSubraceAllowedGenders ? !memberSubraceAllowedGenders.includes('female') : false
-                              }
-                            >
-                              女性
-                            </option>
-                            <option
-                              value="other"
-                              disabled={
-                                memberSubraceAllowedGenders ? !memberSubraceAllowedGenders.includes('other') : false
-                              }
-                            >
-                              其他
-                            </option>
-                          </select>
-                        </div>
+                            重置
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-xs text-white/60 mb-1">年龄</label>
+                          <label className="block text-xs text-white/60 mb-1">姓名</label>
+                          <input
+                            type="text"
+                            value={member.name}
+                            onChange={e => updateSquadMember(realIndex, { name: e.target.value })}
+                            className="w-full bg-black/50 border border-white/20 rounded p-2 text-white focus:border-[#C2B280] focus:outline-none"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs text-white/60 mb-1">性别</label>
+                            <select
+                              value={member.gender}
+                              onChange={e => updateSquadMember(realIndex, { gender: e.target.value as any })}
+                              className="w-full bg-black/50 border border-white/20 rounded p-2 text-white focus:border-[#C2B280] focus:outline-none"
+                            >
+                              <option
+                                value="male"
+                                disabled={
+                                  memberSubraceAllowedGenders ? !memberSubraceAllowedGenders.includes('male') : false
+                                }
+                              >
+                                男性
+                              </option>
+                              <option
+                                value="female"
+                                disabled={
+                                  memberSubraceAllowedGenders ? !memberSubraceAllowedGenders.includes('female') : false
+                                }
+                              >
+                                女性
+                              </option>
+                              <option
+                                value="other"
+                                disabled={
+                                  memberSubraceAllowedGenders ? !memberSubraceAllowedGenders.includes('other') : false
+                                }
+                              >
+                                其他
+                              </option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs text-white/60 mb-1">年龄</label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="100"
+                              value={member.age}
+                              onChange={e => updateSquadMember(realIndex, { age: parseInt(e.target.value) })}
+                              className="w-full bg-black/50 border border-white/20 rounded p-2 text-white focus:border-[#C2B280] focus:outline-none"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs text-white/60 mb-1">
+                            {data.scenario === 'slave_master' ? '奴隶等级' : '队员等级'}
+                          </label>
                           <input
                             type="number"
                             min="1"
                             max="100"
-                            value={member.age}
-                            onChange={e => updateSquadMember(index, { age: parseInt(e.target.value) })}
+                            value={member.level || 1}
+                            onChange={e =>
+                              updateSquadMember(realIndex, {
+                                level: Math.max(1, Math.min(100, parseInt(e.target.value, 10) || 1)),
+                              })
+                            }
                             className="w-full bg-black/50 border border-white/20 rounded p-2 text-white focus:border-[#C2B280] focus:outline-none"
                           />
                         </div>
                       </div>
-                    </div>
 
-                    <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs text-white/60 mb-1">
-                          {data.scenario === 'slave_master' ? '奴隶等级' : '队员等级'}
-                        </label>
-                        <input
-                          type="number"
-                          min="1"
-                          max="100"
-                          value={member.level || 1}
-                          onChange={e =>
-                            updateSquadMember(index, {
-                              level: Math.max(1, Math.min(100, parseInt(e.target.value, 10) || 1)),
-                            })
-                          }
-                          className="w-full bg-black/50 border border-white/20 rounded p-2 text-white focus:border-[#C2B280] focus:outline-none"
-                        />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                        <div>
+                          <label className="block text-xs text-white/60 mb-1">种族</label>
+                          <select
+                            value={member.race}
+                            onChange={e => updateSquadMember(realIndex, { race: e.target.value, subrace: '' })}
+                            className="w-full bg-black/50 border border-white/20 rounded p-2 text-white focus:border-[#C2B280] focus:outline-none"
+                            disabled={companionMembers.length > 0 && lockCompanionRaceSubrace}
+                          >
+                            <option value="">未选择</option>
+                            {(companionMembers.length > 0
+                              ? RACES
+                              : RACES.filter(race => !(race as { hidden?: boolean }).hidden)
+                            ).map(race => (
+                              <option key={race.id} value={race.id}>
+                                {race.title}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-white/60 mb-1">亚种</label>
+                          <select
+                            value={member.subrace}
+                            onChange={e => {
+                              const nextSubrace = e.target.value;
+                              const nextSubraceData = memberSubraces.find(subrace => subrace.id === nextSubrace);
+                              const allowed = (nextSubraceData as { allowedGenders?: Array<CharacterData['gender']> })
+                                ?.allowedGenders;
+                              const nextGender =
+                                allowed && !allowed.includes(member.gender) ? allowed[0] : member.gender;
+                              updateSquadMember(realIndex, { subrace: nextSubrace, gender: nextGender });
+                            }}
+                            className="w-full bg-black/50 border border-white/20 rounded p-2 text-white focus:border-[#C2B280] focus:outline-none"
+                            disabled={!member.race || (companionMembers.length > 0 && lockCompanionRaceSubrace)}
+                          >
+                            <option value="">未选择</option>
+                            {memberSubraces.map(subrace => (
+                              <option key={subrace.id} value={subrace.id}>
+                                {subrace.title}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                      <div>
-                        <label className="block text-xs text-white/60 mb-1">种族</label>
-                        <select
-                          value={member.race}
-                          onChange={e => updateSquadMember(index, { race: e.target.value, subrace: '' })}
-                          className="w-full bg-black/50 border border-white/20 rounded p-2 text-white focus:border-[#C2B280] focus:outline-none"
-                          disabled={companionMembers.length > 0 && lockCompanionRaceSubrace}
-                        >
-                          <option value="">未选择</option>
-                          {(companionMembers.length > 0
-                            ? RACES
-                            : RACES.filter(race => !(race as { hidden?: boolean }).hidden)
-                          ).map(race => (
-                            <option key={race.id} value={race.id}>
-                              {race.title}
-                            </option>
+                      <div className="mt-4">
+                        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-white/60 mb-2">
+                          <span>属性分配</span>
+                          <span className="text-[#C2B280] font-mono">
+                            已分配 {memberUsedPoints} / 剩余 {memberRemainingPoints}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              updateSquadMember(realIndex, {
+                                attributes: buildRandomMemberAttributes(memberLevel),
+                              })
+                            }
+                            className="rounded border border-[#C2B280]/40 px-2 py-1 text-[10px] text-[#C2B280] transition-colors hover:bg-[#C2B280]/10"
+                          >
+                            随机该队员
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                          {(Object.keys(member.attributes) as Attribute[]).map(attr => (
+                            <div key={attr}>
+                              <label className="block text-[10px] text-white/50 mb-1">
+                                {ATTRIBUTE_CONFIG[attr].label}
+                              </label>
+                              <input
+                                type="number"
+                                min={ATTRIBUTE_MIN}
+                                max={ATTRIBUTE_MAX}
+                                value={member.attributes[attr]}
+                                onChange={e =>
+                                  updateSquadMemberAttributes(realIndex, {
+                                    [attr]: Math.max(
+                                      ATTRIBUTE_MIN,
+                                      Math.min(ATTRIBUTE_MAX, parseInt(e.target.value) || ATTRIBUTE_MIN),
+                                    ),
+                                  })
+                                }
+                                className="w-full bg-black/50 border border-white/20 rounded p-2 text-white focus:border-[#C2B280] focus:outline-none"
+                              />
+                            </div>
                           ))}
-                        </select>
+                        </div>
+                        <p className="text-[10px] text-white/40 mt-2">
+                          每位队员基础 168 点属性；等级每提升 1 级额外 +5 点（当前等级 {memberLevel}，总计{' '}
+                          {memberTotalAttributePoints}
+                          点）；可手动分配，或点击“随机该队员”生成。
+                        </p>
                       </div>
-                      <div>
-                        <label className="block text-xs text-white/60 mb-1">亚种</label>
-                        <select
-                          value={member.subrace}
-                          onChange={e => {
-                            const nextSubrace = e.target.value;
-                            const nextSubraceData = memberSubraces.find(subrace => subrace.id === nextSubrace);
-                            const allowed = (nextSubraceData as { allowedGenders?: Array<CharacterData['gender']> })
-                              ?.allowedGenders;
-                            const nextGender = allowed && !allowed.includes(member.gender) ? allowed[0] : member.gender;
-                            updateSquadMember(index, { subrace: nextSubrace, gender: nextGender });
-                          }}
-                          className="w-full bg-black/50 border border-white/20 rounded p-2 text-white focus:border-[#C2B280] focus:outline-none"
-                          disabled={!member.race || (companionMembers.length > 0 && lockCompanionRaceSubrace)}
-                        >
-                          <option value="">未选择</option>
-                          {memberSubraces.map(subrace => (
-                            <option key={subrace.id} value={subrace.id}>
-                              {subrace.title}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
 
-                    <div className="mt-4">
-                      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-white/60 mb-2">
-                        <span>属性分配</span>
-                        <span className="text-[#C2B280] font-mono">
-                          已分配 {memberUsedPoints} / 剩余 {memberRemainingPoints}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            updateSquadMember(index, {
-                              attributes: buildRandomMemberAttributes(),
-                            })
-                          }
-                          className="rounded border border-[#C2B280]/40 px-2 py-1 text-[10px] text-[#C2B280] transition-colors hover:bg-[#C2B280]/10"
-                        >
-                          随机该队员
-                        </button>
+                      <div className="mt-4">
+                        <div className="text-xs text-white/60 mb-2">外貌</div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <input
+                            type="text"
+                            value={member.appearance.eyes}
+                            onChange={e => updateSquadMemberAppearance(realIndex, { eyes: e.target.value })}
+                            className="w-full bg-black/50 border border-white/20 rounded p-2 text-white focus:border-[#C2B280] focus:outline-none"
+                            placeholder="眼睛"
+                          />
+                          <input
+                            type="text"
+                            value={member.appearance.hairColor}
+                            onChange={e => updateSquadMemberAppearance(realIndex, { hairColor: e.target.value })}
+                            className="w-full bg-black/50 border border-white/20 rounded p-2 text-white focus:border-[#C2B280] focus:outline-none"
+                            placeholder="发色"
+                          />
+                          <input
+                            type="text"
+                            value={member.appearance.bodyType}
+                            onChange={e => updateSquadMemberAppearance(realIndex, { bodyType: e.target.value })}
+                            className="w-full bg-black/50 border border-white/20 rounded p-2 text-white focus:border-[#C2B280] focus:outline-none"
+                            placeholder="体态"
+                          />
+                          <input
+                            type="text"
+                            value={member.appearance.hairStyle}
+                            onChange={e => updateSquadMemberAppearance(realIndex, { hairStyle: e.target.value })}
+                            className="w-full bg-black/50 border border-white/20 rounded p-2 text-white focus:border-[#C2B280] focus:outline-none"
+                            placeholder="发型"
+                          />
+                        </div>
+                        <div className="mt-3">
+                          <label className="block text-[10px] text-white/50 mb-1">外貌描述</label>
+                          <textarea
+                            value={member.appearance.description}
+                            onChange={e => updateSquadMemberAppearance(realIndex, { description: e.target.value })}
+                            rows={3}
+                            className="w-full resize-y rounded border border-white/20 bg-black/50 p-2 text-sm text-white focus:border-[#C2B280] focus:outline-none"
+                          />
+                        </div>
                       </div>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        {(Object.keys(member.attributes) as Attribute[]).map(attr => (
-                          <div key={attr}>
-                            <label className="block text-[10px] text-white/50 mb-1">
-                              {ATTRIBUTE_CONFIG[attr].label}
-                            </label>
+
+                      <div className="mt-4">
+                        <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                          <span className="text-xs text-white/60">特质</span>
+                        </div>
+                        <div className="space-y-3">
+                          <div>
+                            <div className="mb-1 flex items-center justify-between">
+                              <div className="text-[10px] text-white/50">属性类</div>
+                              <button
+                                type="button"
+                                onClick={() => redrawSquadTraitCards(realIndex, member)}
+                                className="inline-flex items-center justify-center rounded border border-[#C2B280]/40 p-1 text-[#C2B280] hover:bg-[#C2B280]/10"
+                                title="重抽属性类"
+                              >
+                                <RotateCcw size={10} />
+                              </button>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {(squadTraitCards[realIndex]?.attribute ?? []).map(traitId => {
+                                const trait = TRAITS.attribute.find(t => t.id === traitId);
+                                if (!trait) return null;
+                                const isAnimalCompanion = member.race === 'canine' || member.race === 'pack_beast';
+                                return (
+                                  <button
+                                    key={trait.id}
+                                    onClick={() => toggleSquadMemberTrait(realIndex, trait.id, 'attribute')}
+                                    disabled={isAnimalCompanion}
+                                    className={
+                                      `p-2 rounded border text-left text-xs transition-all ` +
+                                      (member.traits.includes(trait.id)
+                                        ? 'bg-[#C2B280]/20 border-[#C2B280] text-[#C2B280]'
+                                        : 'bg-white/5 border-white/10 text-white/60 hover:border-white/30 disabled:opacity-30 disabled:cursor-not-allowed')
+                                    }
+                                  >
+                                    <div className="font-bold mb-1">{trait.title}</div>
+                                    <div className="text-[10px] opacity-70">{trait.description}</div>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="mb-1 flex items-center justify-between">
+                              <div className="text-[10px] text-white/50">生活类</div>
+                              <button
+                                type="button"
+                                onClick={() => redrawSquadTraitCards(realIndex, member)}
+                                className="inline-flex items-center justify-center rounded border border-[#C2B280]/40 p-1 text-[#C2B280] hover:bg-[#C2B280]/10"
+                                title="重抽生活类"
+                              >
+                                <RotateCcw size={10} />
+                              </button>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {(squadTraitCards[realIndex]?.life ?? []).map(traitId => {
+                                const trait = TRAITS.life.find(t => t.id === traitId);
+                                if (!trait) return null;
+                                const isAnimalCompanion = member.race === 'canine' || member.race === 'pack_beast';
+                                return (
+                                  <button
+                                    key={trait.id}
+                                    onClick={() => toggleSquadMemberTrait(realIndex, trait.id, 'life')}
+                                    disabled={isAnimalCompanion}
+                                    className={
+                                      `p-2 rounded border text-left text-xs transition-all ` +
+                                      (member.traits.includes(trait.id)
+                                        ? 'bg-[#C2B280]/20 border-[#C2B280] text-[#C2B280]'
+                                        : 'bg-white/5 border-white/10 text-white/60 hover:border-white/30 disabled:opacity-30 disabled:cursor-not-allowed')
+                                    }
+                                  >
+                                    <div className="font-bold mb-1">{trait.title}</div>
+                                    <div className="text-[10px] opacity-70">{trait.description}</div>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="mb-1 flex items-center justify-between">
+                              <div className="text-[10px] text-white/50">整活类</div>
+                              <button
+                                type="button"
+                                onClick={() => redrawSquadTraitCards(realIndex, member)}
+                                className="inline-flex items-center justify-center rounded border border-[#C2B280]/40 p-1 text-[#C2B280] hover:bg-[#C2B280]/10"
+                                title="重抽整活类"
+                              >
+                                <RotateCcw size={10} />
+                              </button>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {(squadTraitCards[realIndex]?.fun ?? []).map(traitId => {
+                                const trait = TRAITS.fun.find(t => t.id === traitId);
+                                if (!trait) return null;
+                                const isAnimalCompanion = member.race === 'canine' || member.race === 'pack_beast';
+                                return (
+                                  <button
+                                    key={trait.id}
+                                    onClick={() => toggleSquadMemberTrait(realIndex, trait.id, 'fun')}
+                                    disabled={isAnimalCompanion}
+                                    className={
+                                      `p-2 rounded border text-left text-xs transition-all ` +
+                                      (member.traits.includes(trait.id)
+                                        ? 'bg-[#C2B280]/20 border-[#C2B280] text-[#C2B280]'
+                                        : 'bg-white/5 border-white/10 text-white/60 hover:border-white/30 disabled:opacity-30 disabled:cursor-not-allowed')
+                                    }
+                                  >
+                                    <div className="font-bold mb-1">{trait.title}</div>
+                                    <div className="text-[10px] opacity-70">{trait.description}</div>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="mt-3">
+                          <label className="block text-[10px] text-white/50 mb-1">自定义特质（仅 1 个）</label>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             <input
-                              type="number"
-                              min={ATTRIBUTE_MIN}
-                              max={ATTRIBUTE_MAX}
-                              value={member.attributes[attr]}
-                              onChange={e =>
-                                updateSquadMemberAttributes(index, {
-                                  [attr]: Math.max(
-                                    ATTRIBUTE_MIN,
-                                    Math.min(ATTRIBUTE_MAX, parseInt(e.target.value) || ATTRIBUTE_MIN),
-                                  ),
-                                })
-                              }
-                              className="w-full bg-black/50 border border-white/20 rounded p-2 text-white focus:border-[#C2B280] focus:outline-none"
+                              value={member.customTraitName || ''}
+                              onChange={e => updateSquadMember(realIndex, { customTraitName: e.target.value })}
+                              className="w-full rounded border border-white/20 bg-black/50 p-2 text-sm text-white focus:border-[#C2B280] focus:outline-none"
+                              placeholder="特质名称"
+                              disabled={member.race === 'canine' || member.race === 'pack_beast'}
+                            />
+                            <textarea
+                              value={member.customTraitDescription || ''}
+                              onChange={e => updateSquadMember(realIndex, { customTraitDescription: e.target.value })}
+                              rows={2}
+                              className="w-full resize-y rounded border border-white/20 bg-black/50 p-2 text-sm text-white focus:border-[#C2B280] focus:outline-none"
+                              placeholder="特质描述"
+                              disabled={member.race === 'canine' || member.race === 'pack_beast'}
                             />
                           </div>
-                        ))}
-                      </div>
-                      <p className="text-[10px] text-white/40 mt-2">
-                        每位队员基础 168 点属性；等级每提升 1 级额外 +5 点（当前等级 {memberLevel}，总计{' '}
-                        {memberTotalAttributePoints}
-                        点）；可手动分配，或点击“随机该队员”生成。
-                      </p>
-                    </div>
-
-                    <div className="mt-4">
-                      <div className="text-xs text-white/60 mb-2">外貌</div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <input
-                          type="text"
-                          value={member.appearance.eyes}
-                          onChange={e => updateSquadMemberAppearance(index, { eyes: e.target.value })}
-                          className="w-full bg-black/50 border border-white/20 rounded p-2 text-white focus:border-[#C2B280] focus:outline-none"
-                          placeholder="眼睛"
-                        />
-                        <input
-                          type="text"
-                          value={member.appearance.hairColor}
-                          onChange={e => updateSquadMemberAppearance(index, { hairColor: e.target.value })}
-                          className="w-full bg-black/50 border border-white/20 rounded p-2 text-white focus:border-[#C2B280] focus:outline-none"
-                          placeholder="发色"
-                        />
-                        <input
-                          type="text"
-                          value={member.appearance.bodyType}
-                          onChange={e => updateSquadMemberAppearance(index, { bodyType: e.target.value })}
-                          className="w-full bg-black/50 border border-white/20 rounded p-2 text-white focus:border-[#C2B280] focus:outline-none"
-                          placeholder="体态"
-                        />
-                        <input
-                          type="text"
-                          value={member.appearance.hairStyle}
-                          onChange={e => updateSquadMemberAppearance(index, { hairStyle: e.target.value })}
-                          className="w-full bg-black/50 border border-white/20 rounded p-2 text-white focus:border-[#C2B280] focus:outline-none"
-                          placeholder="发型"
-                        />
-                      </div>
-                      <div className="mt-3">
-                        <label className="block text-[10px] text-white/50 mb-1">外貌描述</label>
-                        <textarea
-                          value={member.appearance.description}
-                          onChange={e => updateSquadMemberAppearance(index, { description: e.target.value })}
-                          rows={3}
-                          className="w-full resize-y rounded border border-white/20 bg-black/50 p-2 text-sm text-white focus:border-[#C2B280] focus:outline-none"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="mt-4">
-                      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                        <span className="text-xs text-white/60">特质</span>
-                        <span className="text-[10px] text-white/40">
-                          属性类 {member.traits.filter(id => TRAITS.attribute.some(t => t.id === id)).length}/2 · 生活类{' '}
-                          {member.traits.filter(id => TRAITS.life.some(t => t.id === id)).length}/2 · 整活类不限
-                        </span>
-                      </div>
-                      <div className="space-y-3">
-                        <div>
-                          <div className="text-[10px] text-white/50 mb-1">属性类（可选 2）</div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            {TRAITS.attribute.map(trait => {
-                              const isAnimalCompanion = member.race === 'canine' || member.race === 'pack_beast';
-                              return (
-                                <button
-                                  key={trait.id}
-                                  onClick={() => toggleSquadMemberTrait(index, trait.id, 'attribute')}
-                                  disabled={
-                                    isAnimalCompanion ||
-                                    (!member.traits.includes(trait.id) &&
-                                      member.traits.filter(id => TRAITS.attribute.some(t => t.id === id)).length >= 2)
-                                  }
-                                  className={
-                                    `p-2 rounded border text-left text-xs transition-all ` +
-                                    (member.traits.includes(trait.id)
-                                      ? 'bg-[#C2B280]/20 border-[#C2B280] text-[#C2B280]'
-                                      : 'bg-white/5 border-white/10 text-white/60 hover:border-white/30 disabled:opacity-30 disabled:cursor-not-allowed')
-                                  }
-                                >
-                                  <div className="font-bold mb-1">{trait.title}</div>
-                                  <div className="text-[10px] opacity-70">{trait.description}</div>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-[10px] text-white/50 mb-1">生活类（可选 2）</div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            {TRAITS.life.map(trait => {
-                              const isAnimalCompanion = member.race === 'canine' || member.race === 'pack_beast';
-                              return (
-                                <button
-                                  key={trait.id}
-                                  onClick={() => toggleSquadMemberTrait(index, trait.id, 'life')}
-                                  disabled={
-                                    isAnimalCompanion ||
-                                    (!member.traits.includes(trait.id) &&
-                                      member.traits.filter(id => TRAITS.life.some(t => t.id === id)).length >= 2)
-                                  }
-                                  className={
-                                    `p-2 rounded border text-left text-xs transition-all ` +
-                                    (member.traits.includes(trait.id)
-                                      ? 'bg-[#C2B280]/20 border-[#C2B280] text-[#C2B280]'
-                                      : 'bg-white/5 border-white/10 text-white/60 hover:border-white/30 disabled:opacity-30 disabled:cursor-not-allowed')
-                                  }
-                                >
-                                  <div className="font-bold mb-1">{trait.title}</div>
-                                  <div className="text-[10px] opacity-70">{trait.description}</div>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="text-[10px] text-white/50 mb-1">整活类（不限）</div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            {TRAITS.fun.map(trait => {
-                              const isAnimalCompanion = member.race === 'canine' || member.race === 'pack_beast';
-                              return (
-                                <button
-                                  key={trait.id}
-                                  onClick={() => toggleSquadMemberTrait(index, trait.id, 'fun')}
-                                  disabled={isAnimalCompanion}
-                                  className={
-                                    `p-2 rounded border text-left text-xs transition-all ` +
-                                    (member.traits.includes(trait.id)
-                                      ? 'bg-[#C2B280]/20 border-[#C2B280] text-[#C2B280]'
-                                      : 'bg-white/5 border-white/10 text-white/60 hover:border-white/30 disabled:opacity-30 disabled:cursor-not-allowed')
-                                  }
-                                >
-                                  <div className="font-bold mb-1">{trait.title}</div>
-                                  <div className="text-[10px] opacity-70">{trait.description}</div>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="mt-3">
-                        <label className="block text-[10px] text-white/50 mb-1">自定义特质（仅 1 个）</label>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          <input
-                            value={member.customTraitName || ''}
-                            onChange={e => updateSquadMember(index, { customTraitName: e.target.value })}
-                            className="w-full rounded border border-white/20 bg-black/50 p-2 text-sm text-white focus:border-[#C2B280] focus:outline-none"
-                            placeholder="特质名称"
-                            disabled={member.race === 'canine' || member.race === 'pack_beast'}
-                          />
-                          <textarea
-                            value={member.customTraitDescription || ''}
-                            onChange={e => updateSquadMember(index, { customTraitDescription: e.target.value })}
-                            rows={2}
-                            className="w-full resize-y rounded border border-white/20 bg-black/50 p-2 text-sm text-white focus:border-[#C2B280] focus:outline-none"
-                            placeholder="特质描述"
-                            disabled={member.race === 'canine' || member.race === 'pack_beast'}
-                          />
                         </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
             </div>
           )}
         </div>
@@ -1421,84 +1584,112 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
           <div className="bg-black/40 border border-white/10 rounded-xl p-6">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
               <h3 className="text-2xl font-serif text-[#C2B280]">特质</h3>
-              <div className="text-xs text-white/50">
-                属性类已选 {data.traits.filter(id => TRAITS.attribute.some(t => t.id === id)).length}/2 · 生活类已选{' '}
-                {data.traits.filter(id => TRAITS.life.some(t => t.id === id)).length}/2 · 整活类不限
-              </div>
+              <div className="text-xs text-white/50">无限制选择</div>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               <div>
-                <div className="text-xs text-white/60 mb-2">属性类（可选 2）</div>
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="text-xs text-white/60">属性类</div>
+                  <button
+                    type="button"
+                    onClick={redrawMainTraitCards}
+                    className="inline-flex items-center justify-center rounded border border-[#C2B280]/40 p-1 text-[#C2B280] hover:bg-[#C2B280]/10"
+                    title="重抽属性类"
+                  >
+                    <RotateCcw size={12} />
+                  </button>
+                </div>
                 <div className="grid grid-cols-1 gap-3">
-                  {TRAITS.attribute.map(trait => (
-                    <button
-                      key={trait.id}
-                      onClick={() => toggleTrait(trait.id, 'attribute')}
-                      disabled={
-                        !data.traits.includes(trait.id) &&
-                        data.traits.filter(id => TRAITS.attribute.some(t => t.id === id)).length >= 2
-                      }
-                      className={`
+                  {mainTraitCards.attribute
+                    .map(traitId => TRAITS.attribute.find(t => t.id === traitId))
+                    .filter(Boolean)
+                    .map(trait => (
+                      <button
+                        key={trait!.id}
+                        onClick={() => toggleTrait(trait!.id, 'attribute')}
+                        className={`
                         p-3 rounded border text-left text-sm transition-all
                         ${
-                          data.traits.includes(trait.id)
+                          data.traits.includes(trait!.id)
                             ? 'bg-[#C2B280]/20 border-[#C2B280] text-[#C2B280]'
                             : 'bg-white/5 border-white/10 text-white/60 hover:border-white/30 disabled:opacity-30 disabled:cursor-not-allowed'
                         }
                       `}
-                    >
-                      <div className="font-bold mb-1">{trait.title}</div>
-                      <div className="text-[10px] opacity-70">{trait.description}</div>
-                    </button>
-                  ))}
+                      >
+                        <div className="font-bold mb-1">{trait!.title}</div>
+                        <div className="text-[10px] opacity-70">{trait!.description}</div>
+                      </button>
+                    ))}
                 </div>
               </div>
               <div>
-                <div className="text-xs text-white/60 mb-2">生活类（可选 2）</div>
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="text-xs text-white/60">生活类</div>
+                  <button
+                    type="button"
+                    onClick={redrawMainTraitCards}
+                    className="inline-flex items-center justify-center rounded border border-[#C2B280]/40 p-1 text-[#C2B280] hover:bg-[#C2B280]/10"
+                    title="重抽生活类"
+                  >
+                    <RotateCcw size={12} />
+                  </button>
+                </div>
                 <div className="grid grid-cols-1 gap-3">
-                  {TRAITS.life.map(trait => (
-                    <button
-                      key={trait.id}
-                      onClick={() => toggleTrait(trait.id, 'life')}
-                      disabled={
-                        !data.traits.includes(trait.id) &&
-                        data.traits.filter(id => TRAITS.life.some(t => t.id === id)).length >= 2
-                      }
-                      className={`
+                  {mainTraitCards.life
+                    .map(traitId => TRAITS.life.find(t => t.id === traitId))
+                    .filter(Boolean)
+                    .map(trait => (
+                      <button
+                        key={trait!.id}
+                        onClick={() => toggleTrait(trait!.id, 'life')}
+                        className={`
                         p-3 rounded border text-left text-sm transition-all
                         ${
-                          data.traits.includes(trait.id)
+                          data.traits.includes(trait!.id)
                             ? 'bg-[#C2B280]/20 border-[#C2B280] text-[#C2B280]'
                             : 'bg-white/5 border-white/10 text-white/60 hover:border-white/30 disabled:opacity-30 disabled:cursor-not-allowed'
                         }
                       `}
-                    >
-                      <div className="font-bold mb-1">{trait.title}</div>
-                      <div className="text-[10px] opacity-70">{trait.description}</div>
-                    </button>
-                  ))}
+                      >
+                        <div className="font-bold mb-1">{trait!.title}</div>
+                        <div className="text-[10px] opacity-70">{trait!.description}</div>
+                      </button>
+                    ))}
                 </div>
               </div>
               <div>
-                <div className="text-xs text-white/60 mb-2">整活类（不限）</div>
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="text-xs text-white/60">整活类</div>
+                  <button
+                    type="button"
+                    onClick={redrawMainTraitCards}
+                    className="inline-flex items-center justify-center rounded border border-[#C2B280]/40 p-1 text-[#C2B280] hover:bg-[#C2B280]/10"
+                    title="重抽整活类"
+                  >
+                    <RotateCcw size={12} />
+                  </button>
+                </div>
                 <div className="grid grid-cols-1 gap-3">
-                  {TRAITS.fun.map(trait => (
-                    <button
-                      key={trait.id}
-                      onClick={() => toggleTrait(trait.id, 'fun')}
-                      className={`
+                  {mainTraitCards.fun
+                    .map(traitId => TRAITS.fun.find(t => t.id === traitId))
+                    .filter(Boolean)
+                    .map(trait => (
+                      <button
+                        key={trait!.id}
+                        onClick={() => toggleTrait(trait!.id, 'fun')}
+                        className={`
                         p-3 rounded border text-left text-sm transition-all
                         ${
-                          data.traits.includes(trait.id)
+                          data.traits.includes(trait!.id)
                             ? 'bg-[#C2B280]/20 border-[#C2B280] text-[#C2B280]'
                             : 'bg-white/5 border-white/10 text-white/60 hover:border-white/30'
                         }
                       `}
-                    >
-                      <div className="font-bold mb-1">{trait.title}</div>
-                      <div className="text-[10px] opacity-70">{trait.description}</div>
-                    </button>
-                  ))}
+                      >
+                        <div className="font-bold mb-1">{trait!.title}</div>
+                        <div className="text-[10px] opacity-70">{trait!.description}</div>
+                      </button>
+                    ))}
                 </div>
               </div>
             </div>

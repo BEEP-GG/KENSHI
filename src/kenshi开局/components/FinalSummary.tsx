@@ -269,6 +269,13 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
       if (!item || item === '无') {
         return { type: '无甲', dr: 0, desc: '未穿戴护甲' };
       }
+      if (/利维坦幼兽铠甲套装/.test(item)) {
+        return {
+          type: '重甲',
+          dr: 36,
+          desc: '以利维坦幼兽硬化鳞片与韧皮缝制的整套重甲：胸甲、臂甲、腿甲与护颈一体成型，缝隙覆有耐盐防腐内衬，近身时可像海兽外壳般分散冲击。',
+        };
+      }
       if (/雇佣兵之甲/.test(item)) {
         return {
           type: '中甲',
@@ -439,6 +446,9 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
             价值: 0,
           };
 
+    const cleanedBackpackItems = equipmentList.filter(
+      item => item && item !== '无' && item !== weaponItem && item !== armorItem,
+    );
     return {
       主武器: mainWeapon,
       副武器: {
@@ -457,7 +467,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
         介绍: armorMeta.desc,
         特性: {},
       },
-      背包物品: equipmentList.filter(item => item && item !== '无' && item !== weaponItem && item !== armorItem),
+      背包物品: cleanedBackpackItems,
     };
   };
 
@@ -653,6 +663,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
     _.set(mvuData, 'stat_data.当前角色.主武器', equipment.主武器);
     _.set(mvuData, 'stat_data.当前角色.副武器', equipment.副武器);
     _.set(mvuData, 'stat_data.当前角色.护甲', equipment.护甲);
+    _.set(mvuData, 'stat_data.当前角色.背包.物品', {});
 
     if (equipment.背包物品.length > 0) {
       const backpackItems: Record<string, { 介绍: string; 数量: number; 重量: number; 价值: number }> = {};
@@ -870,6 +881,17 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
     lines.push(`角色名：${data.name || '无名氏'}`);
     lines.push(`性别：${data.gender === 'male' ? '男' : data.gender === 'female' ? '女' : '其他'}`);
     lines.push(`年龄：${data.age}`);
+    lines.push('特质：');
+    const selectedTraitLines = data.traits
+      .map(traitId => allTraits.find(t => t.id === traitId))
+      .filter(Boolean)
+      .map(trait => ` 【${trait!.title}】：${trait!.description}`);
+    if (selectedTraitLines.length > 0) {
+      lines.push(...selectedTraitLines);
+    }
+    if (data.customTraitName && data.customTraitDescription) {
+      lines.push(` 【${data.customTraitName}】：${data.customTraitDescription}`);
+    }
     lines.push(`种族：${resolvedRaceTitle || '未选择'}`);
     lines.push(`开局剧本：${scenario?.title || '未选择'}`);
     lines.push(`出生地：${region?.title || data.region || '未知区域'}。城镇：${data.town || '野外'}`);
@@ -910,6 +932,17 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
           lines.push(`【${member.name.trim()}】`);
           lines.push(`性别：${member.gender === 'male' ? '男' : member.gender === 'female' ? '女' : '其他'}`);
           lines.push(`年龄：${member.age}`);
+          lines.push('特质：');
+          const memberTraitLines = member.traits
+            .map(traitId => allTraits.find(t => t.id === traitId))
+            .filter(Boolean)
+            .map(trait => ` 【${trait!.title}】：${trait!.description}`);
+          if (memberTraitLines.length > 0) {
+            lines.push(...memberTraitLines);
+          }
+          if (member.customTraitName && member.customTraitDescription) {
+            lines.push(` 【${member.customTraitName}】：${member.customTraitDescription}`);
+          }
           lines.push(`种族：${memberRaceTitle}`);
           if (scenario?.id === 'slave_master') {
             lines.push(`身份：奴隶`);

@@ -1854,7 +1854,9 @@ export default function App() {
           const drIgnore = /弩/.test(attacker.weapon.type) ? 7 : 0;
           const effectiveDR = Math.max(0, ally.armorDR - drIgnore);
           const cutAfterDR = Math.max(0, Math.round(cutDamage - effectiveDR));
-          const totalDamage = Math.round(cutAfterDR + bluntDamage);
+          const bluntScale = /钝器/.test(attacker.weapon.type) ? 1 : 0.8;
+    const bluntAfterScale = Math.round(bluntDamage * bluntScale);
+    const totalDamage = Math.round(cutAfterDR + bluntAfterScale);
           const updatedAlly = applyDamage(ally, totalDamage);
           appendLog(logs, `${attacker.name}: 误伤${ally.name}，造成 ${totalDamage} 伤害。`);
           return {
@@ -1925,7 +1927,9 @@ export default function App() {
           : 0;
     const effectiveDR = Math.max(0, defender.armorDR - drIgnore);
     const cutAfterDR = Math.max(0, Math.round(cutDamage - effectiveDR));
-    const totalDamage = Math.round(cutAfterDR + bluntDamage);
+    const bluntScale = /钝器/.test(attacker.weapon.type) ? 1 : 0.8;
+          const bluntAfterScale = Math.round(bluntDamage * bluntScale);
+    const totalDamage = Math.round(cutAfterDR + bluntAfterScale);
     const armorAbsorbed = Math.round(Math.max(0, cutDamage - cutAfterDR));
 
     const hpBefore = defender.hp;
