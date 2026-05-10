@@ -75,6 +75,18 @@ export interface CharacterData {
   customTraitName: string;
   customTraitDescription: string;
   customStart: CustomStartData;
+  utilityCustomNames: string;
+  utilityTools: {
+    bugModeUid881: boolean;
+    machineTranslationWorldUid882: boolean;
+    customCharacterNameUid883: boolean;
+    threeKingdomsCharacterNameUid884: boolean;
+    celebrityCharacterNameUid885: boolean;
+    warhammerCharacterNameUid886: boolean;
+    cyberpunkCharacterNameUid887: boolean;
+    inflationUid889: boolean;
+    kenshiRandomNamesUid892: boolean;
+  };
   squadMembers: SquadMemberData[];
 }
 
@@ -158,5 +170,17 @@ export const INITIAL_CHARACTER: CharacterData = {
   customTraitName: '',
   customTraitDescription: '',
   customStart: { ...INITIAL_CUSTOM_START },
+  utilityCustomNames: '',
+  utilityTools: {
+    bugModeUid881: false,
+    machineTranslationWorldUid882: false,
+    customCharacterNameUid883: false,
+    threeKingdomsCharacterNameUid884: false,
+    celebrityCharacterNameUid885: false,
+    warhammerCharacterNameUid886: false,
+    cyberpunkCharacterNameUid887: false,
+    inflationUid889: false,
+    kenshiRandomNamesUid892: false,
+  },
   squadMembers: Array.from({ length: 4 }, () => createInitialSquadMember()),
 };

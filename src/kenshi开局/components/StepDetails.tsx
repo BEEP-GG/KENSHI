@@ -1,4 +1,18 @@
-import { Activity, Eye, Heart, Minus, Plus, RotateCcw, Shield, Sparkles, Users, Zap } from 'lucide-react';
+import {
+  Activity,
+  ChevronDown,
+  ChevronRight,
+  Eye,
+  Heart,
+  Minus,
+  Plus,
+  RotateCcw,
+  Shield,
+  Sparkles,
+  Users,
+  Wrench,
+  Zap,
+} from 'lucide-react';
 import { motion } from 'motion/react';
 import React from 'react';
 import { RACES, SCENARIOS, TRAITS } from '../data';
@@ -85,6 +99,60 @@ const ATTRIBUTE_LABEL_TO_KEY: Record<string, Attribute> = {
 
 const UNKNOWN_DREAM_SCENARIO_ID = 'unknown_dream';
 const UNKNOWN_DREAM_UID = 749;
+const UTILITY_TOOL_OPTIONS = [
+  {
+    key: 'bugModeUid881',
+    label: 'BUG模式',
+    uid: 881,
+    description:
+      '怎么欢乐怎么来，没有bug就捏造bug，把所有游戏bug都可以套过来，即“万物皆可BUG，特性无处不在”，请拥抱混乱。',
+  },
+  {
+    key: 'machineTranslationWorldUid882',
+    label: '机翻大世界',
+    uid: 882,
+    description:
+      '欢迎来到“机翻大世界”！本世界的所有语言协议均已损坏。所有对话、描述和名称都经过了一个极其廉价且充满错误的翻译软件进行处理。NPC们认为自己说话很正常，但实际上……祝你好运。',
+  },
+  {
+    key: 'customCharacterNameUid883',
+    label: '自定义角色名字',
+    uid: 883,
+    description: '我希望这些角色名字，可以作为随机npc随机的出现在这个世界里，属性随机，种族随机。',
+  },
+  { key: 'threeKingdomsCharacterNameUid884', label: '三国角色名字', uid: 884, description: '启用三国风格角色名字池。' },
+  {
+    key: 'celebrityCharacterNameUid885',
+    label: '梁山好汉',
+    uid: 885,
+    description: '启用梁山好汉风格角色名字池。',
+  },
+  {
+    key: 'warhammerCharacterNameUid886',
+    label: '战国七雄名字大全',
+    uid: 886,
+    description: '启用战国七雄风格角色名字池。',
+  },
+  {
+    key: 'cyberpunkCharacterNameUid887',
+    label: '楚汉之争',
+    uid: 887,
+    description: '启用楚汉之争风格角色名字池。',
+  },
+  {
+    key: 'inflationUid889',
+    label: '通货膨胀',
+    uid: 889,
+    description:
+      '世界经济数据库发生灾难性溢出。一个程序员在修改物价时，手滑多打了三个“0”。我们决定不修复它，并称之为“特色”。欢迎来到一个所有价格都上涨1000倍的废土。你问这合不合理？请看你的钱包，它非常不合理。',
+  },
+  {
+    key: 'kenshiRandomNamesUid892',
+    label: 'kenshi随机名字大全',
+    uid: 892,
+    description: 'kenshiMOD的名字大全',
+  },
+] as const;
 const UNKNOWN_DREAM_WEAPON_TYPES = ['武士刀类', '钝器类', '军刀类', '砍刀类', '长柄刀类', '大型类', '弓', '弩'];
 const UNKNOWN_DREAM_ARMOR_TYPES = ['轻甲', '中甲', '重甲'];
 const UNKNOWN_DREAM_TUTORIAL_STEPS = [
@@ -99,7 +167,8 @@ const UNKNOWN_DREAM_TUTORIAL_STEPS = [
 - 基础攻速为3。
 
 军刀：
-- 装备军刀类武器时，“武器格挡”基础值+12。
+- 主武器为军刀类时，“武器格挡”基础值+12。
+- 副武器为军刀类时，“武器格挡”基础值+6（可与主武器加成叠加，最高+18）。
 
 砍刀：
 - 无视对方7点DR。
@@ -107,6 +176,7 @@ const UNKNOWN_DREAM_TUTORIAL_STEPS = [
 
 长柄类：
 - 每次攻击时可选择最多3个敌人进行攻击检定；每多一个目标，攻击检定-7。
+- 多目标时：第一个目标按格挡逻辑结算，后续目标按闪避逻辑结算。
 
 钝器：
 - 攻击检定大成功（01-07）时，目标必定获得1层“骨折”；每层骨折使力量/敏捷-10、逃跑检定-15（可叠加，直到夹板包清除）。
@@ -407,11 +477,17 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
   const subraceAllowedGenders = (selectedSubrace as { allowedGenders?: Array<CharacterData['gender']> })
     ?.allowedGenders;
   const isUnknownDream = data.scenario === UNKNOWN_DREAM_SCENARIO_ID;
+  const isMonsterHunterScenario = data.scenario === 'monster_hunter';
+  const isApexHunterScenario = data.scenario === 'apex_hunter';
   const [isSavingUnknownDreamScript, setIsSavingUnknownDreamScript] = React.useState(false);
   const [unknownDreamScriptSaved, setUnknownDreamScriptSaved] = React.useState(false);
   const [showBeepPresetConfirm, setShowBeepPresetConfirm] = React.useState(false);
   const [showUnknownDreamTutorial, setShowUnknownDreamTutorial] = React.useState(false);
   const [unknownDreamTutorialStep, setUnknownDreamTutorialStep] = React.useState(0);
+  const [utilityToolsCollapsed, setUtilityToolsCollapsed] = React.useState(true);
+  const [utilityItemExpanded, setUtilityItemExpanded] = React.useState<Record<number, boolean>>({});
+  const [isSavingUtilityCustomNames, setIsSavingUtilityCustomNames] = React.useState(false);
+  const [utilityCustomNamesSaved, setUtilityCustomNamesSaved] = React.useState(false);
   const [currentSquadPage, setCurrentSquadPage] = React.useState(0);
   const [mainTraitCards, setMainTraitCards] = React.useState<{ attribute: string[]; life: string[]; fun: string[] }>({
     attribute: [],
@@ -548,6 +624,48 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
     });
   };
 
+  const updateUtilityTool = (key: keyof CharacterData['utilityTools'], enabled: boolean) => {
+    updateData({
+      utilityTools: {
+        ...data.utilityTools,
+        [key]: enabled,
+      },
+    });
+  };
+
+  const buildUtilityCustomNamesWorldbookContent = () => {
+    const names = data.utilityCustomNames?.trim() || '未填写';
+    return `我希望这些角色名字，可以作为随机npc随机的出现在这个世界里，属性随机，种族随机。
+${names}`;
+  };
+
+  const saveUtilityCustomNames = async () => {
+    if (isSavingUtilityCustomNames) return;
+    setIsSavingUtilityCustomNames(true);
+    setUtilityCustomNamesSaved(false);
+    try {
+      const charWorldbook = getCharWorldbookNames('current');
+      const wbName = charWorldbook.primary;
+      if (!wbName) throw new Error('worldbook not found');
+
+      const content = buildUtilityCustomNamesWorldbookContent();
+      await updateWorldbookWith(wbName, entries =>
+        entries.map(entry => {
+          if (Number(entry.uid) === 883) {
+            return { ...entry, enabled: Boolean(data.utilityTools.customCharacterNameUid883), content };
+          }
+          return entry;
+        }),
+      );
+      setUtilityCustomNamesSaved(true);
+    } catch (error) {
+      console.error('保存自定义角色名字失败', error);
+      toastr.error('保存失败，请查看控制台');
+    } finally {
+      setIsSavingUtilityCustomNames(false);
+    }
+  };
+
   const buildUnknownDreamWorldbookContent = () => {
     const script = data.customStart.script?.trim() || '未填写';
     return `这是对于【未知梦想】剧本的自定义背景故事：\n${script}`;
@@ -581,7 +699,8 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
   };
 
   React.useEffect(() => {
-    if (isSkeleton && data.gender !== 'other') {
+    const isFalseSaviorSubrace = data.subrace === 'skeleton_false_savior';
+    if (isSkeleton && !isFalseSaviorSubrace && data.gender !== 'other') {
       updateData({ gender: 'other' });
       return;
     }
@@ -592,7 +711,7 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
     if (subraceAllowedGenders && !subraceAllowedGenders.includes(data.gender)) {
       updateData({ gender: subraceAllowedGenders[0] });
     }
-  }, [allowedGenders, data.gender, isSkeleton, subraceAllowedGenders, updateData]);
+  }, [allowedGenders, data.gender, isSkeleton, data.subrace, subraceAllowedGenders, updateData]);
 
   const updateSquadMember = (index: number, updates: Partial<SquadMemberData>) => {
     updateData({
@@ -644,6 +763,39 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
       updateData({ squadMembers: nextMembers });
     }
   }, [allowSquadMembers, companionMembers, currentSquadPage, data.squadMembers, updateData]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    const syncUtilityToolsWorldbook = async () => {
+      try {
+        const charWorldbook = getCharWorldbookNames('current');
+        const wbName = charWorldbook.primary;
+        if (!wbName) return;
+
+        await updateWorldbookWith(wbName, entries =>
+          entries.map(entry => {
+            const uid = Number(entry.uid);
+            const option = UTILITY_TOOL_OPTIONS.find(item => item.uid === uid);
+            if (!option) return entry;
+            const enabled = Boolean(data.utilityTools[option.key]);
+            if (uid === 883) {
+              return entry.enabled === enabled ? entry : { ...entry, enabled };
+            }
+            return entry.enabled === enabled ? entry : { ...entry, enabled };
+          }),
+        );
+      } catch (error) {
+        if (!cancelled) {
+          console.error('同步小工具世界书开关失败', error);
+        }
+      }
+    };
+
+    syncUtilityToolsWorldbook();
+    return () => {
+      cancelled = true;
+    };
+  }, [data.utilityTools]);
 
   React.useEffect(() => {
     if (currentSquadPage > data.squadMembers.length - 1) {
@@ -768,6 +920,13 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
               按游戏加点逻辑：默认 1 点，+1 消耗 1 点，-1 返还 1 点；普通模式单项最高 50 点。上帝模式可设置等级 1-100，
               每升 1 级额外 +5 属性点，单项上限提升到 130，且可直接输入数值分配。长按 +/- 可连续加点。
             </p>
+            {(isMonsterHunterScenario || isApexHunterScenario) && (
+              <p className="text-[10px] text-[#C2B280]">
+                推荐等级：{isMonsterHunterScenario ? '怪物猎人主角 30 级' : ''}
+                {isMonsterHunterScenario && isApexHunterScenario ? '；' : ''}
+                {isApexHunterScenario ? '赏金猎人主角 40 级' : ''}（仅推荐，不锁定）
+              </p>
+            )}
           </div>
 
           <div className="space-y-4">
@@ -1021,6 +1180,9 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
                             }
                             className="w-full bg-black/50 border border-white/20 rounded p-2 text-white focus:border-[#C2B280] focus:outline-none"
                           />
+                          {isMonsterHunterScenario && (
+                            <p className="mt-1 text-[10px] text-[#C2B280]">怪物猎人伙伴推荐 15 级（仅推荐，不锁定）</p>
+                          )}
                         </div>
                       </div>
 
@@ -1521,6 +1683,104 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
         )}
 
         <div className="bg-black/40 border border-white/10 rounded-xl p-6">
+          <button
+            type="button"
+            onClick={() => setUtilityToolsCollapsed(prev => !prev)}
+            className="w-full flex items-center justify-between gap-3 text-left"
+          >
+            <div className="flex items-center gap-2">
+              <Wrench className="text-[#C2B280]" size={18} />
+              <h3 className="text-2xl font-serif text-[#C2B280]">小工具</h3>
+            </div>
+            <span className="text-white/60 text-xs inline-flex items-center gap-1">
+              {utilityToolsCollapsed ? '展开' : '收起'}
+              {utilityToolsCollapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+            </span>
+          </button>
+
+          {!utilityToolsCollapsed && (
+            <div className="mt-4 grid grid-cols-1 gap-2">
+              {UTILITY_TOOL_OPTIONS.map(option => {
+                const enabled = Boolean(data.utilityTools[option.key]);
+                const expanded = Boolean(utilityItemExpanded[option.uid]);
+                return (
+                  <div
+                    key={option.uid}
+                    className={`flex items-center justify-between rounded border px-3 py-2 text-sm transition-all ${
+                      enabled
+                        ? 'border-[#C2B280]/60 bg-[#C2B280]/10 text-[#E7D8A6]'
+                        : 'border-white/15 bg-black/30 text-white/70 hover:border-white/30'
+                    }`}
+                  >
+                    <div className="w-full">
+                      <div className="flex items-center justify-between gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setUtilityItemExpanded(prev => ({ ...prev, [option.uid]: !expanded }))}
+                          className="inline-flex items-center gap-2 text-left"
+                        >
+                          {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                          <span>{option.label}</span>
+                        </button>
+                        <span className="inline-flex items-center gap-2">
+                          <span className={`text-xs ${enabled ? 'text-emerald-300' : 'text-white/50'}`}>
+                            {enabled ? '开启' : '关闭'}
+                          </span>
+                          <input
+                            type="checkbox"
+                            checked={enabled}
+                            onChange={e => updateUtilityTool(option.key, e.target.checked)}
+                            className="h-4 w-4 rounded border-white/30 bg-black/50"
+                          />
+                        </span>
+                      </div>
+
+                      {expanded && (
+                        <div className="mt-2 rounded border border-white/10 bg-black/30 p-2 text-xs leading-6 text-white/75 whitespace-pre-line">
+                          {option.description}
+                        </div>
+                      )}
+
+                      {expanded && option.uid === 883 && (
+                        <div className="mt-2 space-y-2">
+                          <textarea
+                            value={data.utilityCustomNames}
+                            onChange={e => {
+                              setUtilityCustomNamesSaved(false);
+                              updateData({ utilityCustomNames: e.target.value });
+                            }}
+                            rows={4}
+                            className="w-full resize-y rounded border border-white/20 bg-black/50 p-2 text-xs text-white focus:border-[#C2B280] focus:outline-none"
+                            placeholder={'例如：\n刘备\n周瑜\n阿斯塔特\nV'}
+                          />
+                          <div className="rounded border border-white/10 bg-black/40 p-2 text-[11px] text-white/70 whitespace-pre-line">
+                            {buildUtilityCustomNamesWorldbookContent()}
+                          </div>
+                          <div className="flex justify-end">
+                            <button
+                              type="button"
+                              onClick={saveUtilityCustomNames}
+                              disabled={isSavingUtilityCustomNames}
+                              className="rounded border border-[#C2B280]/60 px-3 py-1.5 text-xs text-[#C2B280] hover:bg-[#C2B280]/10 disabled:opacity-50"
+                            >
+                              {isSavingUtilityCustomNames
+                                ? '保存中...'
+                                : utilityCustomNamesSaved
+                                  ? '已保存到自定义角色名字'
+                                  : '保存自定义角色名字'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="bg-black/40 border border-white/10 rounded-xl p-6">
           <h3 className="text-2xl font-serif text-[#C2B280] mb-6">身份设定</h3>
 
           <div className="space-y-4">
@@ -1544,12 +1804,12 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
                   value={data.gender}
                   onChange={e => updateData({ gender: e.target.value as any })}
                   className="w-full bg-black/50 border border-white/20 rounded p-3 text-white focus:border-[#C2B280] focus:outline-none"
-                  disabled={isSkeleton}
+                  disabled={isSkeleton && data.subrace !== 'skeleton_false_savior'}
                 >
                   <option
                     value="male"
                     disabled={
-                      isSkeleton ||
+                      (isSkeleton && data.subrace !== 'skeleton_false_savior') ||
                       (allowedGenders ? !allowedGenders.includes('male') : false) ||
                       (subraceAllowedGenders ? !subraceAllowedGenders.includes('male') : false)
                     }
@@ -1559,7 +1819,7 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
                   <option
                     value="female"
                     disabled={
-                      isSkeleton ||
+                      (isSkeleton && data.subrace !== 'skeleton_false_savior') ||
                       (allowedGenders ? !allowedGenders.includes('female') : false) ||
                       (subraceAllowedGenders ? !subraceAllowedGenders.includes('female') : false)
                     }
@@ -1576,7 +1836,9 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
                     无性别
                   </option>
                 </select>
-                {isSkeleton && <div className="text-[10px] text-white/40 mt-1">骨人无性别</div>}
+                {isSkeleton && data.subrace !== 'skeleton_false_savior' && (
+                  <div className="text-[10px] text-white/40 mt-1">骨人无性别</div>
+                )}
               </div>
               <div>
                 <label className="block text-sm text-white/60 mb-2">年龄</label>

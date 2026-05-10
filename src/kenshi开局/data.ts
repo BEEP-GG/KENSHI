@@ -112,17 +112,51 @@ export const SCENARIOS = [
     money: 300,
     fixedRegion: 'leviathan_coast',
     fixedTown: '利维坦观测站',
+    lockCompanionRaceSubrace: true,
+    companions: [
+      {
+        race: 'ailu',
+        subrace: 'ailu',
+        level: 15,
+        attributes: {
+          strength: 8,
+          dexterity: 14,
+          perception: 12,
+          constitution: 10,
+          will: 10,
+          intelligence: 8,
+          charisma: 6,
+        },
+        name: '艾露伙伴',
+        gender: 'other',
+        age: 18,
+        appearance: {
+          eyes: '',
+          hairStyle: '',
+          hairColor: '',
+          bodyType: '灵巧矮小',
+          height: 100,
+          description: '怪物猎人随行猫，推荐身高 1.00m。',
+        },
+        traits: [],
+        customTraitName: '',
+        customTraitDescription: '',
+      },
+    ],
   },
   {
-    id: 'holy_sword',
-    title: '大剑',
-    description: '你偷走了传说中的圣剑。现在，整个帝国都在追捕你。你拥有强大的武器，但没有未来。',
-    difficulty: '困难',
-    icon: 'ShieldAlert',
-    equipment: ['大剑 (铭刃)', '破旧的衣服', '通缉令 (20,000c)'],
-    money: 100,
-    allowedRegions: ['swamp'],
-    hostileFactions: ['联合帝国', '神圣教国'],
+    id: 'apex_hunter',
+    title: '顶级猎手',
+    description:
+      '你不是为了赏金而战，而是为了狩猎强者本身。带着染血重刃行走于斯托伯的花园，追踪并猎杀这片废土上的巅峰战士，用尸骨刻下你的名字。',
+    difficulty: '极难',
+    icon: 'Crosshair',
+    equipment: ['重型野太刀', '猎手披风', '高级急救包 x1'],
+    money: 0,
+    allowedRegions: ['lagoon_lowland'],
+    fixedRegion: 'lagoon_lowland',
+    fixedTown: '洼地泻湖镇',
+    hostileFactions: ['沙克王国', '联合帝国', '神圣教国', '反蓄奴者', '猎犬帮', '第二帝国'],
   },
   {
     id: 'holy_commoner',
@@ -178,6 +212,17 @@ export const SCENARIOS = [
     allowedRegions: ['great_desert', 'heng'],
     hostileFactions: ['神圣教国'],
     alliedFactions: ['联合帝国'],
+  },
+  {
+    id: 'holy_sword',
+    title: '大剑',
+    description: '你偷走了传说中的圣剑。现在，整个帝国都在追捕你。你拥有强大的武器，但没有未来。',
+    difficulty: '困难',
+    icon: 'ShieldAlert',
+    equipment: ['大剑 (铭刃)', '破旧的衣服', '通缉令 (20,000c)'],
+    money: 100,
+    allowedRegions: ['swamp'],
+    hostileFactions: ['联合帝国', '神圣教国'],
   },
   {
     id: 'slave',
@@ -388,6 +433,22 @@ export const SCENARIOS = [
     ],
   },
   {
+    id: 'false_savior',
+    title: '虚伪者',
+    description:
+      '你在渣滓之地的卫星坠毁事故中幸存，却被一段失控的古老指令逼向杀戮。救你的恩人就在身后，而你的系统正在倒计时：见血，或失去自我。带着破损伪装与残缺记忆，踏上寻找“卡特龙”的道路，在屠戮本能与残存人性之间做出选择。',
+    storyBackground:
+      '苍白的酸雨冲刷着渣滓之地的天际线，一艘坠落的卫星残骸正冒着浓烟。\n在这片冷酷的废土上，居然有人做出了最愚蠢的善举。\n一个人类拼尽全力将你从燃烧的驾驶舱里背了出来。\n当你恢复意识，视野中跳出的不是感激，而是剧烈的系统刺痛与一声深渊般的咆哮：“去找卡特龙！完成任务！杀光所有挡路者！”\n你清晰地感觉到，如果不马上见血，你的大脑控制权就会被彻底剥夺。\n此刻，恩人正背对着你整理绷带，他的颈动脉在你的扫描仪下绝望地跳动着。\n拔出刀吧，“虚伪者”！\n屈从于这股邪念，用恩人的血作为你苏醒的祭礼！\n还是拼死扼住颤抖的手，去寻找对抗宿命的解药？',
+    difficulty: '极难',
+    icon: 'Skull',
+    equipment: ['染血短刀', '贴身太空服', '骨人修理箱', '骨人重置包'],
+    money: 0,
+    allowedRaces: ['skeleton'],
+    allowedSubraces: ['skeleton_false_savior'],
+    fixedRegion: 'slag_land',
+    fixedTown: '流浪者村落',
+  },
+  {
     id: 'author_self_test',
     title: '作者自测用',
     description: '仅用于作者内部自测的隐藏剧本。',
@@ -400,6 +461,14 @@ export const SCENARIOS = [
 ];
 
 export const REGIONS = [
+  {
+    id: 'slag_land',
+    title: '渣滓之地',
+    description:
+      '大陆最西边的贫瘠荒域，食物与水源极度匮乏。只有难民与饿疯的骨犬会在此苟延残喘。内陆是起伏石山与黑压压的密集植物，空气常年笼罩阴沉薄雾。向西逐渐过渡为狭长海岸线，浅色干燥土壤几乎不孕育任何可食作物。北部毗邻雾岛，海风带来湿气，却吹不散这片土地深入骨髓的荒凉。',
+    towns: ['流浪者村落'],
+    danger: '极高',
+  },
   {
     id: 'leviathan_coast',
     title: '利维坦海岸',
@@ -435,6 +504,14 @@ export const REGIONS = [
     description: '被遗忘的残垣与荒草蔓延，古代残迹在此沉眠。',
     towns: ['方舟'],
     danger: '极高',
+  },
+  {
+    id: 'lagoon_lowland',
+    title: '洼地泻湖',
+    description:
+      '地势低洼平坦，四周散布着深浅不一的泥沼和浑浊水坑。一条高出水面的狭窄土路自南向北穿过整片区域，这是通往北方哀矿镇唯一的干燥通道。',
+    towns: ['洼地泻湖镇'],
+    danger: '高',
   },
   {
     id: 'eye_land',
@@ -550,6 +627,7 @@ export const TOWN_DESCRIPTIONS: Record<string, string> = {
   赫夫特城: '联合城的煌煌首都，权势与金银在此交织成网。',
   小巴泰镇: '大沙漠腹地的商旅据点，尘沙中维系着帝国脉络。',
   白鼬镇: '沙海贸易之心，驼队与商队在此汇流不息。',
+  洼地泻湖镇: '一座完全建立在旧世界巨型金属钻井平台上的城市，是大型补给与情报交互枢纽。',
   巴克镇: '帝国唯一的沿海大城，通往岛都的命脉港口。',
   恒城: '商人行会的繁荣都市，财富在白沙上闪耀。',
   汉城: '华奢堪比帝都的欢愉之地，欲望与奢侈永不止息。',
@@ -826,7 +904,7 @@ export const RACES = [
     id: 'skeleton',
     title: '骨人',
     description:
-      '骨人完全是个谜，没人知道他们来自哪里，又是怎么被创造出来的，但人们认为他们已经有几千岁了。他们有完整的感情，能感到悲伤，愤怒，激动，同情，震惊和快乐，但他们不能通过表情展示出来，再加上他们缺乏幽默感，总是让其他种族感到困惑，比如沙克族就认为他们善变，难以预料。他们没有偏见，无惧死亡，因此是勇敢无畏的战士。种族特质：无情面容（魅力表情检定失败但免疫恐惧）。',
+      '骨人完全是个谜，没人知道他们来自哪里，又是怎么被创造出来的，但人们认为他们已经有几千岁了。他们有完整的感情，能感到悲伤，愤怒，激动，同情，震惊和快乐，但他们不能通过表情展示出来，再加上他们缺乏幽默感，总是让其他种族感到困惑，比如沙克族就认为他们善变，难以预料。他们没有偏见，无惧死亡，因此是勇敢无畏的战士。种族特质：邪念（每过一段时间必须嗜血杀人或者远离非骨人单位，不然会失控）。',
     subraces: [
       {
         id: 'skeleton_mki',
@@ -842,6 +920,27 @@ export const RACES = [
         id: 'skeleton_mkiii',
         title: 'MKIII (尖头)',
         description: '初始属性修正：力量+5。',
+      },
+      {
+        id: 'skeleton_false_savior',
+        title: '骨人-虚伪者',
+        description:
+          '外观、皮肤纹理与呼吸节律几乎与人类无异，连多数简易体检都难以识别其机械本质。其核心却是为高强度歼灭行动打造的古代战争单元，具备极端环境生存与持续作战能力。为了潜入与猎杀而存在，擅长在伪装与暴起之间切换，是第二帝国遗产中最危险的异化型号之一。',
+        attributeSummary: '力量+10、敏捷+10、感知+10、体质+10、意志+10、智力+10、魅力+10',
+        allowedGenders: ['male', 'female', 'other'],
+      },
+    ],
+  },
+  {
+    id: 'ailu',
+    title: '艾露族',
+    description: '怪物猎人世界中的随行猫伙伴，敏捷灵巧，体型小巧。',
+    hidden: true,
+    subraces: [
+      {
+        id: 'ailu',
+        title: '艾露族',
+        description: '推荐身高 1.00m 的小型随行伙伴。',
       },
     ],
   },
