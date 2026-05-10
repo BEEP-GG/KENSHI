@@ -1158,6 +1158,144 @@ export const TRAITS = {
       description: '你坚信“血肉苦弱，机械飞升”，用钢铁意志强迫自己无视痛苦，但也因此搞垮了脆弱的肉体。意志 +9，体质 -8',
       category: 'attribute',
     },
+    {
+      id: 'behemoth_slayer',
+      title: '巨兽屠戮者',
+      description:
+        '你曾在没有重武器的情况下，硬生生用蛮力绞杀过一头成年的喙嘴兽。这种在生死边缘榨取出的肌肉爆发力远超常人。力量 +5',
+      category: 'attribute',
+    },
+    {
+      id: 'blade_tip_dancer',
+      title: '刀尖舞者',
+      description:
+        '在地下角斗场里无数次的生死搏杀，让你学会了如何用最小的动作幅度避开致命伤，你的神经反应速度犹如绷紧的弓弦。敏捷 +5',
+      category: 'attribute',
+    },
+    {
+      id: 'eye_of_sandstorm',
+      title: '沙暴之眼',
+      description:
+        '大沙漠的漫天黄沙没能吹瞎你的眼睛，反而让你能在能见度不足十米的沙尘暴中，精准捕捉到潜行强盗的微小足迹。感知 +4',
+      category: 'attribute',
+    },
+    {
+      id: 'shackle_breaker',
+      title: '破铐者',
+      description:
+        '你曾在圣国重生镇的采石场服刑。那段暗无天日的绝望岁月没能压垮你，反而将你的精神淬炼成了真正的钢铁。意志 +6',
+      category: 'attribute',
+    },
+    {
+      id: 'ancient_relic_decoder',
+      title: '古代遗物解密者',
+      description:
+        '在无数个伴随暗淡提灯的夜晚，你破译了大量科技猎手带回的第二帝国蓝图，你的大脑对机械与建筑有着超越时代的理解。智力 +4',
+      category: 'attribute',
+    },
+    {
+      id: 'wasteland_field_medic',
+      title: '荒野游医',
+      description: '你懂得如何用一卷肮脏的睡袋和几句暖心的话，安抚那些刚失去小腿的崩溃佣兵。魅力 +5',
+      category: 'attribute',
+    },
+    {
+      id: 'wasteland_cockroach',
+      title: '废土蟑螂',
+      description:
+        '喝过酸雨，吃过腐肉，你这具身体已经对废土上90%的恶劣环境和劣质食物产生了抗体，你就是打不死的沙地小强。体质 +6',
+      category: 'attribute',
+    },
+    {
+      id: 'shek_milf_superfan',
+      title: '沙克大妈狂热粉',
+      description:
+        '你对沙克族那些浑身骨刺、肌肉虬结的女性有着某种极其不可告人的狂热XP。只要一想到她们的肌肉，你就会像打了鸡血一样充满斗志。意志 +5',
+      category: 'attribute',
+    },
+    {
+      id: 'streaker',
+      title: '果奔者',
+      description:
+        '你坚信衣服会是阻碍”。只有在全身一丝不挂的情况下，让废土的狂风抚摸你的肌肤，你才能跑出真实的自我。敏捷 +3',
+      category: 'attribute',
+    },
+    {
+      id: 'holy_nation_succubus',
+      title: '圣国魅魔',
+      description:
+        '你深谙如何把一件破烂的“奴隶破衣”穿出欲拒还迎的时尚感。就算是满口“赞美奥克兰”的圣国老骑士，看到你也会红着脸偷偷咽口水。魅力 +8',
+      category: 'attribute',
+    },
+    {
+      id: 'masochist',
+      title: '抖M',
+      description: '你被打的时候发出了奇怪的喘息和娇喘声，甚至请求“再快一点”。你对疼痛的耐受度异于常人。体质 +8',
+      category: 'attribute',
+    },
+    {
+      id: 'swamp_meth_master',
+      title: '沼泽绝命毒师',
+      description:
+        '你在沼泽地偷偷提纯大麻的时候，不小心吸入了过量的高纯度挥发气体。虽然这让你现在经常对着空气傻笑，但也让你在药理学上达到了奇怪的巅峰。智力 +6',
+      category: 'attribute',
+    },
+    {
+      id: 'scavenger_pose_method',
+      title: '猛男/娇妻拾荒法',
+      description:
+        '你每次弯腰捡地上的破烂时，都会刻意撅起臀部或展现肌肉线条。这种诱惑力的姿态经常会让路过的强盗看呆，从而忘记打劫你。魅力 +6',
+      category: 'attribute',
+    },
+    {
+      id: 'blood_spider_symbiote',
+      title: '血蜘蛛寄生共生体',
+      description:
+        '一只变异的血蜘蛛幼体寄生在了你的脊椎里。它与你的神经索相连，赐予了你全方位的雷达级探知能力，但这该死的小东西每天都让你感到痛苦。感知 +14，体质 -8，魅力 -8',
+      category: 'attribute',
+    },
+    {
+      id: 'overclocked_steroids',
+      title: '超频类固醇',
+      description:
+        '你曾捡到并注射过一管发着绿光的第二帝国军用强化剂。你的肌肉膨胀到了随时可能撕裂皮肤的恐怖地步，一拳能打爆城门；但你现在肌肉十分肿胀，连自己系鞋带都做不到。力量 +12，敏捷 -12',
+      category: 'attribute',
+    },
+    {
+      id: 'desync_step',
+      title: '卡死我了',
+      description:
+        '某天你一觉醒来，发现你移动会瞬间出现在某处，像是网卡一样。甚至掌握了卡进贴图、超越游戏渲染速度的究极步伐，但受到一点伤害就会特别特别痛，讲话也卡。敏捷 +12，体质 -8，魅力 -5',
+      category: 'attribute',
+    },
+    {
+      id: 'error_404_brain_dump',
+      title: 'Error 404',
+      description:
+        '为了获取古代知识，你从不知道哪下的数据，插入大脑。你现在拥有了比肩顶级机械师的超凡智力，但你的语言中枢彻底损毁，一开口就是刺耳的乱码和电子噪音，没人愿意靠近你。魅力 -15，智力 +18',
+      category: 'attribute',
+    },
+    {
+      id: 'holy_nation_streetwalker',
+      title: '圣国暗娼',
+      description:
+        '你曾经靠在漆黑的小巷里张开双腿换取干粮。你懂得如何解开男人的板甲，并用舌头和下体安抚那些伪君子。你擅长察言观色和伪装高潮，能在交媾的喘息间轻易摸走对方钱袋里的开币。敏捷 +3，魅力 +8',
+      category: 'attribute',
+    },
+    {
+      id: 'swamp_aphrodisiac_mark',
+      title: '沼泽淫纹',
+      description:
+        '你幻想着娜尔可，某天发现肚子上出现淫纹。只要稍微摩擦或受到物理打击，就会让你到达顶点。你在战斗的剧痛中会不可抑制地流出水并达到高潮，将痛觉转化为极致的快感。体质 +12',
+      category: 'attribute',
+    },
+    {
+      id: 'xeno_stage_performance',
+      title: '异种表演',
+      description:
+        '你曾在地下角斗场被奴隶主注射催情药剂，强迫与进行公开的表演。那群粗野蛮家伙的冲撞彻底改变了你的ASS。体质 +18，魅力 -10',
+      category: 'attribute',
+    },
   ],
   life: [
     {
