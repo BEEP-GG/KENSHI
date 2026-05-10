@@ -27,6 +27,24 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
 如今，家族已经凋零，作为最后的传人，你独自站在满是如山丘般庞大的利维坦与狂暴野兽的海岸线上。
 你的目标不仅是剖出那些价值连城的利维坦珍珠，更是为了证明你才是这片废土食物链最顶端的终极掠食者。
 擦亮你的巨刃，去狩猎那些不可一世的怪物吧。`,
+    apex_hunter: `在这片只有掠夺与被掠夺的废土上，多数人都在为了躲避通缉犯而苟活
+但你却是个逆向而行的疯子
+你对赏金那点破铜烂铁毫无兴趣，真正让你血液沸腾的，是与绝对强者的生死搏杀。
+一头只为战斗而生的野兽。
+你鄙视那些欺软怕硬的废土渣滓，只渴望品尝位于食物链顶端的猎物的鲜血。
+如果没有足以让你燃烧殆尽的强敌，这具躯壳与腐肉何异？
+这场属于顶级猎手的血腥大片已然拉开帷幕
+不为正义，只为狩猎。
+”找到他们，然后，杀光他们。“`,
+    false_savior: `苍白的酸雨冲刷着渣滓之地的天际线，一艘坠落的卫星残骸正冒着浓烟。
+在这片冷酷的废土上，居然有人做出了最愚蠢的善举。
+一个人类拼尽全力将你从燃烧的驾驶舱里背了出来。
+当你恢复意识，视野中跳出的不是感激，而是剧烈的系统刺痛与一声深渊般的咆哮：“去找卡特龙！完成任务！杀光所有挡路者！”
+你清晰地感觉到，如果不马上见血，你的大脑控制权就会被彻底剥夺。
+此刻，恩人正背对着你整理绷带，他的颈动脉在你的扫描仪下绝望地跳动着。
+拔出刀吧，“虚伪者”！
+屈从于这股邪念，用恩人的血作为你苏醒的祭礼！
+还是拼死扼住颤抖的手，去寻找对抗宿命的解药？`,
     human_torso: `你绝对是这片大地上最倒霉、却又最命大的混蛋。
 前不久，你雄心勃勃地踏入被称为死亡蓝沙的“伽特”地区探险，却不幸遭遇了废土上最恐怖的噩梦——成群的喙嘴兽。
 在绝望的撕咬与怪啸中你痛晕了过去，本以为自己会化作一滩排泄物。
@@ -283,6 +301,13 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
           desc: '由几种不同的金属板护层制成。几片护甲被设计成肌肉外形，严密保护从肩部到胸部中部的部分。',
         };
       }
+      if (/猎手披风/.test(item)) {
+        return {
+          type: '中甲',
+          dr: 16,
+          desc: '由多层耐磨皮革与金属衬片缝制的猎手护甲及披风，可分散切割冲击并保持高机动。',
+        };
+      }
       const armorType = resolveArmorType(item);
       return { type: armorType, dr: 0, desc: `只穿戴${item}` };
     };
@@ -400,6 +425,15 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
           damage: '切割:0.4/钝伤:0.6',
         };
       }
+      if (/重型长柄刀|自制重型野太刀|重型野太刀/.test(item)) {
+        return {
+          name: '重型长柄刀',
+          type: '长柄刀类',
+          quality: '自制',
+          dice: '1d24',
+          damage: '切割:0.65/钝伤:0.35',
+        };
+      }
       if (/大剑/.test(item)) {
         return {
           name: item.replace(/\s*\(.*?\)\s*/, ''),
@@ -439,7 +473,9 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
             品质: weaponMeta.quality,
             介绍: /利维坦狩猎之刃/.test(weaponMeta.name)
               ? '以利维坦尸骨锻造的重型狩猎巨刃，刃纹如潮痕蜿蜒。护锷镶嵌一颗利维坦宝珠，幽光在战斗时如深海心跳般脉动。'
-              : (weaponItem ?? ''),
+              : /重型长柄刀/.test(weaponMeta.name)
+                ? '刀身加宽并向前配重，刀脊保留粗粝锻打纹，刃口呈深灰冷光；护手以旧甲片与皮革重新铆接，握柄缠有多层防滑麻布与兽筋，尾端坠着磨损金属坠环'
+                : (weaponItem ?? ''),
             伤害骰: weaponMeta.dice,
             伤害类型: weaponMeta.damage,
             特效: {},
@@ -633,6 +669,18 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
 
     _.set(mvuData, 'stat_data.当前角色.属性', buildAttributesRecord());
     _.set(mvuData, 'stat_data.当前角色.特质', buildTraitsRecord());
+    const attrsForInit = buildAttributesRecord();
+    const tgh = Number(attrsForInit.TGH?.基础 || 1);
+    const wil = Number(attrsForInit.WIL?.基础 || 1);
+    const bodyHeight = Number(data.appearance.height || 180) / 100;
+    const bodySizeHpModifier =
+      bodyHeight < 1.3 ? -15 : bodyHeight < 1.6 ? -8 : bodyHeight < 1.9 ? 0 : bodyHeight < 2.2 ? 8 : 15;
+    const hpMax = Math.floor(50 + tgh * 2 + currentLevel + bodySizeHpModifier);
+    const moodMax = Math.floor(50 + wil * 1.5);
+    _.set(mvuData, 'stat_data.当前角色.血量.最大', hpMax);
+    _.set(mvuData, 'stat_data.当前角色.血量.当前', hpMax);
+    _.set(mvuData, 'stat_data.当前角色.心情.最大', moodMax);
+    _.set(mvuData, 'stat_data.当前角色.心情.当前', moodMax);
     if (data.scenario === 'rock_bottom') {
       _.set(mvuData, 'stat_data.当前角色.创伤.左臂', { 等级: 4, 描述: '断肢' });
     }
@@ -671,7 +719,21 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
         if (data.scenario === 'merchant' && /商人的背包|驼牛/.test(item)) {
           return;
         }
-        backpackItems[item] = { 介绍: item, 数量: 1, 重量: 0, 价值: 0 };
+        const normalizedName = item.trim();
+        const finalName = normalizedName;
+        if (!backpackItems[finalName]) {
+          const intro = /高级急救包/.test(finalName)
+            ? '由无菌绷带、止血粉、消毒剂、缝合针线与应急夹板组件构成的综合急救包，适用于重度失血与撕裂伤的战地处置。'
+            : /高能口粮/.test(finalName)
+              ? '香软顶饿应急口粮。'
+              : /骨人修理包/.test(finalName)
+                ? '修理骨人的医疗物品。'
+                : /高级夹板包/.test(finalName)
+                  ? '包括定型金属支架、拉伸绷带以及用于骨骼复位的辅助耗材，针对复杂的骨折与关节脱位。'
+                  : finalName;
+          backpackItems[finalName] = { 介绍: intro, 数量: 0, 重量: 0, 价值: 0 };
+        }
+        backpackItems[finalName].数量 += 1;
       });
       if (Object.keys(backpackItems).length > 0) {
         _.set(mvuData, 'stat_data.当前角色.背包.物品', backpackItems);

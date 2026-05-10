@@ -12,10 +12,12 @@ interface StepScenarioProps {
 
 export const StepScenario: React.FC<StepScenarioProps> = ({ data, updateData, onNext }) => {
   const scenariosPerPage = 6;
-  const visibleScenarios = React.useMemo(
-    () => SCENARIOS.filter(scenario => !(scenario as { hidden?: boolean }).hidden),
-    [],
-  );
+  const SCENARIOS_WITH_MAINLINE = new Set(['monster_hunter', 'officer_son', 'false_savior', 'apex_hunter']);
+  const [onlyMainline, setOnlyMainline] = React.useState(false);
+  const visibleScenarios = React.useMemo(() => {
+    const base = SCENARIOS.filter(scenario => !(scenario as { hidden?: boolean }).hidden);
+    return onlyMainline ? base.filter(scenario => SCENARIOS_WITH_MAINLINE.has(scenario.id)) : base;
+  }, [onlyMainline]);
   const totalPages = Math.max(1, Math.ceil(visibleScenarios.length / scenariosPerPage));
   const [currentPage, setCurrentPage] = React.useState(1);
   const gridRef = React.useRef<HTMLDivElement | null>(null);
@@ -44,6 +46,7 @@ export const StepScenario: React.FC<StepScenarioProps> = ({ data, updateData, on
     slave_master: 798,
     human_torso: 799,
     monster_hunter: 800,
+    false_savior: 834,
   };
   const ALL_SCENARIO_UIDS = Object.values(SCENARIO_WB_UIDS);
   const ALL_SCENARIO_UID_SET = new Set(ALL_SCENARIO_UIDS);
@@ -59,11 +62,17 @@ export const StepScenario: React.FC<StepScenarioProps> = ({ data, updateData, on
       await updateWorldbookWith(wbName, entries =>
         entries.map(entry => {
           const entryUid = Number(entry.uid);
-          if (entryUid === 491) {
+          if (entryUid === 833) {
+            return { ...entry, enabled: scenarioId !== 'false_savior' };
+          }
+          if (entryUid === 838) {
             return { ...entry, enabled: scenarioId === 'false_savior' };
           }
-          if (entryUid === 900) {
-            return { ...entry, enabled: scenarioId !== 'false_savior' };
+          if (entryUid === 835) {
+            return { ...entry, enabled: scenarioId !== 'officer_son' };
+          }
+          if (entryUid === 854) {
+            return { ...entry, enabled: scenarioId === 'apex_hunter' };
           }
           if (ALL_SCENARIO_UID_SET.has(entryUid)) {
             if (entryUid === uid) foundTargetUid = true;
@@ -106,6 +115,10 @@ export const StepScenario: React.FC<StepScenarioProps> = ({ data, updateData, on
     }
   }, [currentPage, totalPages]);
 
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [onlyMainline]);
+
   return (
     <div className="h-full flex flex-col">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8 text-center">
@@ -113,6 +126,19 @@ export const StepScenario: React.FC<StepScenarioProps> = ({ data, updateData, on
         <p className="text-white/60 font-sans max-w-2xl mx-auto">
           每一个传奇都有一个卑微（或悲惨）的开始。你将如何踏入这个残酷的世界？
         </p>
+        <div className="mt-4 flex justify-center">
+          <button
+            type="button"
+            onClick={() => setOnlyMainline(prev => !prev)}
+            className={`text-xs tracking-widest px-3 py-1.5 rounded border transition-all duration-200 ${
+              onlyMainline
+                ? 'border-emerald-500/70 text-emerald-300 bg-emerald-500/15 shadow-[0_0_12px_rgba(16,185,129,0.25)]'
+                : 'border-white/20 text-white/70 bg-black/30 hover:border-emerald-500/40 hover:text-emerald-200'
+            }`}
+          >
+            {onlyMainline ? '已开启：仅看【自带主线】' : '筛选：仅看【自带主线】'}
+          </button>
+        </div>
       </motion.div>
 
       <div
@@ -154,17 +180,24 @@ export const StepScenario: React.FC<StepScenarioProps> = ({ data, updateData, on
                 >
                   <Icon size={24} />
                 </div>
-                <span
-                  className={`text-xs uppercase tracking-widest px-2 py-1 rounded border ${
-                    scenario.difficulty === '极难'
-                      ? 'border-red-500/50 text-red-400'
-                      : scenario.difficulty === '困难'
-                        ? 'border-orange-500/50 text-orange-400'
-                        : 'border-green-500/50 text-green-400'
-                  }`}
-                >
-                  {scenario.difficulty}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`text-xs uppercase tracking-widest px-2 py-1 rounded border ${
+                      scenario.difficulty === '极难'
+                        ? 'border-red-500/50 text-red-400'
+                        : scenario.difficulty === '困难'
+                          ? 'border-orange-500/50 text-orange-400'
+                          : 'border-green-500/50 text-green-400'
+                    }`}
+                  >
+                    {scenario.difficulty}
+                  </span>
+                  {SCENARIOS_WITH_MAINLINE.has(scenario.id) && (
+                    <span className="text-xs uppercase tracking-widest px-2 py-1 rounded border border-emerald-500/60 text-emerald-300 bg-emerald-500/10">
+                      自带主线
+                    </span>
+                  )}
+                </div>
               </div>
 
               <h3 className={`text-xl font-serif font-bold mb-2 ${isSelected ? 'text-[#C2B280]' : 'text-white'}`}>

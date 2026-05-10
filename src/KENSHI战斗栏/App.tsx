@@ -69,6 +69,8 @@ type BattleCharacter = {
   shockTurns: number;
   hasDowned: boolean;
   attackCount: number;
+  mainWeaponAttackCount: number;
+  subWeaponAttackCount: number;
   noBlockNextRound: boolean;
   defenseBonus: number;
   escaped: boolean;
@@ -689,6 +691,8 @@ const normalizeAttributes = (raw: any): Attributes => ({
   CHA: getAttributeValue(_.get(raw, ['属性', 'CHA']), 30),
 });
 
+const VALID_SUB_WEAPON_TYPE_REGEX = /(武士刀|砍刀|军刀|大型|长柄|钝器|弓|弩|盾牌)/;
+
 const normalizeCharacter = (
   raw: any,
   name: string,
@@ -706,10 +710,15 @@ const normalizeCharacter = (
   const weaponDice = _.get(weapon, ['伤害骰'], '1d6');
   const weaponDamageType = _.get(weapon, ['伤害类型'], '');
   const subWeapon = _.get(raw, ['副武器'], {});
-  const subWeaponType = _.get(subWeapon, ['种类'], '无');
-  const subWeaponName = _.get(subWeapon, ['名字'], subWeaponType);
-  const subWeaponDice = _.get(subWeapon, ['伤害骰'], '0d0');
-  const subWeaponDamageType = _.get(subWeapon, ['伤害类型'], '');
+  const subWeaponTypeRaw = _.get(subWeapon, ['种类'], '无');
+  const subWeaponNameRaw = _.get(subWeapon, ['名字'], subWeaponTypeRaw);
+  const subWeaponDiceRaw = _.get(subWeapon, ['伤害骰'], '0d0');
+  const subWeaponDamageTypeRaw = _.get(subWeapon, ['伤害类型'], '');
+  const hasValidSubWeaponType = VALID_SUB_WEAPON_TYPE_REGEX.test(String(subWeaponTypeRaw || ''));
+  const subWeaponType = hasValidSubWeaponType ? subWeaponTypeRaw : '无';
+  const subWeaponName = hasValidSubWeaponType ? subWeaponNameRaw : '无';
+  const subWeaponDice = hasValidSubWeaponType ? subWeaponDiceRaw : '0d0';
+  const subWeaponDamageType = hasValidSubWeaponType ? subWeaponDamageTypeRaw : '';
   const armorRaw = _.get(raw, ['护甲'], {});
   const armorBaseDR = toNumber(_.get(armorRaw, ['防护能力(DR)']), toNumber(_.get(armorRaw, ['防护能力']), 0));
   const armorDR = Math.max(0, armorBaseDR);
@@ -732,11 +741,11 @@ const normalizeCharacter = (
   };
   const bleedLayers = Math.max(0, Math.floor(toNumber(_.get(raw, ['流血', '层数']), 0)));
   const shockTurns = Math.max(0, Math.floor(toNumber(_.get(raw, ['状态', '休克回合']), 0)));
-  const baseAttackCount = Math.floor(toNumber(_.get(raw, ['攻击次数']), 0));
+  const variableAttackCount = Math.max(1, Math.floor(toNumber(_.get(raw, ['攻击次数']), 0)) || 1);
   const isHeavyOrBlunt = /大型|钝器/.test(weaponType);
   const isMartialArts = /武术/.test(weaponType);
   const martialBaseAttackRate = attributes.DEX >= attributes.STR ? 3 : 2;
-  const baseAttackRate = isMartialArts
+  const mainBaseAttackRate = isMartialArts
     ? martialBaseAttackRate
     : /武士刀/.test(weaponType)
       ? 3
@@ -745,7 +754,9 @@ const normalizeCharacter = (
         : isHeavyOrBlunt
           ? 1
           : 2;
-  const attackCount = Math.max(1, baseAttackRate + baseAttackCount);
+  const mainWeaponAttackCount = variableAttackCount + mainBaseAttackRate;
+  const subWeaponAttackCount = subWeaponType === '盾牌' ? 1 : subWeaponType !== '无' ? variableAttackCount : 0;
+  const attackCount = Math.max(1, mainWeaponAttackCount + subWeaponAttackCount);
   const raceName = String(_.get(raw, ['种族', '名称'], ''));
   const backpackItems = normalizeBackpackItems(_.get(raw, ['背包', '物品'], {}) || {});
 
@@ -781,6 +792,8 @@ const normalizeCharacter = (
     shockTurns,
     hasDowned: false,
     attackCount,
+    mainWeaponAttackCount,
+    subWeaponAttackCount,
     noBlockNextRound: false,
     defenseBonus: 0,
     escaped: false,
@@ -963,17 +976,23 @@ const getDefenseBase = (defender: BattleCharacter, useBlock: boolean) => {
   const str = Math.max(1, defender.attributes.STR - fracturePenalty);
   const dex = Math.max(1, defender.attributes.DEX - fracturePenalty);
   const base = useBlock ? dex * 0.5 + str * 0.2 : dex * 0.6 + defender.attributes.PER * 0.2;
-  const blockBonus = useBlock && /军刀/.test(defender.weapon.type) ? 12 : 0;
-  const penalty = getDefensePenalty(defender, useBlock);
+  const mainBlockBonus = useBlock && /军刀/.test(defender.weapon.type) ? 12 : 0;
+  const subBlockBonus = useBlock && /军刀/.test(defender.subWeapon.type) ? 6 : 0;
+  const shieldBonus = useBlock && /盾牌/.test(defender.subWeapon.type) ? 12 : 0;
+  const blockBonus = mainBlockBonus + subBlockBonus + shieldBonus;
+  const rangedMainWithSubPenalty =
+    useBlock && isBowOrCrossbow(defender.weapon.type) && defender.subWeapon.type !== '无' ? 8 : 0;
+  const penalty = getDefensePenalty(defender, useBlock) + rangedMainWithSubPenalty;
   return base + blockBonus + (defender.defenseBonus || 0) - penalty;
 };
 
 const getDefenseMode = (defender: BattleCharacter, attackerWeaponType: string) => {
   const hasMainWeapon = defender.weapon.type !== '无';
+  const hasSubWeapon = defender.subWeapon.type !== '无';
   if (!hasMainWeapon) return false;
   if (isBowOrCrossbow(attackerWeaponType)) return false;
   const defenderMainIsBowOrCrossbow = isBowOrCrossbow(defender.weapon.type);
-  if (defenderMainIsBowOrCrossbow) return false;
+  if (defenderMainIsBowOrCrossbow && !hasSubWeapon) return false;
   return true;
 };
 
@@ -1109,8 +1128,13 @@ const CharacterCard = ({
             <Sword size={12} className="text-stone-500" /> 武器与装备
           </h4>
           <div className="text-xs font-mono text-stone-500 truncate">
-            {character.weapon.name} ({character.weapon.damageDice})
+            主：{character.weapon.name} ({character.weapon.damageDice})
           </div>
+          {character.subWeapon.type !== '无' ? (
+            <div className="text-xs font-mono text-stone-500 truncate">
+              副：{character.subWeapon.name} ({character.subWeapon.damageDice})
+            </div>
+          ) : null}
         </button>
         <button
           type="button"
@@ -1811,8 +1835,10 @@ export default function App() {
     targetCount?: number,
     allowMartialExtraAttack = true,
     nonLethalActorIds: string[] = [],
+    attackWeapon?: BattleCharacter['weapon'],
   ): AttackResult => {
     const hitBonus = attacker.hitBonusAgainst[defender.id] || 0;
+    const currentWeapon = attackWeapon || attacker.weapon;
     if (attacker.hitBonusAgainst[defender.id]) {
       attacker.hitBonusAgainst[defender.id] = 0;
     }
@@ -1825,36 +1851,37 @@ export default function App() {
     const evadeBase = defender.attributes.DEX * 0.5 + defender.attributes.PER * 0.2;
     const multiTargetPenalty = Math.max(0, (lastRoundAttackersCount[defender.id] || 0) - 1) * 8;
     const evadeValue = Math.max(0, Math.min(70, evadeBase) - multiTargetPenalty);
-    const isMartialArts = /武术/.test(attacker.weapon.type);
+    const isMartialArts = /武术/.test(currentWeapon.type);
     const isMartialSpeed = isMartialArts && attacker.attributes.DEX >= attacker.attributes.STR;
     const isMartialHeavy = isMartialArts && attacker.attributes.STR > attacker.attributes.DEX;
     const critThreshold = isMartialSpeed ? 10 : 7;
     const isCrit = rawRoll <= critThreshold;
-    const isHeavyWeapon = /大型/.test(attacker.weapon.type);
+    const isHeavyWeapon = /大型/.test(currentWeapon.type);
     const isFumble = rawRoll <= (isHeavyWeapon ? 10 : 5);
 
     if (isFumble) {
       appendLog(logs, `${attacker.name}: 攻击检定大失败 (判定 ${rawRoll})`);
-      if (/(弩|弓)/.test(attacker.weapon.type)) {
+      if (/(弩|弓)/.test(currentWeapon.type)) {
         const allyTargets = units.filter(
           unit => unit.faction === attacker.faction && unit.id !== attacker.id && isCombatReadyUnit(unit),
         );
         const ally = allyTargets.length ? allyTargets[_.random(0, allyTargets.length - 1)] : null;
         if (ally) {
           appendLog(logs, `${attacker.name}: 大失败！误伤队友 ${ally.name}。`);
-          const ratio = getDamageRatio(attacker.weapon.type, attacker.weapon.damageType);
+          const ratio = getDamageRatio(currentWeapon.type, currentWeapon.damageType);
           const baseDamage =
-            rollDice(attacker.weapon.damageDice) +
-            rollDice(attacker.subWeapon.damageDice) +
-            (attacker.attributes.STR - 20) * 0.4;
+            rollDice(currentWeapon.damageDice) +
+            (isBowOrCrossbow(currentWeapon.type)
+              ? (attacker.attributes.STR - 40 + attacker.attributes.PER - 30) * 0.4
+              : (attacker.attributes.STR - 35 + attacker.attributes.DEX * 0.35) * 0.4);
           const rawDamage = Math.max(0, baseDamage);
           const finalDamage = rawDamage;
           const cutDamage = Math.round(finalDamage * ratio.cut);
           const bluntDamage = Math.round(finalDamage * ratio.blunt);
-          const drIgnore = /弩/.test(attacker.weapon.type) ? 7 : 0;
+          const drIgnore = /弩/.test(currentWeapon.type) ? 7 : 0;
           const effectiveDR = Math.max(0, ally.armorDR - drIgnore);
           const cutAfterDR = Math.max(0, Math.round(cutDamage - effectiveDR));
-          const bluntScale = /钝器/.test(attacker.weapon.type) ? 1 : /弩/.test(attacker.weapon.type) ? 1.2 : /武士刀/.test(attacker.weapon.type) ? 0.5 : /(军刀|长柄)/.test(attacker.weapon.type) ? 0.6 : 0.8;
+          const bluntScale = /钝器|盾牌/.test(currentWeapon.type) ? 1 : /弩/.test(currentWeapon.type) ? 1.2 : /武士刀/.test(currentWeapon.type) ? 0.5 : /(军刀|长柄)/.test(currentWeapon.type) ? 0.6 : 0.7;
     const bluntAfterScale = Math.round(bluntDamage * bluntScale);
     const totalDamage = Math.round(cutAfterDR + bluntAfterScale);
           const updatedAlly = applyDamage(ally, totalDamage);
@@ -1885,7 +1912,7 @@ export default function App() {
 
     appendLog(logs, `${defender.name}: 闪避判定失败 (判定 ${attackRoll.toFixed(0)} >= ${evadeValue.toFixed(0)})`);
 
-    let useBlock = getDefenseMode(defender, attacker.weapon.type);
+    let useBlock = getDefenseMode(defender, currentWeapon.type);
     if (defender.noBlockNextRound) useBlock = false;
     const defensePenalty = defenseIndex * 10;
     const defenseBase = getDefenseBase(defender, useBlock);
@@ -1909,11 +1936,15 @@ export default function App() {
       appendLog(logs, `${defender.name}: 格挡成功 (判定 ${defenseRoll} <= ${defenseChance.toFixed(0)})`);
     }
 
-    const baseDamage = rollDice(attacker.weapon.damageDice) + (attacker.attributes.STR - 20) * 0.4;
+    const baseDamage =
+      rollDice(currentWeapon.damageDice) +
+      (isBowOrCrossbow(currentWeapon.type)
+        ? (attacker.attributes.STR - 40 + attacker.attributes.PER - 30) * 0.4
+        : (attacker.attributes.STR - 35 + attacker.attributes.DEX * 0.35) * 0.4);
     const rawDamage = Math.max(0, baseDamage);
     const critMultiplier = isCrit ? (isMartialHeavy ? 2 : isMartialSpeed ? 1 : 1.5) : 1;
     const finalDamage = rawDamage * critMultiplier;
-    const ratio = getDamageRatio(attacker.weapon.type, attacker.weapon.damageType);
+    const ratio = getDamageRatio(currentWeapon.type, currentWeapon.damageType);
     let cutDamage = Math.round(finalDamage * ratio.cut);
     let bluntDamage = Math.round(finalDamage * ratio.blunt);
 
@@ -1922,16 +1953,16 @@ export default function App() {
       bluntDamage = Math.round(bluntDamage * 0.5);
     }
 
-    const drIgnore = /砍刀/.test(attacker.weapon.type)
+    const drIgnore = /砍刀/.test(currentWeapon.type)
       ? 7
-      : /弩/.test(attacker.weapon.type)
+      : /弩/.test(currentWeapon.type)
         ? 7
         : isMartialHeavy
           ? 5
           : 0;
     const effectiveDR = Math.max(0, defender.armorDR - drIgnore);
     const cutAfterDR = Math.max(0, Math.round(cutDamage - effectiveDR));
-    const bluntScale = /钝器/.test(attacker.weapon.type) ? 1 : /弩/.test(attacker.weapon.type) ? 1.2 : /武士刀/.test(attacker.weapon.type) ? 0.5 : /(军刀|长柄)/.test(attacker.weapon.type) ? 0.6 : 0.8;
+    const bluntScale = /钝器|盾牌/.test(currentWeapon.type) ? 1 : /弩/.test(currentWeapon.type) ? 1.2 : /武士刀/.test(currentWeapon.type) ? 0.5 : /(军刀|长柄)/.test(currentWeapon.type) ? 0.6 : 0.7;
           const bluntAfterScale = Math.round(bluntDamage * bluntScale);
     const totalDamage = Math.round(cutAfterDR + bluntAfterScale);
     const armorAbsorbed = Math.round(Math.max(0, cutDamage - cutAfterDR));
@@ -1957,8 +1988,8 @@ export default function App() {
     const hitPart = rollInjuryPart();
     const baseThreshold = getTraumaThresholdByLevel(defender.attributes.TGH, defender.traumaParts[hitPart] || 0);
     const currentRemaining = updatedDefender.traumaAccumulated?.[hitPart] ?? baseThreshold;
-    const limbCutScale = /砍刀/.test(attacker.weapon.type) ? 1.4 : 1.2;
-    const limbBluntScale = /钝器/.test(attacker.weapon.type) ? 1.4 : 1;
+    const limbCutScale = /砍刀/.test(currentWeapon.type) ? 1.4 : 1.2;
+    const limbBluntScale = /钝器|盾牌/.test(currentWeapon.type) ? 1.4 : 1;
     const limbDamage = _.round(cutAfterDR * limbCutScale + bluntAfterScale * limbBluntScale, 2);
     const newRemaining = currentRemaining - limbDamage;
     updatedDefender.traumaAccumulated = {
@@ -1968,12 +1999,12 @@ export default function App() {
     const damageText = `造成 ${totalDamage} 伤害 (切割 ${cutDamage}(减伤${armorAbsorbed}) / 破甲 ${bluntDamage})，肢体伤害 ${limbDamage}`;
     appendLog(logs, `${attacker.name}: 命中${defender.name}(${hitPart})，${damageText}`);
 
-    if (/武士刀/.test(attacker.weapon.type) && cutAfterDR > 0) {
+    if (/武士刀/.test(currentWeapon.type) && cutAfterDR > 0) {
       updatedDefender.bleedLayers += 1;
       appendLog(logs, `${defender.name}: 武士刀追加流血层数+1。`);
     }
 
-    if (/砍刀/.test(attacker.weapon.type) && isCrit) {
+    if (/砍刀/.test(currentWeapon.type) && isCrit) {
       const reduced = Math.max(0, updatedDefender.armorDR - 8);
       updatedDefender.armorDR = reduced;
       appendLog(logs, `${defender.name}: 破甲效果触发，DR降低8。`);
@@ -2424,6 +2455,9 @@ export default function App() {
           const actor = getUnit(workingUnits, actorId);
           if (!actor || !isCombatReadyUnit(actor)) continue;
           if (attackIndex >= actor.attackCount) continue;
+          const useMainWeaponThisHit = attackIndex < (actor.mainWeaponAttackCount || 0);
+          const activeWeapon = useMainWeaponThisHit ? actor.weapon : actor.subWeapon;
+          if (!activeWeapon || activeWeapon.type === "无") continue;
 
           const targetFaction = actor.faction === 'friendly' ? 'enemy' : 'friendly';
           let target = plan.targetId ? getUnit(workingUnits, plan.targetId) : null;
@@ -2493,6 +2527,7 @@ export default function App() {
                   perAttackTargets.length,
                   true,
                   prev.nonLethalActorIds,
+                  activeWeapon,
                 );
                 workingUnits = result.units;
                 if (!result.dodged) {
@@ -2733,10 +2768,20 @@ export default function App() {
         <div className="p-6 grid gap-4 text-sm">
           <div className="text-xs text-stone-400">武器信息</div>
           <div className="space-y-2 font-mono text-stone-200">
+            <div className="pt-1">主武器</div>
             <div>名称：{character.weapon.name}</div>
             <div>类型：{character.weapon.type}</div>
             <div>伤害骰：{character.weapon.damageDice}</div>
             <div>伤害类型：{character.weapon.damageType || '未定义'}</div>
+            {character.subWeapon.type !== '无' ? (
+              <>
+                <div className="pt-2 border-t border-stone-800/50">副武器</div>
+                <div>名称：{character.subWeapon.name}</div>
+                <div>类型：{character.subWeapon.type}</div>
+                <div>伤害骰：{character.subWeapon.damageDice}</div>
+                <div>伤害类型：{character.subWeapon.damageType || '未定义'}</div>
+              </>
+            ) : null}
           </div>
         </div>
       );

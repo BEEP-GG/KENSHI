@@ -345,7 +345,7 @@ const roll = (input?: DiceParamsInput) => {
         breakdownText.value = '自然掷骰: 1 (无需修正，直接失败)';
       } else {
         displayNumber.value = totalRoll;
-        breakdownText.value = breakdownStr;
+        breakdownText.value = `如 ${breakdownStr}`;
 
         if (totalRoll >= params.dcTarget) {
           stateClass.value = 'state-success';
