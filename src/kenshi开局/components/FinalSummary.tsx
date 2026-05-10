@@ -1539,11 +1539,13 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
     lines.push(`角色名：${data.name || '无名氏'}`);
     lines.push(`性别：${data.gender === 'male' ? '男' : data.gender === 'female' ? '女' : '其他'}`);
     lines.push(`年龄：${data.age}`);
-    lines.push('特质：');
     const selectedTraitLines = data.traits
       .map(traitId => allTraits.find(t => t.id === traitId))
       .filter(Boolean)
       .map(trait => ` 【${trait!.title}】：${trait!.description}`);
+    if (selectedTraitLines.length > 0 || (data.customTraitName && data.customTraitDescription)) {
+      lines.push('特质：');
+    }
     if (selectedTraitLines.length > 0) {
       lines.push(...selectedTraitLines);
     }
@@ -1552,6 +1554,9 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
     }
     lines.push(`种族：${resolvedRaceTitle || '未选择'}`);
     lines.push(`开局剧本：${scenario?.title || '未选择'}`);
+    const openingEquipment = buildEquipmentSummary();
+    lines.push(`服装：${openingEquipment.护甲.介绍 || '无'}`);
+    lines.push(`武器：${openingEquipment.主武器.介绍 || openingEquipment.主武器.种类 || '无'}`);
     lines.push(`出生地：${region?.title || data.region || '未知区域'}。城镇：${data.town || '野外'}`);
     if (scenario?.id === 'unknown_dream') {
       const cut = Math.max(0, Math.min(1, Number(data.customStart.weaponCut || 0)));
@@ -1590,11 +1595,13 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
           lines.push(`【${member.name.trim()}】`);
           lines.push(`性别：${member.gender === 'male' ? '男' : member.gender === 'female' ? '女' : '其他'}`);
           lines.push(`年龄：${member.age}`);
-          lines.push('特质：');
           const memberTraitLines = member.traits
             .map(traitId => allTraits.find(t => t.id === traitId))
             .filter(Boolean)
             .map(trait => ` 【${trait!.title}】：${trait!.description}`);
+          if (memberTraitLines.length > 0 || (member.customTraitName && member.customTraitDescription)) {
+            lines.push('特质：');
+          }
           if (memberTraitLines.length > 0) {
             lines.push(...memberTraitLines);
           }
@@ -1615,7 +1622,9 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
         });
     }
 
-    lines.push('根据上述角色设定以及开局剧本，创建故事开局以及更新形容角色外貌。');
+    lines.push(
+      '根据上述角色设定以及开局剧本，创建故事开局以及描述角色外貌，随后根据正文更新外貌变量，不要修改其他变量。',
+    );
     return lines.join('\n');
   };
 
