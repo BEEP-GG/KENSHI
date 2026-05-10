@@ -39,7 +39,8 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
     false_savior: `苍白的酸雨冲刷着渣滓之地的天际线，一艘坠落的卫星残骸正冒着浓烟。
 在这片冷酷的废土上，居然有人做出了最愚蠢的善举。
 一个人类拼尽全力将你从燃烧的驾驶舱里背了出来。
-当你恢复意识，视野中跳出的不是感激，而是剧烈的系统刺痛与一声深渊般的咆哮：“去找卡特龙！完成任务！杀光所有挡路者！”
+当你恢复意识，视野中跳出的不是感激，而是剧烈的系统刺痛与一声深渊般的咆哮
+“去找卡特龙！完成任务！杀光所有挡路者！”
 你清晰地感觉到，如果不马上见血，你的大脑控制权就会被彻底剥夺。
 此刻，恩人正背对着你整理绷带，他的颈动脉在你的扫描仪下绝望地跳动着。
 拔出刀吧，“虚伪者”！
@@ -760,6 +761,9 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
     _.set(mvuData, 'stat_data.当前角色.血量.当前', hpMax);
     _.set(mvuData, 'stat_data.当前角色.心情.最大', moodMax);
     _.set(mvuData, 'stat_data.当前角色.心情.当前', moodMax);
+    _.set(mvuData, 'stat_data.当前角色.创伤', {});
+    _.set(mvuData, 'stat_data.当前角色.临时特质', {});
+    _.set(mvuData, 'stat_data.任务系统', {});
     if (data.scenario === 'rock_bottom') {
       _.set(mvuData, 'stat_data.当前角色.创伤.左臂', { 等级: 4, 描述: '断肢' });
     }
