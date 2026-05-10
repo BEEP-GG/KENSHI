@@ -287,6 +287,69 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
       if (!item || item === '无') {
         return { type: '无甲', dr: 0, desc: '未穿戴护甲' };
       }
+      if (scenario?.id === 'slave_master' && /贵族服饰/.test(item)) {
+        return {
+          type: '轻甲',
+          dr: 2,
+          desc: '一件亮绿色的丝绸长袍，袖口宽大，下摆拖地，上面用金线绣着复杂的纹路。',
+        };
+      }
+      if ((scenario?.id === 'slave' || scenario?.id === 'male_slave') && /破布衫/.test(item)) {
+        return {
+          type: '轻甲',
+          dr: 1,
+          desc: '几块发灰破布草草缠在身上，只够遮住关键部位；布料粗硬、边缘磨烂，却是你仅有的体面与遮护。',
+        };
+      }
+      if (/残破束身衣/.test(item)) {
+        return {
+          type: '轻甲',
+          dr: 1,
+          desc: '一件被撕裂又反复缝补的束身衣紧贴躯干，旧线头和干涸血痕交错在布面上，勉强包住你残缺的身体。',
+        };
+      }
+      if (/破烂腰布/.test(item)) {
+        return {
+          type: '无甲',
+          dr: 0,
+          desc: '一条发黄的破烂腰布胡乱系在腰间，风一吹就掀起边角，几乎没有任何防护可言。',
+        };
+      }
+      if (/简单的布衣布裤/.test(item)) {
+        return {
+          type: '轻甲',
+          dr: 1,
+          desc: '一套洗得发白的布衣布裤，针脚朴素却结实，穿在身上轻便透气，适合长途跋涉。',
+        };
+      }
+      if (/黑色亚麻衣物/.test(item)) {
+        return {
+          type: '轻甲',
+          dr: 1,
+          desc: '黑色亚麻衣物贴身而利落，布面吸光，行动时几乎不反光，像把你整个人藏进阴影里。',
+        };
+      }
+      if (/衬衫/.test(item)) {
+        return {
+          type: '轻甲',
+          dr: 1,
+          desc: '一件旧衬衫贴在背上，领口和袖口已有磨损，仍被你仔细整理得干净平整。',
+        };
+      }
+      if (/破旧的衣服/.test(item)) {
+        return {
+          type: '轻甲',
+          dr: 1,
+          desc: '这套破旧衣服由不同布料临时拼接而成，缝线歪斜，边角卷起，遮体尚可，护身不足。',
+        };
+      }
+      if (/破布衫/.test(item)) {
+        return {
+          type: '轻甲',
+          dr: 1,
+          desc: '一件薄得透风的破布衫披在身上，污渍和裂口遍布前襟，布料粗糙得像砂纸一样磨着皮肤。',
+        };
+      }
       if (/利维坦幼兽铠甲套装/.test(item)) {
         return {
           type: '重甲',
@@ -316,7 +379,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
         };
       }
       const armorType = resolveArmorType(item);
-      return { type: armorType, dr: 0, desc: `只穿戴${item}` };
+      return { type: armorType, dr: 0, desc: `你穿着${item}，布料与护片在风沙中摩擦作响，提供最低限度的防护。` };
     };
 
     const resolveWeaponType = (item?: string) => {
@@ -1555,7 +1618,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
     lines.push(`种族：${resolvedRaceTitle || '未选择'}`);
     lines.push(`开局剧本：${scenario?.title || '未选择'}`);
     const openingEquipment = buildEquipmentSummary();
-    lines.push(`服装：${openingEquipment.护甲.介绍 || '无'}`);
+    lines.push(`护甲：${openingEquipment.护甲.介绍 || '无'}`);
     lines.push(`武器：${openingEquipment.主武器.介绍 || openingEquipment.主武器.种类 || '无'}`);
     lines.push(`出生地：${region?.title || data.region || '未知区域'}。城镇：${data.town || '野外'}`);
     if (scenario?.id === 'unknown_dream') {
