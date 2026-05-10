@@ -274,7 +274,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
     const equipmentList = scenario?.equipment ?? [];
     const scenarioForcedWeapon = scenario?.id === 'monster_hunter' ? '利维坦狩猎之刃' : undefined;
     const weaponItem = scenarioForcedWeapon ?? equipmentList.find(item => /刀|剑|棒|斧|弓|弩|锤|枪|矛|刃/.test(item));
-    const armorItem = equipmentList.find(item => /衣|甲|护|裤|靴|袍|盔|披风|披肩|衫/.test(item));
+    const armorItem = equipmentList.find(item => /衣|甲|护|裤|靴|袍|盔|披风|披肩|衫|服/.test(item));
 
     const resolveArmorType = (item?: string) => {
       if (!item || item === '无') return '无甲';
@@ -334,6 +334,13 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
           type: '轻甲',
           dr: 1,
           desc: '一件旧衬衫贴在背上，领口和袖口已有磨损，仍被你仔细整理得干净平整。',
+        };
+      }
+      if (/遗传的武士铠甲/.test(item)) {
+        return {
+          type: '中甲',
+          dr: 18,
+          desc: '一套家族代代相传的武士铠甲，漆面已有斑驳与细裂，肩甲边缘能看到旧战留下的凹痕，不算精良却仍足够可靠。',
         };
       }
       if (/破旧的衣服/.test(item)) {
@@ -1635,7 +1642,8 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
     }
     lines.push(`七维属性：${attributeLine}`);
     const mainAppearanceDescription =
-      data.appearance.description?.trim() || `默认${resolvedRaceTitle || '该种族'}的外貌`;
+      data.appearance.description?.trim() ||
+      (data.scenario === 'false_savior' ? '默认人类长相' : `默认${resolvedRaceTitle || '该种族'}的外貌`);
     lines.push(
       `外貌描述：${mainAppearanceDescription}；身高 ${(data.appearance.height / 100).toFixed(2)}m；体态 ${
         data.appearance.bodyType || ''

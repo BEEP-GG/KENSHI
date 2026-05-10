@@ -223,7 +223,7 @@ export const SCENARIOS = [
       '你的父亲是联合帝国军队内一位受人尊敬的长官。他在行动中被杀了，在你寻找工作的微薄积蓄被烧之后，你发现自己身无分文且饥肠辘辘，除了你父亲可信赖的刀和你背上的衬衫之外别无他物。联合帝国邦仍然是你的盟友。',
     difficulty: '普通',
     icon: 'Crown',
-    equipment: ['长官佩刀', '衬衫'],
+    equipment: ['长官佩刀', '遗传的武士铠甲'],
     money: 0,
     allowedRegions: ['great_desert', 'heng'],
     hostileFactions: ['神圣教国'],
