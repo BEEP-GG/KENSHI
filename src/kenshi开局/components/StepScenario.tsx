@@ -59,6 +59,12 @@ export const StepScenario: React.FC<StepScenarioProps> = ({ data, updateData, on
       await updateWorldbookWith(wbName, entries =>
         entries.map(entry => {
           const entryUid = Number(entry.uid);
+          if (entryUid === 491) {
+            return { ...entry, enabled: scenarioId === 'false_savior' };
+          }
+          if (entryUid === 900) {
+            return { ...entry, enabled: scenarioId !== 'false_savior' };
+          }
           if (ALL_SCENARIO_UID_SET.has(entryUid)) {
             if (entryUid === uid) foundTargetUid = true;
             return { ...entry, enabled: entryUid === uid };
