@@ -1248,6 +1248,9 @@ export default function App() {
           mvuData = getVariables({ type: 'message', message_id: 'latest' });
         }
 
+        // 兼容最新变量：补齐“往事.关键记忆”默认结构，避免旧存档缺字段
+        _.set(mvuData, 'stat_data.往事.关键记忆', _.get(mvuData, 'stat_data.往事.关键记忆', []));
+
         const parsedMembers: Member[] = [];
         const runtimeMap: Record<string, MemberRuntimeData> = {};
         const insertedIds = new Set<string>();

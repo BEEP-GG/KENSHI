@@ -1577,6 +1577,7 @@
           { key: '广交良友', label: '广交良友' },
           { key: '击杀记录', label: '肃敌战绩' },
           { key: '肃敌战绩', label: '肃敌战绩' },
+          { key: '关键记忆', label: '关键记忆' },
         ];
         const out = [];
         map.forEach(({ key, label }) => {
@@ -1770,6 +1771,7 @@
             城镇更替: '城镇更替',
             广交良友: '广交良友',
             肃敌战绩: '击杀记录',
+            关键记忆: '关键记忆',
           };
           const targetKey = keyMap[categoryValue] || '城镇更替';
           const existing = _.get(mvuData, `stat_data.往事.${targetKey}`, []);
@@ -1881,7 +1883,7 @@
           const option = { type: 'message', message_id: getCurrentMessageId() };
           const mvuData = Mvu.getMvuData(option);
           const pastObj = _.get(mvuData, 'stat_data.往事', {});
-          const categories = ['城镇更替', '广交良友', '击杀记录', '肃敌战绩'];
+          const categories = ['城镇更替', '广交良友', '击杀记录', '肃敌战绩', '关键记忆'];
           let hit = -1;
           for (const cat of categories) {
             const list = _.get(pastObj, cat, []);
@@ -2627,6 +2629,7 @@
                 <option value="城镇更替">城镇更替</option>
                 <option value="广交良友">广交良友</option>
                 <option value="肃敌战绩">肃敌战绩</option>
+                <option value="关键记忆">关键记忆</option>
               </select>
               <input id="past-date-input" class="past-input" type="number" placeholder="天数(默认当前天数)" />
               <textarea id="past-desc-input" class="past-textarea" placeholder="描述"></textarea>

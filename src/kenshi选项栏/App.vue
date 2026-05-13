@@ -1,6 +1,25 @@
 <template>
   <div class="options-root">
     <div v-if="options.length" class="interactive-options-container" :class="`option-count-${options.length}`">
+      <div class="actor-selector" :class="{ active: isActorMenuOpen }">
+        <button class="actor-selector-toggle" type="button" @click.stop="toggleActorMenu">
+          <span class="actor-arrow">》</span>
+          <span class="actor-name">{{ selectedActorName }}</span>
+        </button>
+        <div class="actor-selector-menu">
+          <button
+            v-for="actor in actorOptions"
+            :key="actor.name"
+            class="actor-selector-item"
+            :class="{ selected: actor.name === selectedActorName }"
+            type="button"
+            @click.stop="selectActor(actor.name)"
+          >
+            {{ actor.name }}
+          </button>
+        </div>
+      </div>
+
       <button class="action-gear-btn" type="button" @click.stop="toggleSpecialMenu">
         <i class="ri-settings-4-fill"></i>
       </button>
@@ -19,7 +38,10 @@
       <button
         v-for="(opt, index) in options"
         :key="`${opt.number}-${opt.text}`"
-        :class="['trpg-option fade-in-up', { 'fight-option': isFightOption(opt) }]"
+        :class="[
+          'trpg-option fade-in-up',
+          { 'fight-option': isFightOption(opt), 'dc-option': !!parseDcCheckMeta(opt.text) },
+        ]"
         :style="{ animationDelay: `${index * 0.1}s` }"
         type="button"
         @click="handleOptionClick(opt, $event)"
@@ -29,6 +51,7 @@
         </div>
         <div class="option-text">
           <span v-if="isFightOption(opt)" class="fight-tag">战斗</span>
+          <span v-else-if="parseDcCheckMeta(opt.text)" class="dc-tag">判定</span>
           {{ opt.text }}
         </div>
       </button>
@@ -43,14 +66,23 @@ import { onBeforeUnmount, onMounted, ref } from 'vue';
 
 type OptionItem = {
   number: string;
+  prefix: string;
   text: string;
+};
+
+type ActorOption = {
+  name: string;
+  data: Record<string, any> | null;
 };
 
 const options = ref<OptionItem[]>([]);
 const isSpecialMenuOpen = ref(false);
+const isActorMenuOpen = ref(false);
+const selectedActorName = ref('');
+const actorOptions = ref<ActorOption[]>([]);
 const specialActions = ['战斗', '营地系统'];
 
-const optionLineRegex = /^[^\S\n]*(?:[（(【]?\s*([A-Za-z])\s*[.、:：]\s*(.*?))(?:[）)】])?\s*$/;
+const optionLineRegex = /^[^\S\n]*(?:[（(【]?\s*([A-Za-z])\s*[.、:：]\s*(.*?))\s*$/;
 const optionFallbackLineRegex = /^[^\S\n]*([A-Za-z])\s+[、.．]\s*(.*?)\s*$/;
 
 function parseOptionsFromText(text: string): OptionItem[] {
@@ -65,7 +97,7 @@ function parseOptionsFromText(text: string): OptionItem[] {
       const prefix = match[1]?.trim();
       const optionText = match[2]?.trim();
       if (prefix && optionText) {
-        currentBlock.push({ number: prefix, text: optionText });
+        currentBlock.push({ number: prefix, prefix, text: optionText });
         continue;
       }
     }
@@ -82,6 +114,7 @@ function parseOptionsFromText(text: string): OptionItem[] {
   const lastBlock = blocks.length ? blocks[blocks.length - 1] : [];
   return lastBlock.map((item, index) => ({
     number: String(index + 1),
+    prefix: item.number,
     text: item.text,
   }));
 }
@@ -100,8 +133,27 @@ function renderOptions() {
   options.value = parseOptionsFromText(rawText);
 }
 
+function toggleActorMenu() {
+  isActorMenuOpen.value = !isActorMenuOpen.value;
+  if (isActorMenuOpen.value) {
+    closeSpecialMenu();
+  }
+}
+
+function closeActorMenu() {
+  isActorMenuOpen.value = false;
+}
+
+function selectActor(name: string) {
+  selectedActorName.value = name;
+  closeActorMenu();
+}
+
 function toggleSpecialMenu() {
   isSpecialMenuOpen.value = !isSpecialMenuOpen.value;
+  if (isSpecialMenuOpen.value) {
+    closeActorMenu();
+  }
 }
 
 function closeSpecialMenu() {
@@ -150,6 +202,167 @@ function fillInput(text: string) {
     $textarea.trigger('input');
     $textarea.trigger('focus');
   }
+}
+
+async function sendUserMessage(text: string) {
+  if (typeof createChatMessages !== 'function') {
+    fillInput(text);
+    return;
+  }
+
+  try {
+    await createChatMessages([{ role: 'user', message: text }]);
+    if (typeof triggerSlash === 'function') {
+      await triggerSlash('/trigger');
+    }
+  } catch (error) {
+    console.error('[kenshi选项栏] 发送用户消息失败:', error);
+    fillInput(text);
+  }
+}
+
+type DcCheckMeta = {
+  attribute: string;
+  purpose: string;
+  behavior: string;
+  dc: number;
+};
+
+const ATTRIBUTE_KEY_MAP: Record<string, string> = {
+  力量: 'STR',
+  敏捷: 'DEX',
+  感知: 'PER',
+  体质: 'TGH',
+  意志: 'WIL',
+  智力: 'INT',
+  魅力: 'CHA',
+};
+
+function getOptionDisplayText(opt: OptionItem): string {
+  return `${opt.prefix}. ${opt.text}`;
+}
+
+function normalizeOptionText(text: string): string {
+  return text.replace(/["“”'’]+$/g, '').trim();
+}
+
+function parseDcCheckMeta(text: string): DcCheckMeta | null {
+  const normalizedText = normalizeOptionText(text);
+  const attributeMatch = normalizedText.match(/(?:\[|【)\s*([^\]】]+?)\s*(?:\]|】)/);
+  const purposeMatch = normalizedText.match(/[（(]\s*([^()（）]*?)(?:判定)?\s*DC\s*(\d+)\s*(?:[）)])?\s*$/i);
+  const attribute = attributeMatch?.[1]?.trim();
+  const purpose = purposeMatch?.[1]?.trim();
+  const dc = Number(purposeMatch?.[2] ?? NaN);
+  if (!attribute || !purpose || !Number.isFinite(dc)) return null;
+  const behavior = normalizedText
+    .replace(/^[^[【]*[[【]\s*[^\]】]+\s*[\]】]\s*/, '')
+    .replace(/[（(]\s*[^()（）]*?(?:判定)?\s*DC\s*\d+\s*(?:[）)])?\s*$/i, '')
+    .trim();
+  if (!behavior) return null;
+  return { attribute, purpose, behavior, dc };
+}
+
+function rollD20(): number {
+  return Math.floor(Math.random() * 20) + 1;
+}
+
+function getVariableData(): Record<string, any> | null {
+  const messageId = typeof getCurrentMessageId === 'function' ? getCurrentMessageId() : 'latest';
+  const currentData =
+    typeof getVariables === 'function' ? getVariables({ type: 'message', message_id: messageId }) : null;
+  const latestData =
+    typeof getVariables === 'function' ? getVariables({ type: 'message', message_id: 'latest' }) : null;
+  return currentData?.stat_data ?? latestData?.stat_data ?? null;
+}
+
+function getActorName(actor: Record<string, any> | null, fallback: string): string {
+  const name = actor?.名字 ?? actor?.name ?? fallback;
+  return String(name || fallback);
+}
+
+function refreshActorOptions() {
+  const statData = getVariableData();
+  const nextActors: ActorOption[] = [];
+  const currentCharacter = statData?.当前角色;
+  if (currentCharacter && currentCharacter !== '待初始化') {
+    nextActors.push({ name: getActorName(currentCharacter, '当前角色'), data: currentCharacter });
+  }
+
+  const teammates = statData?.小队成员;
+  if (teammates && typeof teammates === 'object') {
+    for (const [fallbackName, teammate] of Object.entries(teammates)) {
+      if (!teammate || teammate === '待初始化') continue;
+      const actorData = teammate as Record<string, any>;
+      const name = getActorName(actorData, fallbackName);
+      if (!nextActors.some(actor => actor.name === name)) {
+        nextActors.push({ name, data: actorData });
+      }
+    }
+  }
+
+  actorOptions.value = nextActors;
+  if (!selectedActorName.value || !nextActors.some(actor => actor.name === selectedActorName.value)) {
+    selectedActorName.value = nextActors[0]?.name ?? '当前角色';
+  }
+}
+
+const selectedActor = computed(() => {
+  return actorOptions.value.find(actor => actor.name === selectedActorName.value) ?? actorOptions.value[0] ?? null;
+});
+
+function getCurrentCharacterData(): Record<string, any> | null {
+  return selectedActor.value?.data ?? getVariableData()?.当前角色 ?? null;
+}
+
+function getAttributeModifier(attributeName: string, characterData: Record<string, any> | null): number {
+  const attrKey = ATTRIBUTE_KEY_MAP[attributeName];
+  const rawAttr = attrKey
+    ? (characterData?.属性?.[attrKey] ?? characterData?.属性?.[attributeName])
+    : characterData?.属性?.[attributeName];
+
+  if (typeof rawAttr === 'number') {
+    return Math.floor((rawAttr - 25) / 10);
+  }
+
+  const baseValue = Number(rawAttr?.基础 ?? 30);
+  const bonusValue = Number(rawAttr?.加成 ?? 0);
+  return Math.floor((baseValue + bonusValue - 25) / 10);
+}
+
+function getCleanOptionText(text: string): string {
+  return text.replace(/^[^[【]*([[【].*)$/, '$1').trim();
+}
+
+function buildJudgementMessage(
+  opt: OptionItem,
+  meta: DcCheckMeta,
+  actorName: string,
+  baseRoll: number,
+  modifier: number,
+  total: number,
+  outcome: string,
+): string {
+  const formula = `${baseRoll}${modifier >= 0 ? '+' : ''}${modifier}(${meta.attribute})`;
+  return `${actorName}. 选择了：${getCleanOptionText(opt.text)}\n\n<Destiny>\n行为: ${meta.behavior}\n目的:"${meta.purpose}"\n类型:"${meta.attribute}"\n基础骰:${baseRoll}\n掷骰公式: ${formula}\n结果：${total}\nDC: ${meta.dc}\n结果: "${outcome}"\n</Destiny>`;
+}
+
+async function handleDcOption(opt: OptionItem, meta: DcCheckMeta) {
+  try {
+    if (typeof waitGlobalInitialized === 'function') {
+      await waitGlobalInitialized('Mvu');
+    }
+  } catch (error) {
+    console.warn('[kenshi选项栏] 等待 Mvu 初始化失败，改为使用兜底属性:', error);
+  }
+
+  const characterData = getCurrentCharacterData();
+  const baseRoll = rollD20();
+  const modifier = getAttributeModifier(meta.attribute, characterData);
+  const total = baseRoll + modifier;
+  const outcome = baseRoll === 1 ? '大失败' : baseRoll === 20 ? '大成功' : total >= meta.dc ? '成功' : '失败';
+  const actorName = selectedActor.value?.name ?? selectedActorName.value ?? '当前角色';
+  const finalText = buildJudgementMessage(opt, meta, actorName, baseRoll, modifier, total, outcome);
+  await sendUserMessage(finalText);
 }
 
 function isFightOption(opt: OptionItem): boolean {
@@ -210,11 +423,16 @@ async function triggerCampSystem() {
   }
 }
 
-function handleOptionClick(opt: OptionItem, event: MouseEvent) {
+async function handleOptionClick(opt: OptionItem, event: MouseEvent) {
   const target = event.currentTarget as HTMLElement;
   createRipple(event, target);
   if (isFightOption(opt)) {
-    triggerFightBattle();
+    await triggerFightBattle();
+    return;
+  }
+  const dcMeta = parseDcCheckMeta(opt.text);
+  if (dcMeta) {
+    await handleDcOption(opt, dcMeta);
     return;
   }
   const text = opt.text;
@@ -242,16 +460,21 @@ function handleDocumentClick() {
   if (isSpecialMenuOpen.value) {
     closeSpecialMenu();
   }
+  if (isActorMenuOpen.value) {
+    closeActorMenu();
+  }
 }
 
 let eventListenerStop: { stop: () => void } | null = null;
 
 onMounted(() => {
   renderOptions();
+  refreshActorOptions();
   document.addEventListener('click', handleDocumentClick);
   eventListenerStop = eventOn(tavern_events.MESSAGE_UPDATED, messageId => {
     if (messageId === getCurrentMessageId()) {
       renderOptions();
+      refreshActorOptions();
     }
   });
 });
@@ -294,7 +517,7 @@ onBeforeUnmount(() => {
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-radius: 8px;
-  padding: 28px 24px 24px 24px;
+  padding: 58px 24px 24px 24px;
   border: 1px solid rgba(255, 255, 255, 0.05);
   box-shadow:
     0 20px 40px rgba(0, 0, 0, 0.5),
@@ -313,6 +536,89 @@ onBeforeUnmount(() => {
   height: 2px;
   background: linear-gradient(90deg, transparent, var(--bg3-gold), transparent);
   opacity: 0.6;
+}
+
+.actor-selector {
+  position: absolute;
+  top: 10px;
+  left: 14px;
+  z-index: 10;
+}
+
+.actor-selector-toggle {
+  min-width: 118px;
+  height: 34px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(15, 14, 17, 0.9);
+  border: 1px solid rgba(147, 197, 253, 0.45);
+  border-radius: 999px;
+  color: #d9efff;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+  font-family: 'Noto Serif SC', 'Outfit', serif;
+}
+
+.actor-arrow {
+  color: #93c5fd;
+  transition: transform 0.2s ease;
+}
+
+.actor-selector.active .actor-arrow {
+  transform: rotate(90deg);
+}
+
+.actor-name {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.9rem;
+  letter-spacing: 1px;
+}
+
+.actor-selector-menu {
+  position: absolute;
+  top: 42px;
+  left: 0;
+  min-width: 150px;
+  max-height: min(50vh, 280px);
+  overflow-y: auto;
+  padding: 8px 0;
+  background: rgba(15, 14, 17, 0.95);
+  border: 1px solid rgba(147, 197, 253, 0.35);
+  border-radius: 8px;
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.65);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-10px) scale(0.96);
+  transform-origin: top left;
+  transition: all 0.22s ease;
+}
+
+.actor-selector.active .actor-selector-menu {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
+}
+
+.actor-selector-item {
+  width: 100%;
+  padding: 9px 14px;
+  background: transparent;
+  border: none;
+  color: var(--kenshi-sand);
+  text-align: left;
+  cursor: pointer;
+  letter-spacing: 1px;
+}
+
+.actor-selector-item:hover,
+.actor-selector-item.selected {
+  background: rgba(96, 165, 250, 0.16);
+  color: #e0f2fe;
 }
 
 .action-gear-btn {
@@ -424,7 +730,7 @@ onBeforeUnmount(() => {
 .option-count-7 .interactive-options-container,
 .option-count-8 .interactive-options-container {
   gap: 10px;
-  padding: 24px 20px 20px 20px;
+  padding: 58px 20px 20px 20px;
 }
 
 .special-action-item:hover {
@@ -476,18 +782,52 @@ onBeforeUnmount(() => {
   box-shadow: -6px 0 26px rgba(239, 68, 68, 0.45);
 }
 
-.fight-tag {
+.dc-option {
+  border-left: 3px solid rgba(96, 165, 250, 0.95);
+  background: linear-gradient(
+    90deg,
+    rgba(96, 165, 250, 0.18) 0%,
+    rgba(125, 211, 252, 0.08) 55%,
+    rgba(198, 166, 100, 0.04) 100%
+  );
+  box-shadow: 0 0 18px rgba(96, 165, 250, 0.24);
+}
+
+.dc-option:hover {
+  transform: translateX(12px) scale(1.01);
+  background: linear-gradient(
+    90deg,
+    rgba(96, 165, 250, 0.28) 0%,
+    rgba(125, 211, 252, 0.12) 55%,
+    rgba(198, 166, 100, 0.06) 100%
+  );
+  border-left: 3px solid rgba(147, 197, 253, 1);
+  box-shadow: -6px 0 26px rgba(96, 165, 250, 0.4);
+}
+
+.fight-tag,
+.dc-tag {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 2px 8px;
   margin-right: 10px;
   border-radius: 999px;
+  font-size: 0.8rem;
+  letter-spacing: 2px;
+}
+
+.fight-tag {
   background: rgba(239, 68, 68, 0.2);
   border: 1px solid rgba(239, 68, 68, 0.6);
   color: #ffd6d6;
-  font-size: 0.8rem;
-  letter-spacing: 2px;
+}
+
+.dc-tag {
+  background: rgba(96, 165, 250, 0.18);
+  border: 1px solid rgba(147, 197, 253, 0.65);
+  color: #d9efff;
+  box-shadow: 0 0 10px rgba(96, 165, 250, 0.18);
 }
 
 .option-badge {

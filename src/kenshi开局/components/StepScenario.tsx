@@ -12,7 +12,13 @@ interface StepScenarioProps {
 
 export const StepScenario: React.FC<StepScenarioProps> = ({ data, updateData, onNext }) => {
   const scenariosPerPage = 6;
-  const SCENARIOS_WITH_MAINLINE = new Set(['monster_hunter', 'officer_son', 'false_savior', 'apex_hunter']);
+  const SCENARIOS_WITH_MAINLINE = new Set([
+    'monster_hunter',
+    'officer_son',
+    'false_savior',
+    'apex_hunter',
+    'holy_crusade',
+  ]);
   const [onlyMainline, setOnlyMainline] = React.useState(false);
   const visibleScenarios = React.useMemo(() => {
     const base = SCENARIOS.filter(scenario => !(scenario as { hidden?: boolean }).hidden);
@@ -47,6 +53,7 @@ export const StepScenario: React.FC<StepScenarioProps> = ({ data, updateData, on
     human_torso: 799,
     monster_hunter: 800,
     false_savior: 834,
+    holy_crusade: 901,
   };
   const ALL_SCENARIO_UIDS = Object.values(SCENARIO_WB_UIDS);
   const ALL_SCENARIO_UID_SET = new Set(ALL_SCENARIO_UIDS);

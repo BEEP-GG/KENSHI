@@ -526,8 +526,9 @@ export const Schema = z.object({
       交友记录: z.array(PastEventSchema).prefault([]),
       城镇记录: z.array(PastEventSchema).prefault([]),
       击杀记录: z.array(PastEventSchema).prefault([]),
+      关键记忆: z.array(PastEventSchema).prefault([]),
     })
-    .prefault({ 交友记录: [], 城镇记录: [], 击杀记录: [] }),
+    .prefault({ 交友记录: [], 城镇记录: [], 击杀记录: [], 关键记忆: [] }),
   闲言: z.object({
     当前内容: z.string().prefault(''),
   }),

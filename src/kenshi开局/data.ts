@@ -175,6 +175,88 @@ export const SCENARIOS = [
     hostileFactions: ['沙克王国', '联合帝国', '神圣教国', '反蓄奴者', '猎犬帮', '第二帝国'],
   },
   {
+    id: 'holy_crusade',
+    title: '神圣十字军东征',
+    description:
+      '菲尼克斯六十二世亲自任命你为新一代圣国牧师，率领东征净化异端。你已站在城门之外，补给车满载食物与武器，前方是战火纷飞的巴斯特。现在，不要怜悯，不要迟疑，让圣国之敌在你的战锤下忏悔。',
+    storyBackground:
+      '菲尼克斯六十二世亲自将手按在你的额头，任命你为新一代的圣国牧师，负责领导一场净化异端的东征。\n圣主声音如同神谕般在你脑中回响：“去吧，我的牧师，成为我愤怒的延伸，让黑暗在你的光芒下颤抖！”\n现在你已站在城门之外，身后是一辆装满了大量食物与武器的补给车。你的目光越过城外神圣的农田，望向东方那片战火纷飞的土地——巴斯特。\n空气中仿佛已传来战友的嘶吼与异教徒的惨叫。现在，不要怜悯，不要迟疑，让圣国的敌人在你的战锤下忏悔，让奥克兰的福音传遍这片污秽的大地。',
+    difficulty: '困难',
+    icon: 'Sun',
+    equipment: ['圣杖', '奥克兰赐福祭司服（链甲内衬）', '美味食物 x10', '葡萄酒 x8', '神圣勋章', '《圣火》'],
+    money: 10000,
+    fixedRegion: 'holy_nation',
+    fixedTown: '水泡山丘',
+    allowedRegions: ['holy_nation', 'okan_bay'],
+    allowedRaces: ['human'],
+    allowedSubraces: ['keter_descendant', 'greenlander'],
+    lockCompanionRaceSubrace: true,
+    companions: [
+      {
+        race: 'human',
+        subrace: 'greenlander',
+        level: 1,
+        attributes: {
+          strength: 12,
+          dexterity: 15,
+          perception: 10,
+          constitution: 15,
+          will: 10,
+          intelligence: 8,
+          charisma: 6,
+        },
+        name: '圣骑士',
+        gender: 'male',
+        age: 31,
+        appearance: {
+          eyes: '',
+          hairStyle: '',
+          hairColor: '',
+          bodyType: '健壮',
+          height: 182,
+          description: '一名身披圣国甲胄的老练圣骑士，步伐沉稳，眼神肃杀。',
+        },
+        traits: [],
+        customTraitName: '',
+        customTraitDescription: '',
+        scenarioTraitName: '战斗',
+        scenarioTraitDescription: '经历过长期的军旅厮杀与前线审判，面对战斗时更沉着凶狠。体质 +3，敏捷 +3',
+      },
+      {
+        race: 'human',
+        subrace: 'greenlander',
+        level: 1,
+        attributes: {
+          strength: 10,
+          dexterity: 10,
+          perception: 10,
+          constitution: 10,
+          will: 10,
+          intelligence: 8,
+          charisma: 8,
+        },
+        name: '信徒',
+        gender: 'male',
+        age: 24,
+        appearance: {
+          eyes: '',
+          hairStyle: '',
+          hairColor: '',
+          bodyType: '普通',
+          height: 176,
+          description: '衣着朴素却神情虔诚的圣国信徒，言语间满是对祭司与奥克兰的敬畏。',
+        },
+        traits: [],
+        customTraitName: '',
+        customTraitDescription: '',
+        scenarioTraitName: '狂信徒',
+        scenarioTraitDescription: '祭司的要求就是神谕，无底线服从。',
+      },
+    ],
+    alliedFactions: ['神圣教国'],
+    hostileFactions: ['沙克王国', '联合城', '浪忍团', '反蓄奴者'],
+  },
+  {
     id: 'holy_commoner',
     title: '圣民',
     description:
@@ -685,7 +767,7 @@ export const RACES = [
         title: '焦土之子',
         description:
           '焦土之子是天生的叛逆者和冒险家。他们拥有深色的肌肤，生性桀骜不驯，极度厌恶枯燥的农业劳动与任何形式的社会约束。他们崇尚绝对的个体自由，行事往往随心所欲，因此不愿在等级森严的帝国中安分守己。正因如此，部分派系厌恶并且鄙视这一肤色的种族，视其为劣等人类。',
-        attributeSummary: '敏捷+5、魅力-5',
+        attributeSummary: '敏捷+8、魅力-8',
       },
       {
         id: 'keter_descendant',
@@ -706,7 +788,7 @@ export const RACES = [
         title: '蒙受神恩者',
         description:
           '蒙受神恩者又称为堕落者，或者魅魔。尽管外表与人类相似，但经研究，她们的身体内部结构和人类截然不同。甚至说，更加接近被称为骨人的物种。而在他们尚未变化，还属于人类族类之时，和人类一样属于肉身。她们身体的这种改变，和古代人类有关。。。。。甚至是发生了变异。',
-        attributeSummary: '敏捷+5、魅力+15、力量-5、体质-10',
+        attributeSummary: '敏捷+6、魅力+18、力量-6、体质-12',
       },
     ],
   },
@@ -858,30 +940,43 @@ export const RACES = [
   {
     id: 'lizardfolk',
     title: '原始种族',
-    description: '由更古老的血脉衍生的原始种族分支。',
+    description: '下面的是大陆的古老种族。',
     subraces: [
       {
         id: 'lizardfolk_base',
         title: '蜥蜴人',
         description:
           '蜥蜴人是潜伏在大陆上强壮的爬行类战士，最显著的特征是全身覆盖着一层坚韧且排列致密的鳞片皮肤。这些鳞片如同天然的盔甲，为他们提供了极佳的额外保护。作为可怕的猎手，他们拥有锐利的尖牙与利爪；但由于长有反关节的爬行类下肢与巨大的趾爪，他们与蜂巢族一样终生无法穿戴任何鞋类，粗壮的尾巴和修长的吻部也使得他们难以戴上普通人类的全封闭头盔。不过，尽管有这种爬行动物看起来十分具有威胁，但在这个大陆的生存上还是比较失败的，许多人猎杀他们并剥下他们的鳞片进行售卖制作。',
-        attributeSummary: '体质+5、敏捷+10、感知+5、魅力-15',
+        attributeSummary: '体质+5、敏捷+12、感知+5、魅力-15',
       },
       {
         id: 'goatfolk',
         title: '山羊人',
-        description: '尚未完善背景设定。',
-        locked: true,
-        lockedReason: '作者暂未做完背景',
-        unlockScenarios: ['author_self_test'],
+        description:
+          '山羊人是游荡在严酷荒野上的顽强亚人种族，完美继承了野羊的暴躁与生命力，显著的特征是头顶生有粗壮的反曲双角，躯干覆盖着一层厚重的粗糙毛发。由于羊角和突出的吻部，无法戴上全封闭头盔；下肢坚硬的偶蹄，使得他们无法穿戴任何鞋类。但拥有不可思议的强健体魄与“铁胃”，不仅能在最崎岖的地形中如履平地，还能毫无顾忌地消化废土上腐烂的生肉。他们多数为牧民，喜欢放牧。但他们因为拥有超鲜嫩的肉质而被食人族吃到几近灭族。',
+        attributeSummary: '力量+12、智力-8、魅力-8、体质+6',
       },
       {
-        id: 'fungoid',
-        title: '真菌人',
-        description: '尚未完善背景设定。',
-        locked: true,
-        lockedReason: '作者暂未做完背景',
-        unlockScenarios: ['author_self_test'],
+        id: 'ratfolk',
+        title: '鼠族',
+        description:
+          '鼠族是在废土阴暗角落与古代遗迹中夹缝求生的娇小亚人(1.4m左右)。最显著的特征是头顶巨大的圆耳、娇小的身躯以及一条毛茸茸的尾巴。然而，由于骨骼纤细，她们的身体异常脆弱。娇小的体型限制了她们挥动重型武器的能力。不过，常年与恶劣环境为伴让她们拥有毒素抗性。男性和女性在年轻时候外貌差不多，年迈男性会长出胡子',
+        attributeSummary: '体质-8、力量-8、敏捷+16、智力+5',
+      },
+      {
+        id: 'ailu_folk',
+        title: '艾露族',
+        description:
+          '艾露族是游荡在大陆各地的小型双足猫科兽人(身高1m左右)。特征是完全兽化的毛茸茸外表、短小的四肢与肉球手爪。别看他们体型矮小且看似人畜无害，他们拥有离谱的伤口自愈速度和疼痛耐受力。由于生理结构和体型，只能使用专属于其种族的特制轻型装备。他们厚实的皮毛提供了天然的环境抗性，常伴随利维坦猎人左右。',
+        attributeSummary: '体质+18、魅力+10、力量-8',
+      },
+      {
+        id: 'ilo',
+        title: '伊洛族',
+        description:
+          '传闻是旧帝国时期基因改造工程遗留下来的产物。她们拥有与人类高度相似的躯体，最显著的特征是头顶那对灵敏的兽耳以及身后用于保持极高平衡感的猫尾。她们的肌肉纤维柔韧，这赋予了她们在战斗中惊人的闪避天赋与出色的速度。作为代价，身体抗击打能力较弱。头顶的猫耳是她们感知危险且敏感器官，因为种族特性，每过一段时间会进入发情期，无法生出男性，只能生女性。',
+        attributeSummary: '敏捷+6、魅力+8、力量-10',
+        allowedGenders: ['female'],
       },
       {
         id: 'fishfolk',
@@ -920,22 +1015,35 @@ export const RACES = [
     id: 'skeleton',
     title: '骨人',
     description:
-      '骨人完全是个谜，没人知道他们来自哪里，又是怎么被创造出来的，但人们认为他们已经有几千岁了。他们有完整的感情，能感到悲伤，愤怒，激动，同情，震惊和快乐，但他们不能通过表情展示出来，再加上他们缺乏幽默感，总是让其他种族感到困惑，比如沙克族就认为他们善变，难以预料。他们没有偏见，无惧死亡，因此是勇敢无畏的战士。种族特质：邪念（每过一段时间必须嗜血杀人或者远离非骨人单位，不然会失控）。',
+      '骨人完全是个谜，没人知道他们来自哪里，又是怎么被创造出来的，但人们认为他们已经有几千岁了。他们有完整的感情，能感到悲伤，愤怒，激动，同情，震惊和快乐，但他们不能通过表情展示出来。他们没有偏见，无惧死亡，因此是勇敢无畏的战士。他们不会饥饿，不受天气效果影响，不游泳，直接在水下行走。',
     subraces: [
       {
-        id: 'skeleton_mki',
-        title: 'MKI (圆头)',
-        description: '初始属性修正：体质+5。',
+        id: 'skeleton_roundhead',
+        title: '圆头',
+        description:
+          '圆形脑袋是第二帝国时期生产的最为广泛的通用型劳工或民用骨人。它们的设计理念是“可靠与泛用”，光滑的圆形脑袋上没有任何多余的装饰，结构简单，易于维护。它们的身体构造均衡，能够胜任从耕作、建造到基础战斗等各种任务。过于朴实的设计也意味着它们缺乏在特定领域的专精能力，学习高级技能时效率略逊于其他专业型号。',
+        attributeSummary: '力量+3、敏捷+3、感知+3、体质+3、意志+3、智力+3、魅力+3',
       },
       {
-        id: 'skeleton_mkii',
-        title: 'MKII (摄像头)',
-        description: '初始属性修正：感知+5。',
+        id: 'skeleton_camera',
+        title: '摄像机',
+        description:
+          '这些骨人是第二帝国时代的移动监视与数据记录单元，如今大多在古代遗迹或废弃的哨站中被发现。它们没有传统意义上的“头部”，取而代之的是一个包含了多种光学传感器的球状或盒状摄像机单元。这个单元赋予了它们超凡的感知能力，能在恶劣天气和光线不足的环境下精准地发现远处的威胁，这使它们成为优秀的远程射手和哨兵。',
+        attributeSummary: '感知+15、体质-10',
       },
       {
-        id: 'skeleton_mkiii',
-        title: 'MKIII (尖头)',
-        description: '初始属性修正：力量+5。',
+        id: 'skeleton_lionhead',
+        title: '狮头',
+        description:
+          '狮头是古代战争中用于突破敌方阵线的重型战斗机器人。它们以雄狮为蓝本设计的头部充满了威慑力，从脸颊两侧伸出的是用于散热和诊断的圆形金属管。它们的机体更为高大厚重，内置了额外的液压动力单元，提供了强大的力量。不过，这种蛮力特化的设计牺牲了机体的灵活性和速度，使它们在面对敏捷的敌人时显得有些笨拙。',
+        attributeSummary: '力量+14、敏捷-12',
+      },
+      {
+        id: 'skeleton_foxwalker',
+        title: '狐行者',
+        description:
+          '狐行者是旧帝国时期被设计用于侦察与渗透的特种骨人型号。其最显著的特征是流线型的狐狸头颅结构与轻量化骨架，这使得它们能以高速度和寂静的脚步穿行于各种复杂地形。它们纤细的四肢内装有精密的平衡稳定器。作为代价，轻量化的设计牺牲了结构强度，使它们在正面冲突中难以承受重击。它们的处理器让其在野外拥有更强的生存直觉。',
+        attributeSummary: '感知+5、敏捷+8、体质-10',
       },
       {
         id: 'skeleton_false_savior',
@@ -944,6 +1052,7 @@ export const RACES = [
           '外观、皮肤纹理与呼吸节律几乎与人类无异，连多数简易体检都难以识别其机械本质。其核心却是为高强度歼灭行动打造的古代战争单元，具备极端环境生存与持续作战能力。为了潜入与猎杀而存在，擅长在伪装与暴起之间切换，是第二帝国遗产中最危险的异化型号之一。',
         attributeSummary: '力量+10、敏捷+10、感知+10、体质+10、意志+10、智力+10、魅力+10',
         allowedGenders: ['male', 'female', 'other'],
+        unlockScenarios: ['false_savior'],
       },
     ],
   },

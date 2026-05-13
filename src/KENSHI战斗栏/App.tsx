@@ -1,4 +1,4 @@
-import { waitUntil } from 'async-wait-until';
+﻿import { waitUntil } from 'async-wait-until';
 import _ from 'lodash';
 import {
   Activity,
@@ -1455,6 +1455,8 @@ export default function App() {
         mvuData = getMvuDataSafe('latest');
       }
       const stat = _.get(mvuData, ['stat_data'], {});
+      // 兼容最新变量：补齐“往事.关键记忆”默认结构，避免旧存档缺字段
+      _.set(stat, '往事.关键记忆', _.get(stat, '往事.关键记忆', []));
       const { units, playerId } = buildUnitsFromStat(stat);
       if (cancelledRef.current) return;
       setBattleState({
@@ -3585,3 +3587,5 @@ export default function App() {
     </div>
   );
 }
+
+

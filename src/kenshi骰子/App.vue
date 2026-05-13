@@ -48,7 +48,7 @@
             </div>
             <div class="roll-details" :class="{ 'is-visible': showResult }">
               <div class="roll-breakdown">{{ breakdownText }}</div>
-              <div class="roll-formula">掷骰基础: 1d20 + 属性修正 + 其他修正</div>
+              <div class="roll-formula">掷骰基础: 1d20 + 属性修正 (大于25，每10点为1)</div>
             </div>
           </div>
         </div>
@@ -117,6 +117,7 @@ const parseTextToParams = (text: string): DiceParamsInput => {
     .filter(Boolean);
 
   let actionRaw = '';
+  let purposeRaw = '';
   let kindRaw = '';
   let baseRaw = '';
   let formulaRaw = '';
@@ -131,6 +132,7 @@ const parseTextToParams = (text: string): DiceParamsInput => {
     const value = match[2].trim();
 
     if (key === '行为') actionRaw = value;
+    if (key === '目的') purposeRaw = value;
     if (key === '类型') kindRaw = value;
     if (key === '基础骰') baseRaw = value;
     if (key === '掷骰公式') formulaRaw = value;
@@ -148,7 +150,12 @@ const parseTextToParams = (text: string): DiceParamsInput => {
   const result: DiceParamsInput = {};
 
   const action = actionRaw ? stripQuotes(actionRaw) : '';
-  if (action) {
+  const purpose = purposeRaw ? stripQuotes(purposeRaw) : '';
+  if (purpose && action) {
+    result.checkName = `${purpose} · ${action}`;
+  } else if (purpose) {
+    result.checkName = purpose;
+  } else if (action) {
     result.checkName = action;
   } else {
     result.checkName = '';
@@ -267,8 +274,8 @@ const getCurrentMessageText = (): string => {
   const messages = getChatMessages(messageId);
   if (!messages.length) return '';
   const message = messages[0];
-  if (message.role !== 'assistant') return '';
-  return message.message ?? '';
+  const text = message.message ?? '';
+  return /<Destiny>[\s\S]*?<\/Destiny>/i.test(text) ? text : '';
 };
 
 const applyParams = (params: DiceParams) => {

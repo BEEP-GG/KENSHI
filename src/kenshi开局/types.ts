@@ -30,6 +30,8 @@ export interface SquadMemberData {
   traits: string[];
   customTraitName: string;
   customTraitDescription: string;
+  scenarioTraitName: string;
+  scenarioTraitDescription: string;
 }
 
 export type CustomArmorType = '重甲' | '中甲' | '轻甲';
@@ -74,6 +76,8 @@ export interface CharacterData {
   traits: string[];
   customTraitName: string;
   customTraitDescription: string;
+  scenarioTraitName: string;
+  scenarioTraitDescription: string;
   customStart: CustomStartData;
   utilityCustomNames: string;
   utilityTools: {
@@ -105,7 +109,7 @@ export const INITIAL_APPEARANCE = {
   hairStyle: '光头',
   hairColor: '黑色',
   bodyType: '',
-  height: 180,
+  height: 175,
   description: '',
 };
 
@@ -137,6 +141,8 @@ export const INITIAL_SQUAD_MEMBER: SquadMemberData = {
   traits: [],
   customTraitName: '',
   customTraitDescription: '',
+  scenarioTraitName: '',
+  scenarioTraitDescription: '',
 };
 
 const createInitialSquadMember = (): SquadMemberData => ({
@@ -163,12 +169,14 @@ export const INITIAL_CHARACTER: CharacterData = {
     hairStyle: '光头',
     hairColor: '黑色',
     bodyType: '',
-    height: 180,
+    height: 175,
     description: '',
   },
   traits: [],
   customTraitName: '',
   customTraitDescription: '',
+  scenarioTraitName: '',
+  scenarioTraitDescription: '',
   customStart: { ...INITIAL_CUSTOM_START },
   utilityCustomNames: '',
   utilityTools: {
