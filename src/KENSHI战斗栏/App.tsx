@@ -892,14 +892,14 @@ const getLegPenalty = (level: number) => {
 };
 
 const getKillExpByLevel = (level: number) => {
-  if (level > 80) return 40 + level * 4;
-  if (level > 50) return 35 + level * 3;
+  if (level > 80) return 70 + level * 5;
+  if (level > 50) return 40 + level * 3.5;
   return 30 + level * 2.5;
 };
 
 const getDownExpByLevel = (level: number) => {
-  if (level > 80) return 30 + level * 3;
-  if (level > 50) return 25 + level * 2.5;
+  if (level > 80) return 50 + level * 4.5;
+  if (level > 50) return 30 + level * 2.5;
   return 20 + level * 2;
 };
 
