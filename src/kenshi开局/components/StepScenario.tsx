@@ -52,6 +52,7 @@ export const StepScenario: React.FC<StepScenarioProps> = ({ data, updateData, on
     slave_master: 798,
     human_torso: 799,
     monster_hunter: 800,
+    apex_hunter: 854,
     false_savior: 834,
     holy_crusade: 909,
   };
