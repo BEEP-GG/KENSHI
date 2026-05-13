@@ -574,6 +574,9 @@
         display: flex;
         flex-wrap: wrap;
         gap: 6px;
+        width: 100%;
+        min-width: 0;
+        overflow: hidden;
       }
       .item-tag {
         background: rgba(255, 255, 255, 0.08);
@@ -581,6 +584,11 @@
         padding: 3px 8px;
         font-size: 0.9em;
         cursor: help;
+        max-width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+        word-break: break-word;
+        overflow-wrap: anywhere;
       }
       .item-tag:hover {
         border-color: var(--accent-gold);
@@ -608,7 +616,10 @@
         line-height: 1.5;
         white-space: pre-wrap;
         box-shadow: 0 5px 20px rgba(0, 0, 0, 0.8);
-        max-width: 300px;
+        max-width: min(300px, calc(100vw - 24px));
+        word-break: break-word;
+        overflow-wrap: anywhere;
+        box-sizing: border-box;
       }
 
       .modal-overlay {
@@ -1062,12 +1073,21 @@
         }
         .section-box {
           padding: 14px;
+          min-width: 0;
+          overflow: hidden;
         }
         .detail-grid {
           grid-template-columns: 1fr;
         }
         .stat-grid {
           grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
+        }
+        .tag-box {
+          gap: 5px;
+        }
+        .item-tag {
+          font-size: 0.82em;
+          padding: 3px 6px;
         }
         .char-card {
           flex-direction: column;
@@ -2629,10 +2649,20 @@
         function showTip(text, x, y) {
           if (!text) return;
           tip.text(text).show();
+          const gap = 12;
+          const tipWidth = tip.outerWidth();
+          const tipHeight = tip.outerHeight();
+          const viewportWidth = window.innerWidth;
+          const viewportHeight = window.innerHeight;
+
           let t = y + 15;
           let l = x + 15;
-          if (l + tip.outerWidth() > window.innerWidth) l = x - tip.outerWidth() - 10;
-          if (t + tip.outerHeight() > window.innerHeight) t = y - tip.outerHeight() - 10;
+
+          if (l + tipWidth > viewportWidth - gap) l = viewportWidth - tipWidth - gap;
+          if (t + tipHeight > viewportHeight - gap) t = y - tipHeight - 10;
+          if (l < gap) l = gap;
+          if (t < gap) t = gap;
+
           tip.css({ top: t, left: l });
         }
 

@@ -992,10 +992,10 @@ const actionDescriptions: Record<
     大成功: (name, target) => `仿佛预见了未来的一切变数！${name}制定的完美计划毫无破绽，连战争大师都自愧不如！`,
   },
   h1: {
-    大失败: name => `${name}本想好好休整，睡袋却破了个大洞，冻了一晚状态更差了。`,
-    失败: name => `${name}翻来覆去睡不着，这趟休整的效果实在令人失望。`,
-    成功: name => `${name}在粗糙的睡袋里找了个舒服位置，难得打了个安稳的盹。`,
-    大成功: name => `高品质的长眠！${name}在这片角落里深度放松，伤痛与疲惫一扫而空！`,
+    大失败: name => `${name}本想好好休整，却被糟糕的环境折腾了一整晚，状态反而变得更差了。`,
+    失败: name => `${name}翻来覆去始终无法真正放松，这趟休整的效果实在令人失望。`,
+    成功: name => `${name}总算找到了一个还算能歇息的地方，难得安稳地缓过了一口气。`,
+    大成功: name => `高质量的充分休整！${name}难得彻底放松下来，伤痛与疲惫一扫而空！`,
   },
   b1: {
     大失败: (name, target) => `由于分歧严重，你们在篝火前爆发了口角，甚至有人拔出了刀。情况变得更糟了。`,
@@ -1145,7 +1145,7 @@ const actionDescriptions: Record<
   f2: {
     大失败: name => `${name}发呆时想起了痛苦的绝望回忆，精神直接坠入崩溃的深渊。`,
     失败: name => `风沙打在脸上，${name}觉得发呆冥想纯粹在白白挨饿受冻。`,
-    成功: name => `放空大脑凝视废土红日，${name}难得体会到了内心的绝对平静。`,
+    成功: name => `放空大脑，任由思绪慢慢沉寂，${name}难得体会到了内心的绝对平静。`,
     大成功: name => `超凡脱俗的顿悟！在深度冥想中，${name}的精神仿佛脱离了苦海，灵魂受到了极致洗涤！`,
   },
   t1: {
@@ -1728,6 +1728,13 @@ export default function App() {
       else if (type === '成功') effectStr = `${attrName}得到改善`;
       else if (type === '大成功') effectStr = `${attrName}极大提升`;
 
+      if (subId === 'h1') {
+        if (type === '大失败') effectStr = `心情值-25`;
+        else if (type === '失败') effectStr = `心情值-10`;
+        else if (type === '成功') effectStr = `心情值+30`;
+        else if (type === '大成功') effectStr = `心情值+50`;
+      }
+
       if (isTradeAction) {
         effectStr = tradeResultText;
       }
@@ -1758,7 +1765,19 @@ export default function App() {
         const repairedParts = runtime.repairableTraumaParts;
         const traumaText = repairedParts.length > 0 ? `，${repairedParts.join('、')}创伤已完全恢复` : '';
 
-        effectStr = `回复${recoveredHp}血量${traumaText}`;
+        if (subId === 'h1') {
+          const moodText =
+            type === '大失败'
+              ? '，心情值-25'
+              : type === '失败'
+                ? '，心情值-10'
+                : type === '成功'
+                  ? '，心情值+30'
+                  : '，心情值+50';
+          effectStr = `回复${recoveredHp}血量${traumaText}${moodText}`;
+        } else {
+          effectStr = `回复${recoveredHp}血量${traumaText}`;
+        }
         if (subId === 'h1') {
           desc =
             actionDescriptions[subId]?.[type]?.(currentMember?.name || '你', '', craftItemName, bodyPartName) || desc;
