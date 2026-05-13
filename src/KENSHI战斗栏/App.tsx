@@ -892,18 +892,18 @@ const getLegPenalty = (level: number) => {
 };
 
 const getKillExpByLevel = (level: number) => {
-  if (level > 80) return 30 + level * 3;
-  if (level > 50) return 30 + level * 2.5;
-  return 30 + level * 2;
+  if (level > 80) return 40 + level * 4;
+  if (level > 50) return 35 + level * 3;
+  return 30 + level * 2.5;
 };
 
 const getDownExpByLevel = (level: number) => {
-  if (level > 80) return 10 + level * 3;
-  if (level > 50) return 10 + level * 2.5;
-  return 10 + level * 2;
+  if (level > 80) return 30 + level * 3;
+  if (level > 50) return 25 + level * 2.5;
+  return 20 + level * 2;
 };
 
-const getEscapeExpByLevel = (level: number) => getDownExpByLevel(level) * 0.3;
+const getEscapeExpByLevel = (level: number) => getDownExpByLevel(level) * 0.7;
 
 const getMediumCheckSuccess = (tgh: number) => {
   const chance = _.clamp((tgh - 30) / 2, 0, 100);
