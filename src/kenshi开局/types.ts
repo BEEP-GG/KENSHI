@@ -16,6 +16,7 @@ export interface SquadMemberData {
   subrace: string;
   level: number;
   attributes: Attributes;
+  equipment?: string[];
   name: string;
   gender: 'male' | 'female' | 'other';
   age: number;
@@ -134,6 +135,7 @@ export const INITIAL_SQUAD_MEMBER: SquadMemberData = {
   subrace: '',
   level: 1,
   attributes: INITIAL_ATTRIBUTES,
+  equipment: [],
   name: '',
   gender: 'male',
   age: 25,

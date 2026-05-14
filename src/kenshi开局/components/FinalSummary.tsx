@@ -645,6 +645,116 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
     };
   };
 
+  const buildEquipmentSummaryFromList = (equipmentList: string[], scenarioId?: string) => {
+    const weaponItem = equipmentList.find(item => /刀|剑|棒|斧|弓|弩|锤|枪|矛|刃/.test(item));
+    const armorItem = equipmentList.find(item => /衣|甲|护|裤|靴|袍|盔|披风|披肩|衫|服|背心|夹克/.test(item));
+
+    const resolveArmorType = (item?: string) => {
+      if (!item || item === '无') return '无甲';
+      if (/重|板甲|重铠/.test(item)) return '重甲';
+      if (/中|链甲|锁子/.test(item)) return '中甲';
+      return '轻甲';
+    };
+
+    const resolveArmorMeta = (item?: string) => {
+      if (!item || item === '无') {
+        return { type: '无甲', dr: 0, desc: '未穿戴护甲' };
+      }
+      if ((scenarioId === 'slave' || scenarioId === 'male_slave') && /破布衫/.test(item)) {
+        return {
+          type: '轻甲',
+          dr: 1,
+          desc: '几块发灰破布草草缠在身上，只够遮住关键部位；布料粗硬、边缘磨烂，却是你仅有的体面与遮护。',
+        };
+      }
+      if (/破布衫|旧布衫/.test(item)) {
+        return {
+          type: '轻甲',
+          dr: 1,
+          desc: '一件薄而磨损严重的旧布衫披在身上，缝线多次返工，只能提供最基础的遮挡。',
+        };
+      }
+      if (/拓荒者夹克|旧皮夹克|破旧皮甲/.test(item)) {
+        return {
+          type: '轻甲',
+          dr: 6,
+          desc: '以旧皮革和补丁布料拼成的外层护具，能挡住一些擦伤和轻微劈砍，适合荒野拓荒者长时间劳作。',
+        };
+      }
+      if (/布背心/.test(item)) {
+        return {
+          type: '轻甲',
+          dr: 3,
+          desc: '一件夹了薄衬层的布背心，轻便透气，穿着它干活和赶路都比较利索。',
+        };
+      }
+      if (/雇佣兵之甲/.test(item)) {
+        return {
+          type: '中甲',
+          dr: 14,
+          desc: '由几种不同的金属板护层制成。几片护甲被设计成肌肉外形，严密保护从肩部到胸部中部的部分。',
+        };
+      }
+      const armorType = resolveArmorType(item);
+      return { type: armorType, dr: 0, desc: `你穿着${item}，提供最低限度的防护。` };
+    };
+
+    const resolveWeaponMeta = (item?: string) => {
+      if (!item || item === '无') {
+        return { name: '武术', type: '武术', quality: '普通', dice: '1d4', damage: '钝伤:1.0' };
+      }
+      if (/生锈短刀/.test(item)) {
+        return { name: '生锈短刀', type: '武士刀类', quality: '普通', dice: '1d6', damage: '切割:0.8/钝伤:0.2' };
+      }
+      if (/铁棒/.test(item)) {
+        return { name: '铁棒', type: '钝器类', quality: '普通', dice: '1d8', damage: '钝伤:1.0' };
+      }
+      if (/沙克大剑/.test(item)) {
+        return { name: '沙克大剑', type: '大型类', quality: '普通', dice: '1d15', damage: '切割:0.7/钝伤:0.3' };
+      }
+      if (/鱼矛/.test(item)) {
+        return { name: '鱼矛', type: '长柄刀类', quality: '普通', dice: '1d12', damage: '切割:0.7/钝伤:0.3' };
+      }
+      return { name: item, type: '武士刀类', quality: '普通', dice: '1d4', damage: '钝伤:1.0' };
+    };
+
+    const armorMeta = resolveArmorMeta(armorItem);
+    const weaponMeta = resolveWeaponMeta(weaponItem);
+    const cleanedBackpackItems = equipmentList.filter(
+      item => item && item !== '无' && item !== weaponItem && item !== armorItem,
+    );
+
+    return {
+      主武器: {
+        名字: weaponMeta.name,
+        种类: weaponMeta.type,
+        品质: weaponMeta.quality,
+        介绍: weaponItem ?? '',
+        伤害骰: weaponMeta.dice,
+        伤害类型: weaponMeta.damage,
+        特效: {},
+        价值: 0,
+      },
+      副武器: {
+        名字: '无',
+        种类: '无',
+        品质: '普通',
+        介绍: '',
+        伤害骰: '1d4',
+        伤害类型: '钝伤:1.0',
+        特效: {},
+        价值: 0,
+      },
+      护甲: {
+        种类: armorMeta.type,
+        '防护能力(DR)': armorMeta.dr,
+        介绍: armorMeta.desc,
+        特性: {},
+      },
+      背包物品: cleanedBackpackItems,
+    };
+  };
+
   const parseAttributeModifiers = (text: string) => {
     const modifiers = {
       strength: 0,
@@ -1022,6 +1132,12 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
           属性点: calcSquadRemainingPoints(member),
           特质: buildSquadTraitsRecord(member),
         };
+
+        const memberEquipment = buildEquipmentSummaryFromList(member.equipment ?? [], data.scenario);
+        squadEntry.主武器 = memberEquipment.主武器;
+        squadEntry.副武器 = memberEquipment.副武器;
+        squadEntry.护甲 = memberEquipment.护甲;
+        squadEntry.背包 = { 物品: {} };
 
         if (memberSubrace?.title) {
           _.set(squadEntry, '种族.亚种', memberSubrace.title);
