@@ -942,6 +942,8 @@ ${names}`;
           traits: [],
           customTraitName: '',
           customTraitDescription: '',
+          scenarioTraitName: '',
+          scenarioTraitDescription: '',
         }));
         updateData({ squadMembers: resetMembers });
       }
