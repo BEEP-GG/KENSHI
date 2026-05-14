@@ -1673,13 +1673,13 @@ export default function App() {
         const bondEffectPrefix = bondTargetName ? `${memberName}和${bondTargetName}的心情值` : '心情值';
         if (type === '大失败') effectStr = `${bondEffectPrefix}-25`;
         else if (type === '失败') effectStr = `${bondEffectPrefix}-15`;
-        else if (type === '成功') effectStr = `${bondEffectPrefix}+20`;
-        else if (type === '大成功') effectStr = `${bondEffectPrefix}+30`;
+        else if (type === '成功') effectStr = `${bondEffectPrefix}+55`;
+        else if (type === '大成功') effectStr = `${bondEffectPrefix}+65`;
       } else if (activeCategory?.id === 'fun') {
         if (type === '大失败') effectStr = `心情值-20`;
         else if (type === '失败') effectStr = `心情值-10`;
-        else if (type === '成功') effectStr = `心情值+25`;
-        else if (type === '大成功') effectStr = `心情值+40`;
+        else if (type === '成功') effectStr = `心情值+60`;
+        else if (type === '大成功') effectStr = `心情值+75`;
       } else if (subId === 'in1') {
         if (type === '大失败') effectStr = `好感度-20`;
         else if (type === '失败') effectStr = `好感度-10`;
@@ -1700,14 +1700,14 @@ export default function App() {
           effectStr = `心情值-10`;
           targetEffectStr = `心情值-30`;
         } else if (type === '失败') {
-          effectStr = `心情值+10`;
+          effectStr = `心情值+45`;
           targetEffectStr = `心情值-20`;
         } else if (type === '成功') {
-          effectStr = `心情值+15`;
+          effectStr = `心情值+50`;
           targetEffectStr = `心情值不变`;
         } else if (type === '大成功') {
-          effectStr = `心情值+20`;
-          targetEffectStr = `心情值+10`;
+          effectStr = `心情值+55`;
+          targetEffectStr = `心情值+45`;
         }
       } else if (subId === 'sm2') {
         if (type === '大失败') {
@@ -1731,8 +1731,8 @@ export default function App() {
       if (subId === 'h1') {
         if (type === '大失败') effectStr = `心情值-25`;
         else if (type === '失败') effectStr = `心情值-10`;
-        else if (type === '成功') effectStr = `心情值+30`;
-        else if (type === '大成功') effectStr = `心情值+50`;
+        else if (type === '成功') effectStr = `心情值+65`;
+        else if (type === '大成功') effectStr = `心情值+85`;
       }
 
       if (isTradeAction) {
