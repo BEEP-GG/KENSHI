@@ -20,6 +20,10 @@
         </div>
       </div>
 
+      <button class="legacy-toggle-btn" type="button" :class="{ active: isLegacyMode }" @click.stop="toggleLegacyMode">
+        {{ isLegacyMode ? '新版' : '旧版' }}
+      </button>
+
       <button class="action-gear-btn" type="button" @click.stop="toggleSpecialMenu">
         <i class="ri-settings-4-fill"></i>
       </button>
@@ -40,7 +44,7 @@
         :key="`${opt.number}-${opt.text}`"
         :class="[
           'trpg-option fade-in-up',
-          { 'fight-option': isFightOption(opt), 'dc-option': !!parseDcCheckMeta(opt.text) },
+          { 'fight-option': isFightOption(opt), 'dc-option': !isLegacyMode && !!parseDcCheckMeta(opt.text) },
         ]"
         :style="{ animationDelay: `${index * 0.1}s` }"
         type="button"
@@ -51,7 +55,7 @@
         </div>
         <div class="option-text">
           <span v-if="isFightOption(opt)" class="fight-tag">战斗</span>
-          <span v-else-if="parseDcCheckMeta(opt.text)" class="dc-tag">判定</span>
+          <span v-else-if="!isLegacyMode && parseDcCheckMeta(opt.text)" class="dc-tag">判定</span>
           {{ opt.text }}
         </div>
       </button>
@@ -62,7 +66,7 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 type OptionItem = {
   number: string;
@@ -80,6 +84,7 @@ const isSpecialMenuOpen = ref(false);
 const isActorMenuOpen = ref(false);
 const selectedActorName = ref('');
 const actorOptions = ref<ActorOption[]>([]);
+const isLegacyMode = ref(false);
 const specialActions = ['战斗', '营地系统'];
 
 const optionLineRegex = /^[^\S\n]*(?:[（(【]?\s*([A-Za-z])\s*[.、:：]\s*(.*?))\s*$/;
@@ -147,6 +152,10 @@ function closeActorMenu() {
 function selectActor(name: string) {
   selectedActorName.value = name;
   closeActorMenu();
+}
+
+function toggleLegacyMode() {
+  isLegacyMode.value = !isLegacyMode.value;
 }
 
 function toggleSpecialMenu() {
@@ -247,6 +256,7 @@ function normalizeOptionText(text: string): string {
 }
 
 function parseDcCheckMeta(text: string): DcCheckMeta | null {
+  if (isLegacyMode.value) return null;
   const normalizedText = normalizeOptionText(text);
   const attributeMatch = normalizedText.match(/(?:\[|【)\s*([^\]】]+?)\s*(?:\]|】)/);
   const purposeMatch = normalizedText.match(/[（(]\s*([^()（）]*?)(?:判定)?\s*DC\s*(\d+)\s*(?:[）)])?\s*$/i);
@@ -321,12 +331,12 @@ function getAttributeModifier(attributeName: string, characterData: Record<strin
     : characterData?.属性?.[attributeName];
 
   if (typeof rawAttr === 'number') {
-    return Math.floor((rawAttr - 25) / 10);
+    return Math.floor((rawAttr - 20) / 10);
   }
 
   const baseValue = Number(rawAttr?.基础 ?? 30);
   const bonusValue = Number(rawAttr?.加成 ?? 0);
-  return Math.floor((baseValue + bonusValue - 25) / 10);
+  return Math.floor((baseValue + bonusValue - 20) / 10);
 }
 
 function getCleanOptionText(text: string): string {
@@ -430,10 +440,12 @@ async function handleOptionClick(opt: OptionItem, event: MouseEvent) {
     await triggerFightBattle();
     return;
   }
-  const dcMeta = parseDcCheckMeta(opt.text);
-  if (dcMeta) {
-    await handleDcOption(opt, dcMeta);
-    return;
+  if (!isLegacyMode.value) {
+    const dcMeta = parseDcCheckMeta(opt.text);
+    if (dcMeta) {
+      await handleDcOption(opt, dcMeta);
+      return;
+    }
   }
   const text = opt.text;
   setTimeout(() => {
@@ -619,6 +631,52 @@ onBeforeUnmount(() => {
 .actor-selector-item.selected {
   background: rgba(96, 165, 250, 0.16);
   color: #e0f2fe;
+}
+
+.legacy-toggle-btn {
+  position: absolute;
+  top: 10px;
+  right: 58px;
+  height: 34px;
+  min-width: 58px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(198, 166, 100, 0.45);
+  background: linear-gradient(180deg, rgba(44, 37, 31, 0.95), rgba(24, 20, 18, 0.95));
+  color: #e5d1a4;
+  font-size: 0.84rem;
+  letter-spacing: 1px;
+  cursor: pointer;
+  box-shadow:
+    0 6px 14px rgba(0, 0, 0, 0.45),
+    inset 0 1px 1px rgba(255, 255, 255, 0.08);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+  z-index: 10;
+}
+
+.legacy-toggle-btn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(198, 166, 100, 0.72);
+  color: #fff4d6;
+  box-shadow:
+    0 8px 18px rgba(0, 0, 0, 0.55),
+    0 0 10px rgba(198, 166, 100, 0.15);
+}
+
+.legacy-toggle-btn.active {
+  border-color: rgba(184, 83, 49, 0.72);
+  color: #ffd7c9;
+  background: linear-gradient(180deg, rgba(90, 47, 36, 0.95), rgba(43, 23, 20, 0.95));
+  box-shadow:
+    0 8px 18px rgba(0, 0, 0, 0.55),
+    0 0 12px rgba(184, 83, 49, 0.2);
 }
 
 .action-gear-btn {
