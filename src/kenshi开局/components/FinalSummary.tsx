@@ -2031,7 +2031,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
     const selectedTraitLines = data.traits
       .map(traitId => allTraits.find(t => t.id === traitId))
       .filter(Boolean)
-      .map(trait => ` 【${trait!.title}】：${trait!.description}`);
+      .map(trait => ` 【${trait!.title}】：${stripAttributeTextFromDescription(trait!.description)}`);
     if (
       selectedTraitLines.length > 0 ||
       (data.scenarioTraitName && data.scenarioTraitDescription) ||
