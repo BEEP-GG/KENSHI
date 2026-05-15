@@ -3559,7 +3559,7 @@ export default function App() {
         <div
           className={`order-2 lg:order-none flex flex-col relative ${
             isMobile && mobileLogCollapsed
-              ? 'flex-none h-[260px] min-h-0 p-2.5'
+              ? 'flex-none h-[44px] min-h-0 px-2.5 pb-1'
               : mobileDetailExpanded
                 ? 'flex-none h-[136px] min-h-0 p-2.5'
                 : isMobile
@@ -3567,87 +3567,102 @@ export default function App() {
                   : 'flex-1 min-h-0 p-2.5 lg:p-8'
           }`}
         >
-          <div className="absolute inset-0 bg-stone-950/40 backdrop-blur-sm m-2.5 lg:m-8 rounded-sm border border-stone-800/40 shadow-[inset_0_0_60px_rgba(0,0,0,0.8)]"></div>
-
-          <button
-            type="button"
-            aria-label={mobileLogCollapsed ? '收起战斗日志' : '展开战斗日志'}
-            onClick={() => setMobileLogCollapsed(prev => !prev)}
-            className={`${isMobile ? 'grid' : 'hidden'} absolute right-2 top-2 z-30 w-8 h-8 rounded-sm border border-stone-700/70 bg-black/60 text-stone-200 hover:bg-black/80 active:bg-black/90 transition-colors place-items-center shadow-[0_0_18px_rgba(0,0,0,0.6)]`}
-          >
-            {mobileLogCollapsed ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-          </button>
-
-          <div
-            ref={logScrollRef}
-            className={`relative z-10 flex-1 overflow-y-auto font-serif text-base leading-[1.8] text-stone-300 space-y-3 scrollbar-hide overscroll-contain ${
-              mobileDetailExpanded ? 'p-3' : 'p-6 lg:p-10'
-            }`}
-            style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
-          >
-            <div
-              className={`flex items-center justify-center gap-2.5 ${mobileDetailExpanded ? 'mb-2' : 'mb-4 lg:mb-6'}`}
+          {isMobile && mobileLogCollapsed ? (
+            <button
+              type="button"
+              aria-label="关闭隐藏战斗日志"
+              onClick={() => setMobileLogCollapsed(false)}
+              className="relative z-10 h-full w-full rounded-sm border border-stone-800/50 bg-stone-950/70 text-center text-xs font-mono tracking-[0.2em] text-stone-400 transition-colors hover:text-stone-200 hover:border-stone-600/60"
             >
-              <span className="inline-block px-4 py-1 border border-stone-800/60 rounded-sm text-xs font-mono text-stone-500 tracking-widest bg-stone-900/30">
-                战斗日志
-              </span>
+              【关闭隐藏】
+            </button>
+          ) : (
+            <>
+              <div className="absolute inset-0 bg-stone-950/40 backdrop-blur-sm m-2.5 lg:m-8 rounded-sm border border-stone-800/40 shadow-[inset_0_0_60px_rgba(0,0,0,0.8)]"></div>
+
               <button
                 type="button"
-                onClick={() => setShowCurrentRoundOnly(prev => !prev)}
-                className="px-3 py-1 border border-stone-800/70 rounded-sm text-[11px] font-mono text-stone-400 bg-stone-900/40 hover:text-stone-200 hover:border-stone-600/70 transition-colors"
+                aria-label="隐藏战斗日志"
+                onClick={() => setMobileLogCollapsed(true)}
+                className={`${isMobile ? 'grid' : 'hidden'} absolute right-2 top-2 z-30 min-w-[72px] h-8 rounded-sm border border-stone-700/70 bg-black/60 px-2 text-[11px] font-mono tracking-[0.18em] text-stone-200 hover:bg-black/80 active:bg-black/90 transition-colors place-items-center shadow-[0_0_18px_rgba(0,0,0,0.6)]`}
               >
-                {showCurrentRoundOnly ? '显示全部' : '显示当前回合'}
+                隐藏日志
               </button>
-            </div>
 
-            {!isMobile && loadError ? (
-              <div className="space-y-3 text-center">
-                <div className="text-amber-300 text-sm font-mono">无法读取 MVU 变量</div>
-                <div className="text-xs text-stone-500 font-mono break-all">{loadError}</div>
-                <button
-                  type="button"
-                  onClick={handleRetryLoad}
-                  disabled={loading}
-                  className={`mx-auto px-4 py-2 text-xs font-mono border rounded-sm transition-colors ${
-                    loading
-                      ? 'text-stone-600 border-stone-800/60 cursor-not-allowed'
-                      : 'text-amber-200 border-amber-900/60 hover:bg-amber-900/30'
-                  }`}
-                >
-                  {loading ? '重试中...' : '删除此消息，重新点击战斗栏，多试几次，我为此感到很抱歉'}
-                </button>
-              </div>
-            ) : displayedLogs.length === 0 ? (
-              <div className={`text-center text-stone-500 font-mono ${mobileDetailExpanded ? 'text-xs' : 'text-sm'}`}>
-                等待你的指令...
-              </div>
-            ) : (
               <div
-                className={`space-y-2 font-mono whitespace-pre-wrap ${mobileDetailExpanded ? 'text-xs leading-6' : 'text-sm'}`}
+                ref={logScrollRef}
+                className={`relative z-10 flex-1 overflow-y-auto font-serif text-base leading-[1.8] text-stone-300 space-y-3 scrollbar-hide overscroll-contain ${
+                  mobileDetailExpanded ? 'p-3' : 'p-6 lg:p-10'
+                }`}
+                style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
               >
-                {displayedLogs.map((line, index) => {
-                  const isSettlement = line.startsWith(SETTLEMENT_LOG);
-                  return (
-                    <div
-                      key={`${line}-${index}`}
-                      className={`${getLogLineClass(line)} ${isSettlement ? 'cursor-pointer text-base sm:text-lg text-center' : ''}`}
-                      onClick={() => {
-                        if (isSettlement) setResultConfirmed(true);
-                      }}
+                <div
+                  className={`flex items-center justify-center gap-2.5 ${mobileDetailExpanded ? 'mb-2' : 'mb-4 lg:mb-6'}`}
+                >
+                  <span className="inline-block px-4 py-1 border border-stone-800/60 rounded-sm text-xs font-mono text-stone-500 tracking-widest bg-stone-900/30">
+                    战斗日志
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentRoundOnly(prev => !prev)}
+                    className="px-3 py-1 border border-stone-800/70 rounded-sm text-[11px] font-mono text-stone-400 bg-stone-900/40 hover:text-stone-200 hover:border-stone-600/70 transition-colors"
+                  >
+                    {showCurrentRoundOnly ? '显示全部' : '显示当前回合'}
+                  </button>
+                </div>
+
+                {!isMobile && loadError ? (
+                  <div className="space-y-3 text-center">
+                    <div className="text-amber-300 text-sm font-mono">无法读取 MVU 变量</div>
+                    <div className="text-xs text-stone-500 font-mono break-all">{loadError}</div>
+                    <button
+                      type="button"
+                      onClick={handleRetryLoad}
+                      disabled={loading}
+                      className={`mx-auto px-4 py-2 text-xs font-mono border rounded-sm transition-colors ${
+                        loading
+                          ? 'text-stone-600 border-stone-800/60 cursor-not-allowed'
+                          : 'text-amber-200 border-amber-900/60 hover:bg-amber-900/30'
+                      }`}
                     >
-                      {line}
-                    </div>
-                  );
-                })}
+                      {loading ? '重试中...' : '删除此消息，重新点击战斗栏，多试几次，我为此感到很抱歉'}
+                    </button>
+                  </div>
+                ) : displayedLogs.length === 0 ? (
+                  <div
+                    className={`text-center text-stone-500 font-mono ${mobileDetailExpanded ? 'text-xs' : 'text-sm'}`}
+                  >
+                    等待你的指令...
+                  </div>
+                ) : (
+                  <div
+                    className={`space-y-2 font-mono whitespace-pre-wrap ${mobileDetailExpanded ? 'text-xs leading-6' : 'text-sm'}`}
+                  >
+                    {displayedLogs.map((line, index) => {
+                      const isSettlement = line.startsWith(SETTLEMENT_LOG);
+                      return (
+                        <div
+                          key={`${line}-${index}`}
+                          className={`${getLogLineClass(line)} ${isSettlement ? 'cursor-pointer text-base sm:text-lg text-center' : ''}`}
+                          onClick={() => {
+                            if (isSettlement) setResultConfirmed(true);
+                          }}
+                        >
+                          {line}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </>
+          )}
         </div>
 
         <div
           className={`order-3 lg:order-none w-full lg:w-[28%] lg:min-w-[300px] p-2.5 lg:p-6 border-t border-stone-800/30 lg:border-t-0 lg:border-l lg:border-stone-800/30 bg-gradient-to-l from-black/80 to-transparent scrollbar-hide flex flex-col min-h-0 overscroll-contain ${
             mobileLogCollapsed
-              ? 'flex-none h-auto max-h-[280px] overflow-x-hidden overflow-y-auto'
+              ? 'flex-1 min-h-0 overflow-x-hidden overflow-y-auto'
               : mobileDetailExpanded
                 ? 'flex-none h-auto max-h-[52dvh] overflow-x-hidden overflow-y-auto'
                 : isMobile
