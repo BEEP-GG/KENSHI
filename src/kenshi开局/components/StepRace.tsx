@@ -22,12 +22,6 @@ export const StepRace: React.FC<StepRaceProps> = ({ data, updateData }) => {
     | { allowedRaces?: string[]; allowedSubraces?: string[]; forbiddenRaces?: string[] }
     | undefined;
 
-  const getDefaultHeightByRaceSubrace = (raceId: string, subraceId: string) => {
-    if (raceId === 'ailu' || subraceId === 'ailu' || subraceId === 'ailu_folk') return 100;
-    if (subraceId === 'ratfolk') return 140;
-    return 175;
-  };
-
   const allowedRaceIds = selectedScenario?.allowedRaces;
   const allowedSubraceIds = selectedScenario?.allowedSubraces;
   const forbiddenRaceIds = selectedScenario?.forbiddenRaces ?? [];
@@ -39,26 +33,10 @@ export const StepRace: React.FC<StepRaceProps> = ({ data, updateData }) => {
     .filter(race => !forbiddenRaceIds.includes(race.id))
     .filter(race => !scenarioForbiddenRaces.includes(race.id));
 
-  const getVisibleSubraces = React.useCallback(
-    (raceId: string) => {
-      const race = RACES.find(item => item.id === raceId);
-      if (!race) return [] as Array<{ id: string; title: string; description: string }>;
-      return race.subraces.filter(subrace => {
-        if ((subrace as { hidden?: boolean }).hidden) return false;
-        if (allowedSubraceIds && !allowedSubraceIds.includes(subrace.id)) return false;
-        const unlockScenarios = (subrace as { unlockScenarios?: string[] }).unlockScenarios;
-        if (unlockScenarios && !unlockScenarios.includes(data.scenario)) return false;
-        return true;
-      });
-    },
-    [allowedSubraceIds, data.scenario],
-  );
-
   const isUnknownDream = data.scenario === UNKNOWN_DREAM_SCENARIO_ID;
   const isCustomRaceSelected = data.race === CUSTOM_RACE_ID;
   const selectedRace = availableRaces.find(r => r.id === data.race) || availableRaces[0];
-  const selectedSubraces = selectedRace ? getVisibleSubraces(selectedRace.id) : [];
-  const selectedSubrace = selectedSubraces.find((subrace: { id: string }) => subrace.id === data.subrace);
+  const selectedSubrace = selectedRace?.subraces.find(subrace => subrace.id === data.subrace);
 
   const [isSavingCustomRace, setIsSavingCustomRace] = React.useState(false);
   const [customRaceSaved, setCustomRaceSaved] = React.useState(false);
@@ -80,88 +58,26 @@ export const StepRace: React.FC<StepRaceProps> = ({ data, updateData }) => {
     return matches.join('、');
   };
 
-  const getFirstAllowedSubraceId = React.useCallback(
-    (raceId: string) => getVisibleSubraces(raceId)[0]?.id ?? '',
-    [getVisibleSubraces],
-  );
-
   React.useEffect(() => {
     if (!data.race && availableRaces.length > 0) {
       const firstRace = availableRaces[0];
-      const firstSubraceId = getFirstAllowedSubraceId(firstRace.id);
-      updateData({
-        race: firstRace.id,
-        subrace: firstSubraceId,
-        appearance: { ...data.appearance, height: getDefaultHeightByRaceSubrace(firstRace.id, firstSubraceId) },
-      });
+      updateData({ race: firstRace.id, subrace: firstRace.subraces[0]?.id ?? '' });
       return;
     }
 
     if (!isCustomRaceSelected && data.race && forbiddenRaceIds.includes(data.race) && availableRaces.length > 0) {
       const firstRace = availableRaces[0];
-      const firstSubraceId = getFirstAllowedSubraceId(firstRace.id);
-      updateData({
-        race: firstRace.id,
-        subrace: firstSubraceId,
-        appearance: { ...data.appearance, height: getDefaultHeightByRaceSubrace(firstRace.id, firstSubraceId) },
-      });
-      return;
+      updateData({ race: firstRace.id, subrace: firstRace.subraces[0]?.id ?? '' });
     }
-
-    if (
-      !isCustomRaceSelected &&
-      data.race &&
-      allowedRaceIds &&
-      !allowedRaceIds.includes(data.race) &&
-      availableRaces.length > 0
-    ) {
-      const firstRace = availableRaces[0];
-      const firstSubraceId = getFirstAllowedSubraceId(firstRace.id);
-      updateData({
-        race: firstRace.id,
-        subrace: firstSubraceId,
-        appearance: { ...data.appearance, height: getDefaultHeightByRaceSubrace(firstRace.id, firstSubraceId) },
-      });
-      return;
-    }
-
-    if (
-      !isCustomRaceSelected &&
-      data.race &&
-      !availableRaces.some(race => race.id === data.race) &&
-      availableRaces.length > 0
-    ) {
-      const firstRace = availableRaces[0];
-      const firstSubraceId = getFirstAllowedSubraceId(firstRace.id);
-      updateData({
-        race: firstRace.id,
-        subrace: firstSubraceId,
-        appearance: { ...data.appearance, height: getDefaultHeightByRaceSubrace(firstRace.id, firstSubraceId) },
-      });
-    }
-  }, [
-    data.race,
-    availableRaces,
-    forbiddenRaceIds,
-    isCustomRaceSelected,
-    allowedRaceIds,
-    getFirstAllowedSubraceId,
-    updateData,
-  ]);
+  }, [data.race, availableRaces, forbiddenRaceIds, isCustomRaceSelected, updateData]);
 
   React.useEffect(() => {
     if (isCustomRaceSelected) return;
-    if (!selectedRace) return;
-
-    const availableSubraces = getVisibleSubraces(selectedRace.id);
-
-    const hasValidSubrace = availableSubraces.some((subrace: { id: string }) => subrace.id === data.subrace);
-    if (!hasValidSubrace) {
-      const nextSubraceId = availableSubraces[0]?.id ?? selectedRace.subraces[0]?.id ?? '';
-      updateData({
-        subrace: nextSubraceId,
-        appearance: { ...data.appearance, height: getDefaultHeightByRaceSubrace(selectedRace.id, nextSubraceId) },
-      });
+    if (selectedRace && !data.subrace && selectedRace.subraces.length > 0) {
+      const availableSubraces = allowedSubraceIds
+        ? selectedRace.subraces.filter(subrace => allowedSubraceIds.includes(subrace.id))
+        : selectedRace.subraces;
+      updateData({ subrace: availableSubraces[0]?.id ?? selectedRace.subraces[0].id });
     }
   }, [data.subrace, selectedRace, allowedSubraceIds, isCustomRaceSelected, updateData]);
 
@@ -257,9 +173,7 @@ export const StepRace: React.FC<StepRaceProps> = ({ data, updateData }) => {
               `}
             >
               <div className="relative z-10">
-                <h3
-                  className={`text-xl font-serif font-bold mb-1 ${isCustomRaceSelected ? 'text-[#C2B280]' : 'text-white'}`}
-                >
+                <h3 className={`text-xl font-serif font-bold mb-1 ${isCustomRaceSelected ? 'text-[#C2B280]' : 'text-white'}`}>
                   {data.customStart.customRaceName.trim() || '自定义种族'}
                 </h3>
                 <p className="text-xs text-white/50 line-clamp-2">
@@ -267,10 +181,7 @@ export const StepRace: React.FC<StepRaceProps> = ({ data, updateData }) => {
                 </p>
               </div>
               {isCustomRaceSelected && (
-                <motion.div
-                  layoutId="race-glow"
-                  className="absolute inset-0 bg-gradient-to-r from-[#C2B280]/10 to-transparent"
-                />
+                <motion.div layoutId="race-glow" className="absolute inset-0 bg-gradient-to-r from-[#C2B280]/10 to-transparent" />
               )}
             </motion.button>
           )}
@@ -280,13 +191,7 @@ export const StepRace: React.FC<StepRaceProps> = ({ data, updateData }) => {
               key={race.id}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              onClick={() =>
-                updateData({
-                  race: race.id,
-                  subrace: '',
-                  appearance: { ...data.appearance, height: getDefaultHeightByRaceSubrace(race.id, '') },
-                })
-              }
+              onClick={() => updateData({ race: race.id, subrace: '' })}
               className={`
                 p-6 rounded-xl border text-left transition-all relative overflow-hidden group
                 ${
@@ -297,18 +202,13 @@ export const StepRace: React.FC<StepRaceProps> = ({ data, updateData }) => {
               `}
             >
               <div className="relative z-10">
-                <h3
-                  className={`text-xl font-serif font-bold mb-1 ${data.race === race.id ? 'text-[#C2B280]' : 'text-white'}`}
-                >
+                <h3 className={`text-xl font-serif font-bold mb-1 ${data.race === race.id ? 'text-[#C2B280]' : 'text-white'}`}>
                   {race.title}
                 </h3>
                 <p className="text-xs text-white/50 line-clamp-2">{race.description}</p>
               </div>
               {data.race === race.id && (
-                <motion.div
-                  layoutId="race-glow"
-                  className="absolute inset-0 bg-gradient-to-r from-[#C2B280]/10 to-transparent"
-                />
+                <motion.div layoutId="race-glow" className="absolute inset-0 bg-gradient-to-r from-[#C2B280]/10 to-transparent" />
               )}
             </motion.button>
           ))}
@@ -316,23 +216,14 @@ export const StepRace: React.FC<StepRaceProps> = ({ data, updateData }) => {
 
         <div className="lg:col-span-8 bg-black/40 border border-white/10 rounded-xl p-8 relative">
           {isCustomRaceSelected && isUnknownDream ? (
-            <motion.div
-              key={CUSTOM_RACE_ID}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="h-full flex flex-col gap-6"
-            >
+            <motion.div key={CUSTOM_RACE_ID} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="h-full flex flex-col gap-6">
               <div className="flex items-center gap-4">
                 <div className="p-3 bg-[#C2B280]/20 rounded-lg text-[#C2B280]">
                   <User size={32} />
                 </div>
                 <div>
-                  <h3 className="text-3xl font-serif text-white">
-                    {data.customStart.customRaceName.trim() || '自定义种族'}
-                  </h3>
-                  <p className="text-white/60 whitespace-pre-line">
-                    仅在【未知梦想】剧本生效，点击保存后写入世界书 UID750。
-                  </p>
+                  <h3 className="text-3xl font-serif text-white">{data.customStart.customRaceName.trim() || '自定义种族'}</h3>
+                  <p className="text-white/60 whitespace-pre-line">仅在【未知梦想】剧本生效，点击保存后写入世界书 UID750。</p>
                 </div>
               </div>
 
@@ -396,12 +287,7 @@ export const StepRace: React.FC<StepRaceProps> = ({ data, updateData }) => {
               </div>
             </motion.div>
           ) : selectedRace ? (
-            <motion.div
-              key={selectedRace.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="h-full flex flex-col"
-            >
+            <motion.div key={selectedRace.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="h-full flex flex-col">
               <div className="flex items-center gap-4 mb-6">
                 <div className="p-3 bg-[#C2B280]/20 rounded-lg text-[#C2B280]">
                   <User size={32} />
@@ -419,7 +305,10 @@ export const StepRace: React.FC<StepRaceProps> = ({ data, updateData }) => {
                 </h4>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {selectedSubraces.map((subrace: { id: string; title: string; description: string }) => {
+                  {(allowedSubraceIds
+                    ? selectedRace.subraces.filter(subrace => allowedSubraceIds.includes(subrace.id))
+                    : selectedRace.subraces
+                  ).map(subrace => {
                     const lockInfo = subrace as { locked?: boolean; unlockScenarios?: string[] };
                     const allowedByScenario = lockInfo.unlockScenarios
                       ? lockInfo.unlockScenarios.includes(data.scenario)
@@ -442,9 +331,7 @@ export const StepRace: React.FC<StepRaceProps> = ({ data, updateData }) => {
                       >
                         <div className="font-bold font-serif mb-1 flex items-center gap-2">
                           {subrace.title}
-                          {isLocked && (
-                            <span className="text-[10px] uppercase tracking-[0.2em] text-white/70">锁定</span>
-                          )}
+                          {isLocked && <span className="text-[10px] uppercase tracking-[0.2em] text-white/70">锁定</span>}
                         </div>
                         <div className={`text-xs ${data.subrace === subrace.id ? 'text-black/70' : 'text-white/50'}`}>
                           {(subrace as { attributeSummary?: string }).attributeSummary ||

@@ -175,88 +175,6 @@ export const SCENARIOS = [
     hostileFactions: ['沙克王国', '联合帝国', '神圣教国', '反蓄奴者', '猎犬帮', '第二帝国'],
   },
   {
-    id: 'holy_crusade',
-    title: '神圣十字军东征',
-    description:
-      '菲尼克斯六十二世亲自任命你为新一代圣国牧师，率领东征净化异端。你已站在城门之外，补给车满载食物与武器，前方是战火纷飞的巴斯特。现在，不要怜悯，不要迟疑，让圣国之敌在你的战锤下忏悔。',
-    storyBackground:
-      '菲尼克斯六十二世亲自将手按在你的额头，任命你为新一代的圣国牧师，负责领导一场净化异端的东征。\n圣主声音如同神谕般在你脑中回响：“去吧，我的牧师，成为我愤怒的延伸，让黑暗在你的光芒下颤抖！”\n现在你已站在城门之外，身后是一辆装满了大量食物与武器的补给车。你的目光越过城外神圣的农田，望向东方那片战火纷飞的土地——巴斯特。\n空气中仿佛已传来战友的嘶吼与异教徒的惨叫。现在，不要怜悯，不要迟疑，让圣国的敌人在你的战锤下忏悔，让奥克兰的福音传遍这片污秽的大地。',
-    difficulty: '困难',
-    icon: 'Sun',
-    equipment: ['圣杖', '奥克兰赐福祭司服（链甲内衬）', '美味食物 x10', '葡萄酒 x8', '神圣勋章', '《圣火》'],
-    money: 10000,
-    fixedRegion: 'holy_nation',
-    fixedTown: '水泡山丘',
-    allowedRegions: ['holy_nation', 'okan_bay'],
-    allowedRaces: ['human'],
-    allowedSubraces: ['keter_descendant', 'greenlander'],
-    lockCompanionRaceSubrace: true,
-    companions: [
-      {
-        race: 'human',
-        subrace: 'greenlander',
-        level: 1,
-        attributes: {
-          strength: 12,
-          dexterity: 15,
-          perception: 10,
-          constitution: 15,
-          will: 10,
-          intelligence: 8,
-          charisma: 6,
-        },
-        name: '圣骑士',
-        gender: 'male',
-        age: 31,
-        appearance: {
-          eyes: '',
-          hairStyle: '',
-          hairColor: '',
-          bodyType: '健壮',
-          height: 182,
-          description: '一名身披圣国甲胄的老练圣骑士，步伐沉稳，眼神肃杀。',
-        },
-        traits: [],
-        customTraitName: '',
-        customTraitDescription: '',
-        scenarioTraitName: '战斗',
-        scenarioTraitDescription: '经历过长期的军旅厮杀与前线审判，面对战斗时更沉着凶狠。体质 +3，敏捷 +3',
-      },
-      {
-        race: 'human',
-        subrace: 'greenlander',
-        level: 1,
-        attributes: {
-          strength: 10,
-          dexterity: 10,
-          perception: 10,
-          constitution: 10,
-          will: 10,
-          intelligence: 8,
-          charisma: 8,
-        },
-        name: '信徒',
-        gender: 'male',
-        age: 24,
-        appearance: {
-          eyes: '',
-          hairStyle: '',
-          hairColor: '',
-          bodyType: '普通',
-          height: 176,
-          description: '衣着朴素却神情虔诚的圣国信徒，言语间满是对祭司与奥克兰的敬畏。',
-        },
-        traits: [],
-        customTraitName: '',
-        customTraitDescription: '',
-        scenarioTraitName: '狂信徒',
-        scenarioTraitDescription: '祭司的要求就是神谕，无底线服从。',
-      },
-    ],
-    alliedFactions: ['神圣教国'],
-    hostileFactions: ['沙克王国', '联合城', '浪忍团', '反蓄奴者'],
-  },
-  {
     id: 'holy_commoner',
     title: '圣民',
     description:
@@ -406,134 +324,8 @@ export const SCENARIOS = [
       '你厌倦了令人窒息的城市生活和税收，你集结了一个小队外出并找到了自己的家园基地。你已经组建了一个加上你一共五个志同道合的人组成的团队，并且已经收集了大量的建筑材料。',
     difficulty: '普通',
     icon: 'Users',
-    equipment: ['铁棒', '拓荒者夹克', '基础医疗包', '建筑材料'],
+    equipment: ['铁棒 x3', '拓荒者夹克', '基础医疗包', '建筑材料'],
     money: 2000,
-    companions: [
-      {
-        race: 'human',
-        subrace: 'greenlander',
-        level: 1,
-        attributes: {
-          strength: 6,
-          dexterity: 5,
-          perception: 4,
-          constitution: 6,
-          will: 5,
-          intelligence: 4,
-          charisma: 4,
-        },
-        equipment: ['铁棒', '旧皮夹克'],
-        name: '',
-        gender: 'male',
-        age: 29,
-        appearance: {
-          eyes: '',
-          hairStyle: '',
-          hairColor: '',
-          bodyType: '',
-          height: 175,
-          description: '',
-        },
-        traits: [],
-        customTraitName: '',
-        customTraitDescription: '',
-        scenarioTraitName: '',
-        scenarioTraitDescription: '',
-      },
-      {
-        race: 'human',
-        subrace: 'scorchlander',
-        level: 1,
-        attributes: {
-          strength: 4,
-          dexterity: 7,
-          perception: 6,
-          constitution: 4,
-          will: 5,
-          intelligence: 5,
-          charisma: 4,
-        },
-        equipment: ['生锈短刀', '旧布衫'],
-        name: '',
-        gender: 'female',
-        age: 24,
-        appearance: {
-          eyes: '',
-          hairStyle: '',
-          hairColor: '',
-          bodyType: '',
-          height: 175,
-          description: '',
-        },
-        traits: [],
-        customTraitName: '',
-        customTraitDescription: '',
-        scenarioTraitName: '',
-        scenarioTraitDescription: '',
-      },
-      {
-        race: 'human',
-        subrace: 'greenlander',
-        level: 1,
-        attributes: {
-          strength: 4,
-          dexterity: 4,
-          perception: 5,
-          constitution: 4,
-          will: 6,
-          intelligence: 7,
-          charisma: 4,
-        },
-        equipment: ['铁棒', '布背心'],
-        name: '',
-        gender: 'male',
-        age: 27,
-        appearance: {
-          eyes: '',
-          hairStyle: '',
-          hairColor: '',
-          bodyType: '',
-          height: 175,
-          description: '',
-        },
-        traits: [],
-        customTraitName: '',
-        customTraitDescription: '',
-        scenarioTraitName: '',
-        scenarioTraitDescription: '',
-      },
-      {
-        race: 'shek',
-        subrace: 'shek_kinsman',
-        level: 1,
-        attributes: {
-          strength: 7,
-          dexterity: 4,
-          perception: 4,
-          constitution: 7,
-          will: 5,
-          intelligence: 3,
-          charisma: 3,
-        },
-        equipment: ['铁棒', '破旧皮甲'],
-        name: '',
-        gender: 'female',
-        age: 30,
-        appearance: {
-          eyes: '',
-          hairStyle: '',
-          hairColor: '',
-          bodyType: '',
-          height: 175,
-          description: '',
-        },
-        traits: [],
-        customTraitName: '',
-        customTraitDescription: '',
-        scenarioTraitName: '',
-        scenarioTraitDescription: '',
-      },
-    ],
   },
   {
     id: 'mongrel_wanderer',
@@ -689,7 +481,7 @@ export const REGIONS = [
     id: 'slag_land',
     title: '渣滓之地',
     description:
-      '大陆最西边的贫瘠荒域，食物与水源匮乏。只有难民与饿疯的骨犬会在此苟延残喘。内陆是起伏石山与黑压压的密集植物，空气常年笼罩阴沉薄雾。向西逐渐过渡为狭长海岸线，浅色干燥土壤几乎不孕育任何可食作物。北部毗邻雾岛，海风带来湿气，却吹不散这片土地深入骨髓的荒凉。',
+      '大陆最西边的贫瘠荒域，食物与水源极度匮乏。只有难民与饿疯的骨犬会在此苟延残喘。内陆是起伏石山与黑压压的密集植物，空气常年笼罩阴沉薄雾。向西逐渐过渡为狭长海岸线，浅色干燥土壤几乎不孕育任何可食作物。北部毗邻雾岛，海风带来湿气，却吹不散这片土地深入骨髓的荒凉。',
     towns: ['流浪者村落'],
     danger: '极高',
   },
@@ -892,14 +684,14 @@ export const RACES = [
         id: 'scorchlander',
         title: '焦土之子',
         description:
-          '焦土之子是天生的叛逆者和冒险家。他们拥有深色的肌肤，生性桀骜不驯，厌恶枯燥的农业劳动与任何形式的社会约束。他们崇尚绝对的个体自由，行事往往随心所欲，因此不愿在等级森严的帝国中安分守己。正因如此，部分派系厌恶并且鄙视这一肤色的种族，视其为劣等人类。',
-        attributeSummary: '敏捷+8、魅力-8',
+          '焦土之子是天生的叛逆者和冒险家。他们拥有深色的肌肤，生性桀骜不驯，极度厌恶枯燥的农业劳动与任何形式的社会约束。他们崇尚绝对的个体自由，行事往往随心所欲，因此不愿在等级森严的帝国中安分守己。正因如此，部分派系厌恶并且鄙视这一肤色的种族，视其为劣等人类。',
+        attributeSummary: '敏捷+5、魅力-5',
       },
       {
         id: 'keter_descendant',
         title: '奇特林后裔',
         description:
-          '奇特林后裔传闻是奥克兰血脉，他们生来就缺乏任何道德与信仰的寄托，终生被无尽的贪婪与的恐惧所支配，对这片残酷大陆上的所有生命都抱有病态的猜疑。因为内心的缺乏安全感，他们几乎本能地诉诸野蛮的暴力，将其作为生存、掠夺和掩饰软弱的唯一手段。',
+          '奇特林后裔传闻是奥克兰血脉，他们生来就缺乏任何道德与信仰的寄托，终生被无尽的贪婪与极度的恐惧所支配，对这片残酷大陆上的所有生命都抱有病态的猜疑。因为内心的极度缺乏安全感，他们几乎本能地诉诸野蛮的暴力，将其作为生存、掠夺和掩饰软弱的唯一手段。',
         attributeSummary: '感知+10、智力-10',
       },
     ],
@@ -914,7 +706,7 @@ export const RACES = [
         title: '蒙受神恩者',
         description:
           '蒙受神恩者又称为堕落者，或者魅魔。尽管外表与人类相似，但经研究，她们的身体内部结构和人类截然不同。甚至说，更加接近被称为骨人的物种。而在他们尚未变化，还属于人类族类之时，和人类一样属于肉身。她们身体的这种改变，和古代人类有关。。。。。甚至是发生了变异。',
-        attributeSummary: '敏捷+6、魅力+18、力量-6、体质-12',
+        attributeSummary: '敏捷+5、魅力+15、力量-5、体质-10',
       },
     ],
   },
@@ -922,7 +714,7 @@ export const RACES = [
     id: 'west_hive',
     title: '西部蜂巢族',
     description:
-      '蜂巢族拥有近似昆虫的生理结构，最显著的特征是细长、宛如枯枝般的四肢。他们的身体异常脆弱，四肢很容易在战斗中被切断。他们的胸腔骨骼奇特，导致无法穿戴普通人类的衬衫；由于生有宽大、平坦且没有脚趾的脚掌，他们终生无法穿戴任何鞋类。不过，他们体内流淌着特殊的体液，天生免疫废土上致命的酸雨。\n\n善于经商的黄色皮肤蜂巢族，是废土上最友善的一群人。\n初始属性修正：魅力+10、敏捷+5、力量-10。\n技能加成：交易+15、说服+5。\n种族特性：商业头脑。\n西部蜂巢族是善于经商的黄色皮肤蜂巢族，是大陆上最友善但贪婪的一群人。',
+      '蜂巢族拥有近似昆虫的生理结构，最显著的特征是极其细长、宛如枯枝般的四肢。他们的身体异常脆弱，四肢很容易在战斗中被切断。他们的胸腔骨骼奇特，导致无法穿戴普通人类的衬衫；由于生有极其宽大、平坦且没有脚趾的脚掌，他们终生无法穿戴任何鞋类。不过，他们体内流淌着特殊的体液，天生免疫废土上致命的酸雨。\n\n善于经商的黄色皮肤蜂巢族，是废土上最友善的一群人。\n初始属性修正：魅力+10、敏捷+5、力量-10。\n技能加成：交易+15、说服+5。\n种族特性：商业头脑。\n西部蜂巢族是善于经商的黄色皮肤蜂巢族，是大陆上最友善但贪婪的一群人。',
     subraces: [
       {
         id: 'hive_prince',
@@ -962,7 +754,7 @@ export const RACES = [
     id: 'south_hive',
     title: '南部蜂巢族',
     description:
-      '蜂巢族拥有近似昆虫的生理结构，最显著的特征是细长、宛如枯枝般的四肢。他们的身体异常脆弱，四肢很容易在战斗中被切断。他们的胸腔骨骼奇特，导致无法穿戴普通人类的衬衫；由于生有宽大、平坦且没有脚趾的脚掌，他们终生无法穿戴任何鞋类。不过，他们体内流淌着特殊的体液，天生免疫废土上致命的酸雨。\n\n排外且侵略性的血红色蜂巢族，拥有更强的军事力量。\n初始属性修正：力量+5、体质+5、魅力-15、智力-10。\n种族特性：战斗狂热（最终伤害+5）。\n南部蜂巢族排外且侵略性的血红色肤色的蜂巢族，拥有更强的军事力量但智力其他相比较低',
+      '蜂巢族拥有近似昆虫的生理结构，最显著的特征是极其细长、宛如枯枝般的四肢。他们的身体异常脆弱，四肢很容易在战斗中被切断。他们的胸腔骨骼奇特，导致无法穿戴普通人类的衬衫；由于生有极其宽大、平坦且没有脚趾的脚掌，他们终生无法穿戴任何鞋类。不过，他们体内流淌着特殊的体液，天生免疫废土上致命的酸雨。\n\n极度排外且侵略性的血红色蜂巢族，拥有更强的军事力量。\n初始属性修正：力量+5、体质+5、魅力-15、智力-10。\n种族特性：战斗狂热（最终伤害+5）。\n南部蜂巢族极度排外且侵略性的血红色肤色的蜂巢族，拥有更强的军事力量但智力其他相比较低',
     subraces: [
       {
         id: 'hive_prince',
@@ -1002,7 +794,7 @@ export const RACES = [
     id: 'dark_hive',
     title: '黑暗蜂巢族',
     description:
-      '蜂巢族拥有近似昆虫的生理结构，最显著的特征是细长、宛如枯枝般的四肢。他们的身体异常脆弱，四肢很容易在战斗中被切断。他们的胸腔骨骼奇特，导致无法穿戴普通人类的衬衫；由于生有宽大、平坦且没有脚趾的脚掌，他们终生无法穿戴任何鞋类。不过，他们体内流淌着特殊的体液，天生免疫废土上致命的酸雨。\n\n罕见的黑色皮肤蜂巢族，拥有更高智商与均衡实力。\n初始属性修正：智力+10、力量+5、敏捷+5、体质-5。\n种族特性：古老基因（可无惩罚使用所有武器）。\n黑暗蜂巢族是罕见的黑色皮肤蜂巢族，拥有更高智商与均衡实力，但是他们一族因为女王的特殊性，数量相比较为稀少',
+      '蜂巢族拥有近似昆虫的生理结构，最显著的特征是极其细长、宛如枯枝般的四肢。他们的身体异常脆弱，四肢很容易在战斗中被切断。他们的胸腔骨骼奇特，导致无法穿戴普通人类的衬衫；由于生有极其宽大、平坦且没有脚趾的脚掌，他们终生无法穿戴任何鞋类。不过，他们体内流淌着特殊的体液，天生免疫废土上致命的酸雨。\n\n罕见的黑色皮肤蜂巢族，拥有更高智商与均衡实力。\n初始属性修正：智力+10、力量+5、敏捷+5、体质-5。\n种族特性：古老基因（可无惩罚使用所有武器）。\n黑暗蜂巢族是罕见的黑色皮肤蜂巢族，拥有更高智商与均衡实力，但是他们一族因为女王的特殊性，数量相比较为稀少',
     subraces: [
       {
         id: 'hive_prince',
@@ -1073,35 +865,31 @@ export const RACES = [
         title: '蜥蜴人',
         description:
           '蜥蜴人是潜伏在大陆上强壮的爬行类战士，最显著的特征是全身覆盖着一层坚韧且排列致密的鳞片皮肤。这些鳞片如同天然的盔甲，为他们提供了极佳的额外保护。作为可怕的猎手，他们拥有锐利的尖牙与利爪；但由于长有反关节的爬行类下肢与巨大的趾爪，他们与蜂巢族一样终生无法穿戴任何鞋类，粗壮的尾巴和修长的吻部也使得他们难以戴上普通人类的全封闭头盔。不过，尽管有这种爬行动物看起来十分具有威胁，但在这个大陆的生存上还是比较失败的，许多人猎杀他们并剥下他们的鳞片进行售卖制作。',
-        attributeSummary: '体质+5、敏捷+12、感知+5、魅力-15',
+        attributeSummary: '体质+5、敏捷+10、感知+5、魅力-15',
       },
       {
         id: 'goatfolk',
         title: '山羊人',
         description:
           '山羊人是游荡在严酷荒野上的顽强亚人种族，完美继承了野羊的暴躁与生命力，显著的特征是头顶生有粗壮的反曲双角，躯干覆盖着一层厚重的粗糙毛发。由于羊角和突出的吻部，无法戴上全封闭头盔；下肢坚硬的偶蹄，使得他们无法穿戴任何鞋类。但拥有不可思议的强健体魄与“铁胃”，不仅能在最崎岖的地形中如履平地，还能毫无顾忌地消化废土上腐烂的生肉。他们多数为牧民，喜欢放牧。但他们因为拥有超鲜嫩的肉质而被食人族吃到几近灭族。',
-        attributeSummary: '力量+12、智力-8、魅力-8、体质+6',
       },
       {
         id: 'ratfolk',
         title: '鼠族',
         description:
           '鼠族是在废土阴暗角落与古代遗迹中夹缝求生的娇小亚人(1.4m左右)。最显著的特征是头顶巨大的圆耳、娇小的身躯以及一条毛茸茸的尾巴。然而，由于骨骼纤细，她们的身体异常脆弱。娇小的体型限制了她们挥动重型武器的能力。不过，常年与恶劣环境为伴让她们拥有毒素抗性。男性和女性在年轻时候外貌差不多，年迈男性会长出胡子',
-        attributeSummary: '体质-8、力量-8、敏捷+16、智力+5',
       },
       {
         id: 'ailu_folk',
         title: '艾露族',
         description:
           '艾露族是游荡在大陆各地的小型双足猫科兽人(身高1m左右)。特征是完全兽化的毛茸茸外表、短小的四肢与肉球手爪。别看他们体型矮小且看似人畜无害，他们拥有离谱的伤口自愈速度和疼痛耐受力。由于生理结构和体型，只能使用专属于其种族的特制轻型装备。他们厚实的皮毛提供了天然的环境抗性，常伴随利维坦猎人左右。',
-        attributeSummary: '体质+18、魅力+10、力量-8',
       },
       {
         id: 'ilo',
         title: '伊洛族',
         description:
           '传闻是旧帝国时期基因改造工程遗留下来的产物。她们拥有与人类高度相似的躯体，最显著的特征是头顶那对灵敏的兽耳以及身后用于保持极高平衡感的猫尾。她们的肌肉纤维柔韧，这赋予了她们在战斗中惊人的闪避天赋与出色的速度。作为代价，身体抗击打能力较弱。头顶的猫耳是她们感知危险且敏感器官，因为种族特性，每过一段时间会进入发情期，无法生出男性，只能生女性。',
-        attributeSummary: '敏捷+6、魅力+8、力量-10',
         allowedGenders: ['female'],
       },
       {
@@ -1145,31 +933,27 @@ export const RACES = [
     subraces: [
       {
         id: 'skeleton_roundhead',
-        title: '圆头',
+        title: '圆形脑袋',
         description:
           '圆形脑袋是第二帝国时期生产的最为广泛的通用型劳工或民用骨人。它们的设计理念是“可靠与泛用”，光滑的圆形脑袋上没有任何多余的装饰，结构简单，易于维护。它们的身体构造均衡，能够胜任从耕作、建造到基础战斗等各种任务。过于朴实的设计也意味着它们缺乏在特定领域的专精能力，学习高级技能时效率略逊于其他专业型号。',
-        attributeSummary: '力量+3、敏捷+3、感知+3、体质+3、意志+3、智力+3、魅力+3',
       },
       {
         id: 'skeleton_camera',
         title: '摄像机',
         description:
           '这些骨人是第二帝国时代的移动监视与数据记录单元，如今大多在古代遗迹或废弃的哨站中被发现。它们没有传统意义上的“头部”，取而代之的是一个包含了多种光学传感器的球状或盒状摄像机单元。这个单元赋予了它们超凡的感知能力，能在恶劣天气和光线不足的环境下精准地发现远处的威胁，这使它们成为优秀的远程射手和哨兵。',
-        attributeSummary: '感知+15、体质-10',
       },
       {
         id: 'skeleton_lionhead',
         title: '狮头',
         description:
           '狮头是古代战争中用于突破敌方阵线的重型战斗机器人。它们以雄狮为蓝本设计的头部充满了威慑力，从脸颊两侧伸出的是用于散热和诊断的圆形金属管。它们的机体更为高大厚重，内置了额外的液压动力单元，提供了强大的力量。不过，这种蛮力特化的设计牺牲了机体的灵活性和速度，使它们在面对敏捷的敌人时显得有些笨拙。',
-        attributeSummary: '力量+14、敏捷-12',
       },
       {
         id: 'skeleton_foxwalker',
         title: '狐行者',
         description:
           '狐行者是旧帝国时期被设计用于侦察与渗透的特种骨人型号。其最显著的特征是流线型的狐狸头颅结构与轻量化骨架，这使得它们能以高速度和寂静的脚步穿行于各种复杂地形。它们纤细的四肢内装有精密的平衡稳定器。作为代价，轻量化的设计牺牲了结构强度，使它们在正面冲突中难以承受重击。它们的处理器让其在野外拥有更强的生存直觉。',
-        attributeSummary: '感知+5、敏捷+8、体质-10',
       },
       {
         id: 'skeleton_false_savior',
@@ -1178,7 +962,6 @@ export const RACES = [
           '外观、皮肤纹理与呼吸节律几乎与人类无异，连多数简易体检都难以识别其机械本质。其核心却是为高强度歼灭行动打造的古代战争单元，具备极端环境生存与持续作战能力。为了潜入与猎杀而存在，擅长在伪装与暴起之间切换，是第二帝国遗产中最危险的异化型号之一。',
         attributeSummary: '力量+10、敏捷+10、感知+10、体质+10、意志+10、智力+10、魅力+10',
         allowedGenders: ['male', 'female', 'other'],
-        unlockScenarios: ['false_savior'],
       },
     ],
   },
@@ -1270,13 +1053,13 @@ export const TRAITS = {
     {
       id: 'holy_boomer',
       title: '圣国老保',
-      description: '“赞美奥克兰！”你对某些教条有着刻板且顽固的坚持，精神极难被摧毁。意志 +4',
+      description: '“赞美奥克兰！”你对某些教条有着刻板且极其顽固的坚持，精神极难被摧毁。意志 +4',
       category: 'attribute',
     },
     {
       id: 'hive_salesman',
       title: '蜂巢族代购',
-      description: '“朋友，买个提灯吗？”你为了把破铜烂铁卖出去，练就了离谱的推销话术。魅力 +5',
+      description: '“朋友，买个提灯吗？”你为了把破铜烂铁卖出去，练就了极其离谱的推销话术。魅力 +5',
       category: 'attribute',
     },
     {
@@ -1445,7 +1228,7 @@ export const TRAITS = {
       id: 'shek_milf_superfan',
       title: '沙克大妈狂热粉',
       description:
-        '你对沙克族那些浑身骨刺、肌肉虬结的女性有着某种不可告人的狂热XP。只要一想到她们的肌肉，你就会像打了鸡血一样充满斗志。意志 +5',
+        '你对沙克族那些浑身骨刺、肌肉虬结的女性有着某种极其不可告人的狂热XP。只要一想到她们的肌肉，你就会像打了鸡血一样充满斗志。意志 +5',
       category: 'attribute',
     },
     {
@@ -1529,52 +1312,6 @@ export const TRAITS = {
       title: '异种表演',
       description:
         '你曾在地下角斗场被奴隶主注射催情药剂，强迫与进行公开的表演。那群粗野蛮家伙的冲撞彻底改变了你的ASS。体质 +18，魅力 -10',
-      category: 'attribute',
-    },
-    {
-      id: 'desert_walker',
-      title: '大漠行者',
-      description: '习惯了烈日与缺水的环境，你的身体机能如同沙地里的仙人掌般具有韧性，很难被恶劣环境击垮。体质 +6',
-      category: 'attribute',
-    },
-    {
-      id: 'ruin_prospector',
-      title: '遗迹淘金者',
-      description:
-        '长期在古代废墟阴暗的角落里搜寻有价值的金属碎片，为了防范潜伏的机械蜘蛛，你练就了夜视仪般敏锐的目光。感知 +4',
-      category: 'attribute',
-    },
-    {
-      id: 'battle_hardened_mercenary',
-      title: '百战佣兵',
-      description:
-        '常年扛着沉重的斩马刀在刀口舔血，把脑袋别在裤腰带上的生活，让你的肌肉纤维比寻常人粗壮、扎实得多。力量 +7',
-      category: 'attribute',
-    },
-    {
-      id: 'united_cities_rooftop_thief',
-      title: '联合城飞贼',
-      description: '为了躲避联合城武士守卫的追捕，你在密集的屋顶和错综复杂的暗巷中飞檐走壁，身手灵动如猫。敏捷 +5',
-      category: 'attribute',
-    },
-    {
-      id: 'scholar_apprentice',
-      title: '学士学徒',
-      description: '你曾在世界尽头的图书馆里饱读古代手稿，对那些被世人遗忘的机械结构与科技运作原理了然于胸。智力 +6',
-      category: 'attribute',
-    },
-    {
-      id: 'caravan_silver_tongue',
-      title: '商队巧舌',
-      description:
-        '常年游走于各大城镇倒卖货物，你懂得察言观色，几句漂亮话就能让挑剔的贵族或固执的村长乖乖掏出开币。魅力 +4',
-      category: 'attribute',
-    },
-    {
-      id: 'chainbreaker',
-      title: '枷锁挣脱者',
-      description:
-        '曾经的奴隶印记与非人的折磨没能让你屈服，反而让你的内心淬炼得坚不可摧，你发誓绝不再向任何人低头。意志 +5',
       category: 'attribute',
     },
   ],
@@ -1771,55 +1508,6 @@ export const TRAITS = {
       id: 'weird_guy',
       title: '奇怪的家伙',
       description: '你总是对空气说话，优势时会说“继续”，逆风时会说“重新生成”。',
-      category: 'fun',
-    },
-    {
-      id: 'enchanted_element_trails',
-      title: '附魔师的元素之力',
-      description:
-        '你的武器在挥舞或射击时，会自动附带炫酷的烈焰、雷电、冰霜等多种属性拖尾特效随机触发。虽然完全没有任何额外伤害，但耍帅程度堪称第一。',
-      category: 'fun',
-    },
-    {
-      id: 'personal_bgm_survivor',
-      title: '自带BGM的幸存者',
-      description:
-        '你做任何事情都会自带背景音乐。无论是优势战斗、色情事件、悲伤剧情、捡到好东西还是与他人相爱，都会响起对应的BGM和歌声，而且所有人都听得到。',
-      category: 'fun',
-    },
-    {
-      id: 'hive_vip_supreme',
-      title: '蜂巢族顶级VIP',
-      description:
-        '蜂巢族商人看到你就像看到了失散多年的亲爹。只要你一靠近蜂巢村，蜂巢人们就会自发为你配上“大客户驾到”的欢呼音效。',
-      category: 'fun',
-    },
-    {
-      id: 'physical_requiem_aura',
-      title: '物理超度光环',
-      description:
-        '被你打倒或杀死的敌人，在倒地的一瞬间，身体会自动翻跪下双手合十放在胸前，摆出一个安详又体面的祈祷姿势。',
-      category: 'fun',
-    },
-    {
-      id: 'wall_clip_bug',
-      title: '卡墙bug',
-      description:
-        '你可以让队友把你扛起来，再放到墙体夹角处，直接卡进这个墙体附近的随机区域，可能是房子的天花板顶上，也可能是城墙上。',
-      category: 'fun',
-    },
-    {
-      id: 'futa_glitch',
-      title: 'FUTA',
-      description:
-        '对的，你是FUTA。你是男性就有大欧派，你是女性就有欧金金，你是骨人则以上两者也都有。废土的生理学在你身上彻底放弃了解释。',
-      category: 'fun',
-    },
-    {
-      id: 'pocket_dimension_junkyard',
-      title: '异次元口袋',
-      description:
-        '你的背包底层仿佛连接着一个奇怪的异次元垃圾场。你时不时会在包里发现一些毫无价值且离谱的物品，比如某位圣骑士的粉色情书，或一块画着笑脸且怎么都擦不掉的石头。',
       category: 'fun',
     },
   ],

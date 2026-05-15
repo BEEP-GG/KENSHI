@@ -62,10 +62,7 @@ const getDefaultHeightByRaceSubrace = (raceId: string, subraceId: string) => {
   return 175;
 };
 
-const SCENARIO_EXCLUSIVE_TRAITS: Record<
-  string,
-  { name?: string; description?: string; traits?: Array<{ name: string; description: string }> }
-> = {
+const SCENARIO_EXCLUSIVE_TRAITS: Record<string, { name: string; description: string }> = {
   monster_hunter: {
     name: '怪物猎人',
     description: '你对巨兽怀有近乎本能的战意，不会因其压迫感而退缩，并且更容易捕捉到它们留下的踪迹。',
@@ -80,23 +77,11 @@ const SCENARIO_EXCLUSIVE_TRAITS: Record<
   },
   apex_hunter: {
     name: '顶级猎手',
-    description: '长期浸泡于血与火的厮杀中，你的情绪不会被外界撼动，并在战斗中感到近乎兴奋的愉悦。',
+    description: '长期浸泡于血与火的厮杀中，你的情绪极少被外界撼动，并在战斗中感到近乎冷静的愉悦。',
   },
   holy_commoner: {
     name: '圣民',
     description: '你对外界的认知几乎都来自圣国祭司的教导，未知之地在你眼中既危险又充满不可名状的威胁。',
-  },
-  holy_crusade: {
-    traits: [
-      {
-        name: '奥克兰赐福',
-        description: '奥克兰赐福了你，你十分厌恶那些异种和异端，生理和心理的双重恶心，杀了他们你才能心情愉悦。',
-      },
-      {
-        name: '圣言',
-        description: '奥克兰赐福了你，你具有洗脑能力，能够将那群定力不足的迷茫之徒让其听信于你，让其为你献上一切。',
-      },
-    ],
   },
 };
 
@@ -209,68 +194,35 @@ const UNKNOWN_DREAM_TUTORIAL_STEPS = [
     content: `武士刀：
 - 每次对目标造成未被DR格挡的切割伤害时，对目标施加1层“流血”。流血每回合开始时造成1点直接伤害，可叠加。
 - 基础攻速为3。
-- 最终伤害：切割伤害按DR结算后 + 钝伤×0.5。
-- 肢体伤害：切割部分×1.2；钝伤部分先按×0.5参与总伤，再按肢体系数×1。
 
 军刀：
 - 主武器为军刀类时，“武器格挡”基础值+12。
 - 副武器为军刀类时，“武器格挡”基础值+6（可与主武器加成叠加，最高+18）。
-- 基础攻速为2。
-- 最终伤害：切割伤害按DR结算后 + 钝伤×0.6。
-- 肢体伤害：切割部分×1.2；钝伤部分先按×0.6参与总伤，再按肢体系数×1。
 
 砍刀：
 - 无视对方7点DR。
-- 基础攻速为2。
-- 攻击检定大成功（93-100）时触发“破甲”：目标DR降低8（可叠加，对该目标全局生效）。
-- 最终伤害：切割伤害按“DR-7”结算后 + 钝伤×0.7。
-- 肢体伤害：切割部分×1.4；钝伤部分先按×0.7参与总伤，再按肢体系数×1。
+- 攻击检定大成功（01-07）时触发“破甲”：目标DR降低8（可叠加，对该目标全局生效）。
 
 长柄类：
 - 每次攻击时可选择最多3个敌人进行攻击检定；每多一个目标，攻击检定-7。
-- 基础攻速为2。
 - 多目标时：第一个目标按格挡逻辑结算，后续目标按闪避逻辑结算。
-- 最终伤害：切割伤害按DR结算后 + 钝伤×0.6。
-- 肢体伤害：切割部分×1.2；钝伤部分先按×0.6参与总伤，再按肢体系数×1。
 
 钝器：
-- 基础攻速为1。
-- 攻击检定大成功（93-100）时，目标必定获得1层“骨折”；每层骨折使力量/敏捷-10、逃跑检定-15（可叠加，直到夹板包清除）。
-- 最终伤害：切割伤害按DR结算后 + 钝伤×1。
-- 肢体伤害：切割部分×1.2；钝伤部分先按×1参与总伤，再按肢体系数×1.4。
+- 攻击检定大成功（01-07）时，目标必定获得1层“骨折”；每层骨折使力量/敏捷-10、逃跑检定-15（可叠加，直到夹板包清除）。
 
 大型武器：
 - 每次攻击时对2个敌人进行攻击检定。
-- 基础攻速为1。
 - 攻击检定大失败（90-100）或两名目标均被【闪避】时，进入失衡，防御检定-15。
-- 最终伤害：切割伤害按DR结算后 + 钝伤×0.7。
-- 肢体伤害：切割部分×1.2；钝伤部分先按×0.7参与总伤，再按肢体系数×1。
 
 弩：
 - 基础效果：无视对方7点DR。
 - 基础攻速为1。
 - 大失败不会触发反击，而是误伤队友。
-- 最终伤害：切割伤害按“DR-7”结算后 + 钝伤×1.4。
-- 若变量里未单独配置伤害比例，则按默认切割50% / 钝伤50%计算；即 最终伤害 = （总伤害×0.5 - 有效DR，最低为0） + 总伤害×0.5×1.4。
-- 肢体伤害：切割部分×1.2；钝伤部分先按×1.4参与总伤，再按肢体系数×1。
 
 弓：
-- 基础攻速为2。
 - 大失败不会触发反击，而是误伤队友。
 - 当弓/弩作为主武器且无副武器时，防御时只能闪避不能格挡；若有副武器则可正常防御。
-- 对弓/弩攻击只能闪避，无法格挡。
-- 最终伤害：切割伤害按DR结算后 + 钝伤×0.7。
-- 若变量里未单独配置伤害比例，则按默认切割50% / 钝伤50%计算。
-- 肢体伤害：切割部分×1.2；钝伤部分先按×0.7参与总伤，再按肢体系数×1。
-
-武术：
-- 识别种类为“武术”。
-- 速度型（DEX>=STR）：基础攻速3；大成功区间93-100，触发额外攻击1次。
-- 重击型（STR>DEX）：基础攻速2；无视5点DR；大成功区间93-100，伤害x2。
-- 两种武术的伤害比例均沿用变量中的伤害比例。
-- 默认最终伤害：若变量未配置伤害比例，则按切割50% / 钝伤50%计算；速度型按DR正常结算，重击型按“DR-5”结算；钝伤倍率为0.7。
-- 默认肢体伤害：切割部分×1.2；钝伤部分先按×0.7参与总伤，再按肢体系数×1。
-- 大失败与其他武器一致。`,
+- 对弓/弩攻击只能闪避，无法格挡。`,
   },
   {
     title: '伤害面骰数',
@@ -397,10 +349,16 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
     }
 
     if (subraceId === 'skeleton_false_savior') {
-      traits.push({
-        title: '邪念',
-        description: '当附近存在非骨人单位时，系统会持续发出强制杀戮指令，嗜血杀人或者远离非骨人单位。',
-      });
+      traits.push(
+        {
+          title: '邪念',
+          description: '当附近存在非骨人单位时，系统会持续发出强制杀戮指令，嗜血杀人或者远离非骨人单位。',
+        },
+        {
+          title: '记忆断片',
+          description: '大脑记忆模块在坠落中受损，导致任务目标和关键信息模糊不清。消除：找到卡特龙',
+        },
+      );
     }
 
     return traits;
@@ -471,47 +429,22 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
       charisma: 0,
     };
 
-    if (data.scenario === 'holy_crusade') {
-      base.strength += 5;
-      base.dexterity += 5;
-      base.perception += 5;
-      base.constitution += 5;
-      base.will += 5;
-      base.intelligence += 5;
-      base.charisma += 10;
+    const selectedScenario = SCENARIOS.find(scenario => scenario.id === data.scenario);
+    const textSource = selectedScenario?.description ?? '';
+
+    const regex = /(力量|敏捷|感知|体质|意志|智力|魅力)\s*([+-]\s*\d+)/g;
+    let match = regex.exec(textSource);
+    while (match) {
+      const attrKey = ATTRIBUTE_LABEL_TO_KEY[match[1]];
+      const delta = parseInt(match[2].replace(/\s+/g, ''), 10);
+      if (attrKey && !Number.isNaN(delta)) {
+        base[attrKey] += delta;
+      }
+      match = regex.exec(textSource);
     }
 
     return base;
   }, [data.scenario]);
-
-  const traitAttributeBonus = React.useMemo(() => {
-    const base: Record<Attribute, number> = {
-      strength: 0,
-      dexterity: 0,
-      perception: 0,
-      constitution: 0,
-      will: 0,
-      intelligence: 0,
-      charisma: 0,
-    };
-
-    data.traits.forEach(traitId => {
-      const trait = [...TRAITS.attribute, ...TRAITS.life, ...TRAITS.fun].find(item => item.id === traitId);
-      if (!trait) return;
-      const regex = /(力量|敏捷|感知|体质|意志|智力|魅力)\s*([+-]\s*\d+)/g;
-      let match = regex.exec(trait.description);
-      while (match) {
-        const attrKey = ATTRIBUTE_LABEL_TO_KEY[match[1]];
-        const delta = parseInt(match[2].replace(/\s+/g, ''), 10);
-        if (attrKey && !Number.isNaN(delta)) {
-          base[attrKey] += delta;
-        }
-        match = regex.exec(trait.description);
-      }
-    });
-
-    return base;
-  }, [data.traits]);
 
   const holdTimerRef = React.useRef<number | null>(null);
   const holdDelayRef = React.useRef<number | null>(null);
@@ -680,8 +613,6 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
   const selectedSubrace = selectedRace?.subraces.find(subrace => subrace.id === data.subrace);
   const raceExclusiveTraits = getRaceExclusiveTraits(data.race, data.subrace);
   const raceTraits = raceExclusiveTraits.map(trait => `${trait.title}：${trait.description}`);
-  const autoRaceTraitName = raceExclusiveTraits.map(item => item.title).join('、');
-  const autoRaceTraitDescription = raceExclusiveTraits.map(item => `${item.title}：${item.description}`).join('；');
   const selectedScenario = SCENARIOS.find(scenario => scenario.id === data.scenario) as
     | {
         allowedGenders?: Array<CharacterData['gender']>;
@@ -932,16 +863,23 @@ ${names}`;
     }
   }, [allowedGenders, data.gender, isSkeleton, data.subrace, subraceAllowedGenders, updateData]);
 
-  React.useEffect(() => {}, []);
+  React.useEffect(() => {
+    const exclusiveTraits = getRaceExclusiveTraits(data.race, data.subrace);
+    const nextRaceTraitName = exclusiveTraits.map(item => item.title).join('、');
+    const nextRaceTraitDescription = exclusiveTraits.map(item => `${item.title}：${item.description}`).join('；');
+
+    if (data.customTraitName !== nextRaceTraitName || data.customTraitDescription !== nextRaceTraitDescription) {
+      updateData({
+        customTraitName: nextRaceTraitName,
+        customTraitDescription: nextRaceTraitDescription,
+      });
+    }
+  }, [data.customTraitDescription, data.customTraitName, data.race, data.subrace, getRaceExclusiveTraits, updateData]);
 
   React.useEffect(() => {
     const scenarioTrait = SCENARIO_EXCLUSIVE_TRAITS[data.scenario];
-    const traitList = scenarioTrait?.traits ?? [];
-    const nextName = traitList.length > 0 ? traitList.map(item => item.name).join('、') : scenarioTrait?.name || '';
-    const nextDesc =
-      traitList.length > 0
-        ? traitList.map(item => `${item.name}：${item.description}`).join('；')
-        : scenarioTrait?.description || '';
+    const nextName = scenarioTrait?.name || '';
+    const nextDesc = scenarioTrait?.description || '';
     if (data.scenarioTraitName !== nextName || data.scenarioTraitDescription !== nextDesc) {
       updateData({
         scenarioTraitName: nextName,
@@ -975,8 +913,6 @@ ${names}`;
           traits: [],
           customTraitName: '',
           customTraitDescription: '',
-          scenarioTraitName: '',
-          scenarioTraitDescription: '',
         }));
         updateData({ squadMembers: resetMembers });
       }
@@ -1199,18 +1135,18 @@ ${names}`;
                       ) : (
                         <>{value}</>
                       )}
-                      {raceAttributeBonus[attr] + scenarioAttributeBonus[attr] + traitAttributeBonus[attr] !== 0 && (
+                      {raceAttributeBonus[attr] + scenarioAttributeBonus[attr] !== 0 && (
                         <span
                           className={
-                            raceAttributeBonus[attr] + scenarioAttributeBonus[attr] + traitAttributeBonus[attr] > 0
+                            raceAttributeBonus[attr] + scenarioAttributeBonus[attr] > 0
                               ? 'text-green-400'
                               : 'text-red-400'
                           }
                         >
                           (
-                          {raceAttributeBonus[attr] + scenarioAttributeBonus[attr] + traitAttributeBonus[attr] > 0
-                            ? `+${raceAttributeBonus[attr] + scenarioAttributeBonus[attr] + traitAttributeBonus[attr]}`
-                            : raceAttributeBonus[attr] + scenarioAttributeBonus[attr] + traitAttributeBonus[attr]}
+                          {raceAttributeBonus[attr] + scenarioAttributeBonus[attr] > 0
+                            ? `+${raceAttributeBonus[attr] + scenarioAttributeBonus[attr]}`
+                            : raceAttributeBonus[attr] + scenarioAttributeBonus[attr]}
                           )
                         </span>
                       )}
@@ -1314,12 +1250,7 @@ ${names}`;
                 .map((member, index) => {
                   const realIndex = currentSquadPage;
                   const memberRace = RACES.find(race => race.id === member.race);
-                  const memberSubraces = (memberRace?.subraces ?? []).filter(subrace => {
-                    if ((subrace as { hidden?: boolean }).hidden) return false;
-                    const unlockScenarios = (subrace as { unlockScenarios?: string[] }).unlockScenarios;
-                    if (unlockScenarios && !unlockScenarios.includes(data.scenario)) return false;
-                    return true;
-                  });
+                  const memberSubraces = memberRace?.subraces ?? [];
                   const memberSubrace = memberSubraces.find(subrace => subrace.id === member.subrace);
                   const memberLevel = Math.max(1, Math.min(100, Number(member.level || 1)));
                   const memberTotalAttributePoints =
@@ -1335,30 +1266,7 @@ ${names}`;
                   return (
                     <div key={realIndex} className="border border-white/10 rounded-xl p-4 bg-black/30">
                       <div className="flex items-center justify-between mb-4">
-                        <div className="text-sm text-[#C2B280] font-serif flex items-center gap-2 flex-wrap">
-                          <span>队员 {realIndex + 1}</span>
-                          {(() => {
-                            const memberRaceSummary =
-                              (memberSubrace as { attributeSummary?: string })?.attributeSummary || '';
-                            const memberTraitSummary = member.traits
-                              .map(
-                                traitId =>
-                                  [...TRAITS.attribute, ...TRAITS.life, ...TRAITS.fun].find(
-                                    trait => trait.id === traitId,
-                                  )?.description || '',
-                              )
-                              .flatMap(description =>
-                                Array.from(
-                                  description.matchAll(/(力量|敏捷|感知|体质|意志|智力|魅力)\s*[+-]\s*\d+/g),
-                                ).map(match => match[0].replace(/\s+/g, '')),
-                              )
-                              .join('、');
-                            const summaryText = [memberRaceSummary, memberTraitSummary].filter(Boolean).join('；');
-                            return summaryText ? (
-                              <span className="text-[10px] text-white/50 font-sans">{summaryText}</span>
-                            ) : null;
-                          })()}
-                        </div>
+                        <div className="text-sm text-[#C2B280] font-serif">队员 {realIndex + 1}</div>
                         {companionMembers.length > 0 ? (
                           <span className="text-xs text-white/40">固定成员</span>
                         ) : (
@@ -2300,55 +2208,45 @@ ${names}`;
             </div>
             <div className="mt-4 space-y-4">
               <div>
-                <label className="block text-sm text-white/60 mb-2">剧本专属特质（自动写入，不可修改）</label>
+                <label className="block text-sm text-white/60 mb-2">剧本特质（仅 1 个）</label>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                  {(() => {
-                    const scenarioTrait = SCENARIO_EXCLUSIVE_TRAITS[data.scenario];
-                    const traitList = scenarioTrait?.traits ?? [];
-                    if (traitList.length > 0) {
-                      return traitList.map(item => (
-                        <div key={item.name} className="rounded border border-[#C2B280]/30 bg-black/40 p-3">
-                          <div className="text-sm font-semibold text-[#C2B280]">{item.name}</div>
-                          <div className="mt-1 text-xs text-white/80 leading-relaxed">{item.description}</div>
-                        </div>
-                      ));
-                    }
-                    if (scenarioTrait?.name && scenarioTrait?.description) {
-                      return (
-                        <div className="rounded border border-[#C2B280]/30 bg-black/40 p-3 lg:col-span-2">
-                          <div className="text-sm font-semibold text-[#C2B280]">{scenarioTrait.name}</div>
-                          <div className="mt-1 text-xs text-white/80 leading-relaxed">{scenarioTrait.description}</div>
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
-                  {!SCENARIO_EXCLUSIVE_TRAITS[data.scenario] && (
-                    <div className="rounded border border-[#C2B280]/30 bg-black/40 p-3 text-sm text-white/60">
-                      当前剧本无专属特质
-                    </div>
-                  )}
+                  <input
+                    value={data.scenarioTraitName || ''}
+                    readOnly
+                    className="w-full rounded border border-[#C2B280]/30 bg-black/40 p-3 text-sm text-white/85 focus:outline-none"
+                    placeholder="随开局自动生成"
+                  />
+                  <textarea
+                    value={data.scenarioTraitDescription || ''}
+                    readOnly
+                    rows={2}
+                    className="w-full resize-y rounded border border-[#C2B280]/30 bg-black/40 p-3 text-sm text-white/85 focus:outline-none"
+                    placeholder="随开局自动生成"
+                  />
                 </div>
-                <p className="mt-2 text-[11px] text-[#C2B280]/75">该区域随剧本自动生成，不能手动编辑。</p>
+                <p className="mt-2 text-[11px] text-[#C2B280]/75">该特质由当前开局自动匹配并写入，不需要手动编辑。</p>
               </div>
 
               <div>
-                <label className="block text-sm text-white/60 mb-2">自定义特质（仅 1 个）</label>
+                <label className="block text-sm text-white/60 mb-2">种族专属特质（随开局自动写入）</label>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                   <input
                     value={data.customTraitName || ''}
-                    onChange={e => updateData({ customTraitName: e.target.value })}
-                    className="w-full rounded border border-white/20 bg-black/40 p-3 text-sm text-white/80 focus:border-[#C2B280] focus:outline-none"
-                    placeholder="特质名称"
+                    readOnly
+                    className="w-full rounded border border-white/20 bg-black/40 p-3 text-sm text-white/80 focus:outline-none"
+                    placeholder="选择种族后自动生成"
                   />
                   <textarea
                     value={data.customTraitDescription || ''}
-                    onChange={e => updateData({ customTraitDescription: e.target.value })}
+                    readOnly
                     rows={3}
-                    className="w-full resize-y rounded border border-white/20 bg-black/40 p-3 text-sm text-white/80 focus:border-[#C2B280] focus:outline-none"
-                    placeholder="特质描述"
+                    className="w-full resize-y rounded border border-white/20 bg-black/40 p-3 text-sm text-white/80 focus:outline-none"
+                    placeholder="选择种族后自动生成"
                   />
                 </div>
+                <p className="mt-2 text-[11px] text-white/50">
+                  这里会根据当前种族 / 亚种自动写入专属特质；蜂巢族、沙克族这类会叠加种族与亚种特质。
+                </p>
               </div>
             </div>
           </div>

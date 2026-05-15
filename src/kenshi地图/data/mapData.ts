@@ -3331,14 +3331,6 @@ export const cities: City[] = [
     regionId: 'region-deadlands',
   },
   {
-    id: 'city-narko-watch',
-    name: '娜尔可守望',
-    description: '铁之谷中的娜尔可信徒城镇。',
-    type: 'city',
-    coordinates: [3329, 4377],
-    regionId: 'region-iron-valleys',
-  },
-  {
     id: 'city-mourn',
     name: '哀矿镇',
     description: '骸骨荒原中部的破败城镇，常有悬赏犯藏身。治安松散但仍有人维持交易。',
@@ -3575,10 +3567,10 @@ export const outposts: City[] = [
   },
   {
     id: 'outpost-narkos-trap',
-    name: '娜尔可的陷阱',
-    description: '圣国看管娜尔可的邪恶之塔的军事要塞城镇。这里有着圣骑士和大量的神圣哨兵驻守。哨站。',
+    name: '娜儿可的守望',
+    description: '娜儿可信徒的据点之一，传闻有人在此修行。外来者不受欢迎。',
     type: 'outpost',
-    coordinates: [3115, 3783],
+    coordinates: [3303, 4390],
     regionId: 'region-iron-valleys',
   },
   {

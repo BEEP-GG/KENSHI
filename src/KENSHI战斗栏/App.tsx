@@ -73,6 +73,10 @@ type BattleCharacter = {
   subWeaponAttackCount: number;
   noBlockNextRound: boolean;
   defenseBonus: number;
+  blockBonus: number;
+  aiDefenseCooldown: number;
+  aiMedicalCooldown: number;
+  playerEmergencyMedicalCooldown: number;
   escaped: boolean;
   lowHpTraumaBoostUsed: boolean;
   hitBonusAgainst: Record<string, number>;
@@ -87,6 +91,12 @@ type BattleCharacter = {
 
 type ActionType = { id: string; label: string; icon: React.ElementType; color: string; glow: string };
 
+type AiDecision = {
+  actionId: 'attack' | 'defense' | 'escape' | 'emergency_medical';
+  targetId?: string;
+  reason?: string;
+};
+
 type BattleState = {
   round: number;
   units: BattleCharacter[];
@@ -95,6 +105,8 @@ type BattleState = {
   endReason?: 'normal' | 'surrender';
   lastRoundAttackersCount: Record<string, number>;
   nonLethalActorIds: string[]; // 非致命模式：按角色挂钩
+  aiPlans: Record<string, AiDecision>;
+  playerEmergencyMedicalCooldown: number;
 };
 
 type BattleOutcome =
@@ -198,7 +210,9 @@ const BATTLE_RULES = `战斗轮结构:
 
 伤害结算流程:
 第一步_伤害计算:
-  - 面板计算: “武器基础骰子结果 + (力量 - 20) * 0.4”
+  - 面板计算:
+      近战: “武器基础骰子结果 + max(0, (力量 * 0.65 + 敏捷 * 0.35) * 0.4)”
+      远程: “武器基础骰子结果 + max(0, (力量 * 0.6 + 感知 * 0.7) * 0.4)”
   - 伤害拆分: 根据武器比例，将面板伤害拆分为【切割伤害】与【钝伤伤害】。
 
 第二步_护甲过滤:
@@ -210,19 +224,35 @@ const BATTLE_RULES = `战斗轮结构:
   - 逻辑: 从目标 HP 中扣除最终伤害。
   - 创伤判定 (脚本触发条件):
       条件A: 本次最终伤害 > (目标体质 * 0.4)
-      条件B: 攻击方命中检定为大成功 (93-100)
+      条件B: 攻击方命中检定为大成功 (01-07)
       满足任一条件，随机部位【创伤等级】+1，并触发相应层级的残废/减值效果。
   - 濒死判定:
       HP > 0: 继续战斗。
       HP <= 0 (首次倒地): 触发韧性检定。
 
 特殊规则:
-- 连击机制: 若角色拥有多次攻击次数，防御方在同一轮内防御后续攻击时，【最终防御成功率】每下累积 -10。
+- 连击机制: 若角色拥有多次攻击次数，防御方在同一轮内防御后续攻击时，【最终防御成功率】每下累积 -8。
+- 意志减伤: 仅对【当前角色】与【小队成员】生效；每20点意志提供2.5%伤害减免，无上限。
+- AI紧急手动医治:
+    - AI动作池: 攻击 > 紧急手动医治 > 防御 > 逃跑（按权重加权判定）
+    - 开启条件: 智力 INT > 50，且医疗冷却为0。
+    - 恢复量: “INT * 0.4 + 1DINT”
+    - 医疗冷却: AI执行一次紧急手动医治后，治疗自己则3回合内不会再次判定，治疗他人则2回合内不会再次判定。
+    - 防御冷却: AI执行一次防御后，2回合内不会再次判定防御。
+    - 自疗限制: 自身血量比例 > 75% 时，绝对不会把自己作为紧急手动医治目标。
+    - 敌方目标优先级:
+        1. 自身血量 < 25% 时，优先治疗自己。
+        2. 否则优先治疗同阵营中血量比例最低者。
+    - 友方/友军AI目标优先级:
+        1. 当前角色血量 < 40% 时，优先治疗当前角色。
+        2. 否则优先治疗血量 < 40% 的小队成员中最低血者。
+        3. 再治疗血量 < 40% 的其他友军AI中最低血者。
+        4. 若以上都不存在，且自身血量 ≤ 75%，才可能治疗自己。
 - 大成功与大失败:
-    攻击大成功 (93-100): 伤害结算x1.5且无法格挡。
+    攻击大成功 (01-07): 伤害结算x1.5且无法格挡。
     武术例外:
-      速度型(DEX>=STR): 大成功区间93-100，触发额外攻击1次。
-      重击型(STR>DEX): 大成功区间93-100，伤害x2且无视5点DR。
+      速度型(DEX>=STR): 大成功区间01-10，触发额外攻击1次。
+      重击型(STR>DEX): 大成功区间01-07，伤害x2且无视5点DR。
     攻击大失败 (01-05): 攻击者失去平衡，下一轮无法执行格挡，且防御方可获得一次即时反击。
 - 濒死与韧性:
     倒地判定: 当 HP 归零时，角色需进行一次【体质】检定。
@@ -243,67 +273,41 @@ const WEAPON_CATEGORY_GUIDE = `武器类别详解：
 武士刀：
 - 每次对目标造成未被DR格挡的切割伤害时，对目标施加1层“流血”。流血每回合开始时造成1点直接伤害，可叠加。
 - 基础攻速为3。
-- 最终伤害：切割伤害按DR结算后 + 钝伤×0.5。
-- 肢体伤害：切割部分×1.2；钝伤部分先按×0.5参与总伤，再按肢体系数×1。
 
 军刀：
 - 装备军刀类武器时，“武器格挡”基础值+12。
-- 基础攻速为2。
-- 最终伤害：切割伤害按DR结算后 + 钝伤×0.6。
-- 肢体伤害：切割部分×1.2；钝伤部分先按×0.6参与总伤，再按肢体系数×1。
 
 砍刀：
 - 无视对方7点DR。
-- 基础攻速为2。
-- 攻击检定大成功（93-100）时触发“破甲”：目标DR降低8（可叠加，对该目标全局生效）。
-- 最终伤害：切割伤害按“DR-7”结算后 + 钝伤×0.7。
-- 肢体伤害：切割部分×1.4；钝伤部分先按×0.7参与总伤，再按肢体系数×1。
+- 攻击检定大成功（01-07）时触发“破甲”：目标DR降低8（可叠加，对该目标全局生效）。
 
 长柄类：
 - 每次攻击时可选择最多3个敌人进行攻击检定；每多一个目标，攻击检定-7。
-- 基础攻速为2。
-- 最终伤害：切割伤害按DR结算后 + 钝伤×0.6。
-- 肢体伤害：切割部分×1.2；钝伤部分先按×0.6参与总伤，再按肢体系数×1。
 
 钝器：
-- 基础攻速为1。
-- 攻击检定大成功（93-100）时，目标必定获得1层“骨折”；每层骨折使力量/敏捷-10、逃跑检定-15（可叠加，直到夹板包清除）。
-- 最终伤害：切割伤害按DR结算后 + 钝伤×1。
-- 肢体伤害：切割部分×1.2；钝伤部分先按×1参与总伤，再按肢体系数×1.4。
+- 攻击检定大成功（01-07）时，目标必定获得1层“骨折”；每层骨折使力量/敏捷-10、逃跑检定-15（可叠加，直到夹板包清除）。
 
 大型武器：
 - 每次攻击时对2个敌人进行攻击检定。
-- 基础攻速为1。
 - 攻击检定大失败（90-100）或两名目标均被【闪避】时，进入失衡，防御检定-15。
-- 最终伤害：切割伤害按DR结算后 + 钝伤×0.7。
-- 肢体伤害：切割部分×1.2；钝伤部分先按×0.7参与总伤，再按肢体系数×1。
 
 弩：
 - 基础效果：无视对方7点DR。
 - 基础攻速为1。
 - 大失败不会触发反击，而是误伤队友。
 - 弩矢效果后续补充。
-- 最终伤害：切割伤害按“DR-7”结算后 + 钝伤×1.4。
-- 若变量里未单独配置伤害比例，则按默认切割50% / 钝伤50%计算；即 最终伤害 = （总伤害×0.5 - 有效DR，最低为0） + 总伤害×0.5×1.4。
-- 肢体伤害：切割部分×1.2；钝伤部分先按×1.4参与总伤，再按肢体系数×1。
 
 弓：
-- 基础攻速为2。
 - 大失败不会触发反击，而是误伤队友。
 - 箭矢效果后续补充。
 - 当弓/弩作为主武器且无副武器时，防御时只能闪避不能格挡；若有副武器则可正常防御。
 - 对弓/弩攻击只能闪避，无法格挡。
-- 最终伤害：切割伤害按DR结算后 + 钝伤×0.7。
-- 若变量里未单独配置伤害比例，则按默认切割50% / 钝伤50%计算。
-- 肢体伤害：切割部分×1.2；钝伤部分先按×0.7参与总伤，再按肢体系数×1。
 
 武术：
 - 识别种类为“武术”。
-- 速度型（DEX>=STR）：基础攻速3；大成功区间93-100，触发额外攻击1次。
-- 重击型（STR>DEX）：基础攻速2；无视5点DR；大成功区间93-100，伤害x2。
+- 速度型（DEX>=STR）：基础攻速3；大成功区间01-10，触发额外攻击1次。
+- 重击型（STR>DEX）：基础攻速2；无视5点DR；大成功区间01-07，伤害x2。
 - 两种武术的伤害比例均沿用变量中的伤害比例。
-- 默认最终伤害：若变量未配置伤害比例，则按切割50% / 钝伤50%计算；速度型按DR正常结算，重击型按“DR-5”结算；钝伤倍率为0.7。
-- 默认肢体伤害：切割部分×1.2；钝伤部分先按×0.7参与总伤，再按肢体系数×1。
 - 大失败与其他武器一致。`;
 
 const TRAUMA_RULES = `创伤与状态详解：
@@ -822,6 +826,10 @@ const normalizeCharacter = (
     subWeaponAttackCount,
     noBlockNextRound: false,
     defenseBonus: 0,
+    blockBonus: 0,
+    aiDefenseCooldown: 0,
+    aiMedicalCooldown: 0,
+    playerEmergencyMedicalCooldown: 0,
     escaped: false,
     lowHpTraumaBoostUsed: false,
     hitBonusAgainst: {},
@@ -918,18 +926,18 @@ const getLegPenalty = (level: number) => {
 };
 
 const getKillExpByLevel = (level: number) => {
-  if (level > 80) return 70 + level * 5;
-  if (level > 50) return 40 + level * 3.5;
-  return 30 + level * 2.5;
+  if (level > 80) return 30 + level * 3;
+  if (level > 50) return 30 + level * 2.5;
+  return 30 + level * 2;
 };
 
 const getDownExpByLevel = (level: number) => {
-  if (level > 80) return 50 + level * 4.5;
-  if (level > 50) return 30 + level * 2.5;
-  return 20 + level * 2;
+  if (level > 80) return 10 + level * 3;
+  if (level > 50) return 10 + level * 2.5;
+  return 10 + level * 2;
 };
 
-const getEscapeExpByLevel = (level: number) => getDownExpByLevel(level) * 0.7;
+const getEscapeExpByLevel = (level: number) => getDownExpByLevel(level) * 0.3;
 
 const getMediumCheckSuccess = (tgh: number) => {
   const chance = _.clamp((tgh - 30) / 2, 0, 100);
@@ -1007,10 +1015,11 @@ const getDefenseBase = (defender: BattleCharacter, useBlock: boolean) => {
   const subBlockBonus = useBlock && /军刀/.test(defender.subWeapon.type) ? 6 : 0;
   const shieldBonus = useBlock && /盾牌/.test(defender.subWeapon.type) ? 12 : 0;
   const blockBonus = mainBlockBonus + subBlockBonus + shieldBonus;
+  const tacticBonus = useBlock ? defender.blockBonus || 0 : defender.defenseBonus || 0;
   const rangedMainWithSubPenalty =
     useBlock && isBowOrCrossbow(defender.weapon.type) && defender.subWeapon.type !== '无' ? 8 : 0;
   const penalty = getDefensePenalty(defender, useBlock) + rangedMainWithSubPenalty;
-  return base + blockBonus + (defender.defenseBonus || 0) - penalty;
+  return base + blockBonus + tacticBonus - penalty;
 };
 
 const getDefenseMode = (defender: BattleCharacter, attackerWeaponType: string) => {
@@ -1302,6 +1311,8 @@ export default function App() {
     endReason: 'normal',
     lastRoundAttackersCount: {},
     nonLethalActorIds: [],
+    aiPlans: {},
+    playerEmergencyMedicalCooldown: 0,
   });
   const battleOutcome = useMemo(() => getBattleOutcome(battleState.units), [battleState.units]);
   const displayOutcome: BattleOutcome = battleState.endReason === 'surrender' ? '投降' : battleOutcome;
@@ -1317,7 +1328,7 @@ export default function App() {
         actionId: string;
         targetId?: string;
         targetIds?: string[];
-        tactic?: 'taunt' | 'defense' | 'medical' | 'escape';
+        tactic?: 'taunt' | 'defense' | 'medical' | 'emergency_medical' | 'escape';
         itemName?: string;
       }
     >
@@ -1327,6 +1338,14 @@ export default function App() {
   const [medicalItemSelecting, setMedicalItemSelecting] = useState(false);
   const [medicalActorId, setMedicalActorId] = useState<string | null>(null);
   const [selectedMedicalTargetId, setSelectedMedicalTargetId] = useState<string | null>(null);
+  const [battleNotice, setBattleNotice] = useState<{ text: string; tone: 'amber' | 'rose' } | null>(null);
+
+  const getWillDamageReductionRate = (unit: BattleCharacter) => {
+    if (unit.faction !== 'friendly' || unit.subFaction !== 'squad') return 0;
+    return (unit.attributes.WIL / 20) * 0.025;
+  };
+
+  const getTacticEffectMultiplier = (unit: BattleCharacter) => 1 + (unit.attributes.INT / 20) * 0.1;
   const [selectedMedicalItem, setSelectedMedicalItem] = useState<string | null>(null);
   const [nonLethalMenuOpen, setNonLethalMenuOpen] = useState(false);
   const [roundLimit, setRoundLimit] = useState<number | null>(10);
@@ -1374,6 +1393,8 @@ export default function App() {
       window.matchMedia('(hover: none)').matches;
     return byUa || byWidth || byTouch;
   }, []);
+  const mobileDetailExpanded = isMobile && !!expandedCharId;
+  const mobileBottomExpanded = isMobile && (mobileLogCollapsed || mobileDetailExpanded);
 
   const friendlyUnits = useMemo(
     () => battleState.units.filter(unit => unit.faction === 'friendly'),
@@ -1484,15 +1505,28 @@ export default function App() {
       // 兼容最新变量：补齐“往事.关键记忆”默认结构，避免旧存档缺字段
       _.set(stat, '往事.关键记忆', _.get(stat, '往事.关键记忆', []));
       const { units, playerId } = buildUnitsFromStat(stat);
+      const initialAiPlans = units.reduce<Record<string, AiDecision>>((acc, unit) => {
+        if (!isCombatReadyUnit(unit) || unit.subFaction === 'squad') return acc;
+        acc[unit.id] = decideAiAction(unit, units, {});
+        return acc;
+      }, {});
+      const initialPreviewUnits = units.map(unit => {
+        if (!isCombatReadyUnit(unit)) return { ...unit, intent: undefined };
+        if (unit.subFaction === 'squad') return unit;
+        const decision = initialAiPlans[unit.id] || decideAiAction(unit, units, {});
+        return { ...unit, intent: getAiIntentLabel(decision, unit, units) };
+      });
       if (cancelledRef.current) return;
       setBattleState({
         round: 1,
-        units,
+        units: initialPreviewUnits,
         logs: [],
         result: null,
         endReason: 'normal',
         lastRoundAttackersCount: {},
         nonLethalActorIds: [],
+        aiPlans: initialAiPlans,
+        playerEmergencyMedicalCooldown: 0,
       });
       setPlayerId(playerId);
       setResultConfirmed(false);
@@ -1680,19 +1714,41 @@ export default function App() {
     setSurrenderConfirmOpen(false);
   };
 
-  const applyTactic = (tactic: 'taunt' | 'defense' | 'medical' | 'escape') => {
+  const applyTactic = (tactic: 'taunt' | 'defense' | 'medical' | 'emergency_medical' | 'escape') => {
     const actorId = selectedActorId || playerId;
     if (!actorId) return;
     const actor = getUnit(battleState.units, actorId);
     if (!actor || actor.subFaction !== 'squad' || actor.escaped) return;
 
-    if (tactic === 'medical') {
+    if (tactic === 'medical' || tactic === 'emergency_medical') {
+      if (tactic === 'emergency_medical' && battleState.playerEmergencyMedicalCooldown > 0) {
+        setPlannedActions(prev => {
+          const next = { ...prev };
+          delete next[actorId];
+          return next;
+        });
+        updateUnitIntent(actorId, '无');
+        setBattleNotice({
+          text: `紧急手动医治正在冷却中，还需${battleState.playerEmergencyMedicalCooldown}回合后才能使用。`,
+          tone: 'amber',
+        });
+        setTimeout(() => {
+          setBattleNotice(current =>
+            current?.text ===
+            `紧急手动医治正在冷却中，还需${battleState.playerEmergencyMedicalCooldown}回合后才能使用。`
+              ? null
+              : current,
+          );
+        }, 2200);
+        setTacticsOpen(false);
+        return;
+      }
       setMedicalActorId(actorId);
       setSelectedMedicalTargetId(null);
       setSelectedMedicalItem(null);
       setMedicalSelecting(true);
       setMedicalItemSelecting(false);
-      updateUnitIntent(actorId, '选择医疗目标');
+      updateUnitIntent(actorId, tactic === 'medical' ? '选择医疗目标' : '选择紧急医治目标');
       setPlannedActions(prev => ({
         ...prev,
         [actorId]: { actionId: 'tactics', tactic },
@@ -1720,7 +1776,7 @@ export default function App() {
       ...prev,
       [actorId]: { actionId: 'tactics', tactic },
     }));
-    const intentMap = { defense: '防御', medical: '医疗', escape: '逃跑' } as const;
+    const intentMap = { defense: '防御', medical: '医疗', emergency_medical: '紧急医治', escape: '逃跑' } as const;
     updateUnitIntent(actorId, intentMap[tactic]);
     setTacticsOpen(false);
   };
@@ -1750,6 +1806,163 @@ export default function App() {
       }
     });
     return working;
+  };
+
+  type AiDecision = {
+    actionId: 'attack' | 'defense' | 'escape' | 'emergency_medical';
+    targetId?: string;
+    reason?: string;
+  };
+
+  const getCombatReadyCount = (units: BattleCharacter[], faction: Faction) =>
+    units.filter(unit => unit.faction === faction && isCombatReadyUnit(unit)).length;
+
+  const getLowestHpTarget = (units: BattleCharacter[]) => {
+    if (!units.length) return null;
+    return [...units].sort((a, b) => a.hp / Math.max(1, a.maxHp) - b.hp / Math.max(1, b.maxHp))[0] ?? null;
+  };
+
+  const getEmergencyHealTarget = (actor: BattleCharacter, units: BattleCharacter[]) => {
+    const friendlyUnits = units.filter(unit => unit.faction === actor.faction && isCombatReadyUnit(unit));
+    const lowHpUnits = friendlyUnits.filter(unit => unit.hp / Math.max(1, unit.maxHp) < 0.4);
+    const actorHpRate = actor.hp / Math.max(1, actor.maxHp);
+
+    if (actor.faction === 'enemy') {
+      if (actorHpRate < 0.25) return actor;
+      const candidateUnits = lowHpUnits.length ? lowHpUnits : friendlyUnits;
+      const filteredCandidates =
+        actorHpRate > 0.75 ? candidateUnits.filter(unit => unit.id !== actor.id) : candidateUnits;
+      return getLowestHpTarget(filteredCandidates.length ? filteredCandidates : candidateUnits);
+    }
+
+    const currentRole = friendlyUnits.find(unit => unit.subFaction === 'squad' && unit.id === playerId);
+    if (currentRole && currentRole.hp / Math.max(1, currentRole.maxHp) < 0.4) return currentRole;
+
+    const squadLowHp = lowHpUnits.filter(unit => unit.subFaction === 'squad');
+    if (squadLowHp.length > 0) return getLowestHpTarget(squadLowHp);
+
+    const allyLowHp = lowHpUnits.filter(unit => unit.subFaction !== 'squad');
+    if (allyLowHp.length > 0) return getLowestHpTarget(allyLowHp);
+
+    if (actorHpRate > 0.75) {
+      const nonSelfCandidates = friendlyUnits.filter(unit => unit.id !== actor.id);
+      if (nonSelfCandidates.length > 0) return getLowestHpTarget(nonSelfCandidates);
+    }
+
+    return actor;
+  };
+
+  const getAiIntentLabel = (decision: AiDecision, actor: BattleCharacter, units: BattleCharacter[]) => {
+    if (decision.actionId === 'defense') return '防御';
+    if (decision.actionId === 'escape') return '逃跑';
+    if (decision.actionId === 'emergency_medical') {
+      const target = decision.targetId ? getUnit(units, decision.targetId) : actor;
+      return `紧急医治 ${(target || actor).name}`;
+    }
+    const target = decision.targetId ? getUnit(units, decision.targetId) : null;
+    return target ? `攻击 ${target.name}` : '无有效目标';
+  };
+
+  const decideAiAction = (
+    actor: BattleCharacter,
+    units: BattleCharacter[],
+    lastRoundAttackersCount: Record<string, number>,
+  ): AiDecision => {
+    const enemyFaction: Faction = actor.faction === 'friendly' ? 'enemy' : 'friendly';
+    const hpRate = actor.hp / Math.max(1, actor.maxHp);
+    const isLowHp = hpRate < 0.4;
+    const allyCount = getCombatReadyCount(units, actor.faction);
+    const enemyCount = getCombatReadyCount(units, enemyFaction);
+    const hasNumberAdvantage = allyCount > enemyCount;
+    const canEmergencyHeal = actor.attributes.INT > 50 && actor.aiMedicalCooldown <= 0;
+    const emergencyHealTarget = canEmergencyHeal ? getEmergencyHealTarget(actor, units) : null;
+    const lowHpTargetExists =
+      !!emergencyHealTarget && emergencyHealTarget.hp / Math.max(1, emergencyHealTarget.maxHp) < 0.4;
+    const veryLowHpTargetExists =
+      !!emergencyHealTarget && emergencyHealTarget.hp / Math.max(1, emergencyHealTarget.maxHp) < 0.25;
+    const attackTarget = pickRandomTarget(units, enemyFaction);
+    const attackersCount = lastRoundAttackersCount[actor.id] ?? 0;
+    const traumaPenalty = getEscapeTraumaPenalty(actor);
+    const statusPenalty = getEscapeStatusPenalty(actor);
+    const escapePenalty = getEscapePenalty(actor) + attackersCount * 15 + traumaPenalty + statusPenalty;
+    const escapeChance = traumaPenalty >= 9999 || statusPenalty >= 9999 ? -9999 : 70 - escapePenalty;
+    const canConsiderEscape = hpRate < 0.4 && actor.attributes.WIL <= 80;
+
+    const scores = {
+      attack: 60,
+      emergency_medical: canEmergencyHeal ? 35 : -9999,
+      defense: actor.aiDefenseCooldown > 0 ? -9999 : 22,
+      escape: canConsiderEscape ? 12 : -9999,
+    };
+
+    if (hpRate >= 0.7) scores.attack += 10;
+    if (isLowHp) {
+      scores.attack -= 18;
+      scores.defense += 22;
+      if (canConsiderEscape) scores.escape += 16;
+    }
+    if (hpRate < 0.25) {
+      scores.defense += 8;
+      if (canConsiderEscape) scores.escape += 15;
+    }
+    if (hasNumberAdvantage) {
+      scores.attack += 6;
+      scores.emergency_medical += 12;
+      scores.defense += 10;
+      if (canConsiderEscape) scores.escape -= 18;
+    }
+    if (canConsiderEscape && enemyCount <= allyCount) scores.escape -= 10;
+    if (canConsiderEscape && escapeChance < 20) scores.escape -= 20;
+    if (lowHpTargetExists) {
+      scores.emergency_medical += 24;
+      scores.attack -= 12;
+    }
+    if (veryLowHpTargetExists) scores.emergency_medical += 16;
+    if (actor.attributes.INT > 50) {
+      scores.emergency_medical += 8;
+      if (canConsiderEscape) scores.escape -= 8;
+      scores.defense -= 6;
+    }
+
+    const rollEntries = [
+      {
+        actionId: 'attack' as const,
+        score: Math.max(0, scores.attack + _.random(1, 10)),
+        targetId: attackTarget?.id,
+      },
+      {
+        actionId: 'emergency_medical' as const,
+        score: Math.max(0, scores.emergency_medical + _.random(1, 10)),
+        targetId: emergencyHealTarget?.id,
+      },
+      {
+        actionId: 'defense' as const,
+        score: Math.max(0, scores.defense + _.random(1, 10)),
+      },
+      {
+        actionId: 'escape' as const,
+        score: Math.max(0, scores.escape + _.random(1, 10)),
+      },
+    ].filter(entry => entry.score > 0 && (entry.actionId !== 'attack' || entry.targetId));
+
+    const totalScore = rollEntries.reduce((sum, entry) => sum + entry.score, 0);
+    if (totalScore <= 0) {
+      return { actionId: 'attack', targetId: attackTarget?.id, reason: 'fallback_attack' };
+    }
+
+    let roll = _.random(1, totalScore);
+    for (const entry of rollEntries) {
+      roll -= entry.score;
+      if (roll <= 0) {
+        return {
+          actionId: entry.actionId,
+          targetId: entry.targetId,
+          reason: `${entry.actionId}:${entry.score}/${totalScore}`,
+        };
+      }
+    }
+
+    return { actionId: 'attack', targetId: attackTarget?.id, reason: 'fallback_attack' };
   };
 
   const autoSelectTargets = () => {
@@ -1889,9 +2102,12 @@ export default function App() {
           const ratio = getDamageRatio(currentWeapon.type, currentWeapon.damageType);
           const baseDamage =
             rollDice(currentWeapon.damageDice) +
-            (isBowOrCrossbow(currentWeapon.type)
-              ? (attacker.attributes.STR - 40 + attacker.attributes.PER - 30) * 0.4
-              : (attacker.attributes.STR - 35 + attacker.attributes.DEX * 0.35) * 0.4);
+            Math.max(
+              0,
+              isBowOrCrossbow(currentWeapon.type)
+                ? (attacker.attributes.STR * 0.6 + attacker.attributes.PER * 0.7) * 0.4
+                : (attacker.attributes.STR * 0.65 + attacker.attributes.DEX * 0.35) * 0.4,
+            );
           const rawDamage = Math.max(0, baseDamage);
           const finalDamage = rawDamage;
           const cutDamage = Math.round(finalDamage * ratio.cut);
@@ -1902,7 +2118,7 @@ export default function App() {
           const bluntScale = /钝器|盾牌/.test(currentWeapon.type)
             ? 1
             : /弩/.test(currentWeapon.type)
-              ? 1.4
+              ? 1.2
               : /武士刀/.test(currentWeapon.type)
                 ? 0.5
                 : /(军刀|长柄)/.test(currentWeapon.type)
@@ -1910,8 +2126,9 @@ export default function App() {
                   : 0.7;
           const bluntAfterScale = Math.round(bluntDamage * bluntScale);
           const totalDamage = Math.round(cutAfterDR + bluntAfterScale);
-          const updatedAlly = applyDamage(ally, totalDamage);
-          appendLog(logs, `${attacker.name}: 误伤${ally.name}，造成 ${totalDamage} 伤害。`);
+          const reducedDamage = Math.max(0, Math.round(totalDamage * (1 - getWillDamageReductionRate(ally))));
+          const updatedAlly = applyDamage(ally, reducedDamage);
+          appendLog(logs, `${attacker.name}: 误伤${ally.name}，造成 ${reducedDamage} 伤害。`);
           return {
             units: replaceUnit(replaceUnit(units, attacker), updatedAlly),
             attacker,
@@ -1952,7 +2169,7 @@ export default function App() {
 
     let useBlock = getDefenseMode(defender, currentWeapon.type);
     if (defender.noBlockNextRound) useBlock = false;
-    const defensePenalty = defenseIndex * 10;
+    const defensePenalty = defenseIndex * 8;
     const defenseBase = getDefenseBase(defender, useBlock);
     const defenseChance =
       defenseBase + (defender.attributes.DEX - attacker.attributes.DEX) - defensePenalty - multiTargetPenalty;
@@ -1973,9 +2190,12 @@ export default function App() {
 
     const baseDamage =
       rollDice(currentWeapon.damageDice) +
-      (isBowOrCrossbow(currentWeapon.type)
-        ? (attacker.attributes.STR - 40 + attacker.attributes.PER - 30) * 0.4
-        : (attacker.attributes.STR - 35 + attacker.attributes.DEX * 0.35) * 0.4);
+      Math.max(
+        0,
+        isBowOrCrossbow(currentWeapon.type)
+          ? (attacker.attributes.STR * 0.6 + attacker.attributes.PER * 0.7) * 0.4
+          : (attacker.attributes.STR * 0.65 + attacker.attributes.DEX * 0.35) * 0.4,
+      );
     const rawDamage = Math.max(0, baseDamage);
     const critMultiplier = isCrit ? (isMartialHeavy ? 2 : isMartialSpeed ? 1 : 1.5) : 1;
     const finalDamage = rawDamage * critMultiplier;
@@ -1994,7 +2214,7 @@ export default function App() {
     const bluntScale = /钝器|盾牌/.test(currentWeapon.type)
       ? 1
       : /弩/.test(currentWeapon.type)
-        ? 1.4
+        ? 1.2
         : /武士刀/.test(currentWeapon.type)
           ? 0.5
           : /(军刀|长柄)/.test(currentWeapon.type)
@@ -2002,20 +2222,21 @@ export default function App() {
             : 0.7;
     const bluntAfterScale = Math.round(bluntDamage * bluntScale);
     const totalDamage = Math.round(cutAfterDR + bluntAfterScale);
+    const reducedDamage = Math.max(0, Math.round(totalDamage * (1 - getWillDamageReductionRate(defender))));
     const armorAbsorbed = Math.round(Math.max(0, cutDamage - cutAfterDR));
 
     const hpBefore = defender.hp;
-    let actualDamage = totalDamage;
+    let actualDamage = reducedDamage;
 
-    // 非致命模式：伤害使目标血量锁定为1
+    // 非致命模式：伤害使目标血量锁定为10
     if (nonLethalActorIds.length > 0 && defender.faction !== attacker.faction) {
       const isAttackerNonLethal = nonLethalActorIds.includes(attacker.id);
 
       if (isAttackerNonLethal) {
-        // 计算实际伤害，但确保目标血量不低于1
-        const potentialHpAfter = Math.max(0, defender.hp - totalDamage);
-        if (potentialHpAfter < 1) {
-          actualDamage = Math.max(0, defender.hp - 1);
+        // 计算实际伤害，但确保目标血量不低于10
+        const potentialHpAfter = Math.max(0, defender.hp - reducedDamage);
+        if (potentialHpAfter < 10) {
+          actualDamage = Math.max(0, defender.hp - 10);
         }
       }
     }
@@ -2172,7 +2393,14 @@ export default function App() {
     setBattleState(prev => {
       if (prev.result) return prev;
       const logs: string[] = [];
-      let workingUnits = cloneUnits(prev.units).map(unit => ({ ...unit, defenseBonus: 0 }));
+      let workingUnits = cloneUnits(prev.units).map(unit => ({
+        ...unit,
+        defenseBonus: 0,
+        blockBonus: 0,
+        aiDefenseCooldown: Math.max(0, (unit.aiDefenseCooldown || 0) - 1),
+        aiMedicalCooldown: Math.max(0, (unit.aiMedicalCooldown || 0) - 1),
+        playerEmergencyMedicalCooldown: Math.max(0, (unit.playerEmergencyMedicalCooldown || 0) - 1),
+      }));
       const defenderDefenseCount: Record<string, number> = {};
       const lastRoundAttackersCount: Record<string, number> = { ...prev.lastRoundAttackersCount };
       const lastRoundAttackersMap = new Map<string, Set<string>>();
@@ -2195,6 +2423,8 @@ export default function App() {
           result: 'defeat',
           endReason: 'normal',
           lastRoundAttackersCount: prev.lastRoundAttackersCount,
+          aiPlans: prev.aiPlans,
+          playerEmergencyMedicalCooldown: prev.playerEmergencyMedicalCooldown,
         };
       }
 
@@ -2210,18 +2440,24 @@ export default function App() {
       });
 
       const enemyTargetMap: Record<string, string> = {};
+      const aiDecisions = new Map<string, AiDecision>();
       workingUnits
-        .filter(unit => unit.faction === 'enemy' && isCombatReadyUnit(unit))
-        .forEach(enemy => {
-          const tauntedBy = tauntTargets[enemy.id];
-          const taunter = tauntedBy ? getUnit(workingUnits, tauntedBy) : null;
-          const target =
-            taunter && !taunter.escaped && taunter.hp > 0 ? taunter : pickRandomTarget(workingUnits, 'friendly');
-          if (target) {
-            enemyTargetMap[enemy.id] = target.id;
-            workingUnits = setUnitIntent(workingUnits, enemy.id, `攻击 ${target.name}`);
-          } else {
-            workingUnits = setUnitIntent(workingUnits, enemy.id, '无有效目标');
+        .filter(unit => unit.faction !== 'friendly' || unit.subFaction !== 'squad')
+        .forEach(unit => {
+          if (!isCombatReadyUnit(unit)) return;
+          const tauntedBy = unit.faction === 'enemy' ? tauntTargets[unit.id] : undefined;
+          if (tauntedBy) {
+            aiDecisions.set(unit.id, { actionId: 'attack', targetId: tauntedBy, reason: 'taunted' });
+            const taunter = getUnit(workingUnits, tauntedBy);
+            workingUnits = setUnitIntent(workingUnits, unit.id, taunter ? `攻击 ${taunter.name}` : '无有效目标');
+            if (taunter) enemyTargetMap[unit.id] = taunter.id;
+            return;
+          }
+          const decision = prev.aiPlans[unit.id] || decideAiAction(unit, workingUnits, lastRoundAttackersCount);
+          aiDecisions.set(unit.id, decision);
+          workingUnits = setUnitIntent(workingUnits, unit.id, getAiIntentLabel(decision, unit, workingUnits));
+          if (unit.faction === 'enemy' && decision.actionId === 'attack' && decision.targetId) {
+            enemyTargetMap[unit.id] = decision.targetId;
           }
         });
 
@@ -2235,201 +2471,207 @@ export default function App() {
         const actor = getUnit(workingUnits, actorId);
         if (!actor || !isCombatReadyUnit(actor)) continue;
 
-        if (actor.faction === 'friendly') {
-          if (actor.subFaction === 'squad') {
-            const planned = plannedActions[actor.id];
+        if (actor.faction === 'friendly' && actor.subFaction === 'squad') {
+          const planned = plannedActions[actor.id];
 
-            if (planned?.actionId === 'tactics' && planned.tactic === 'taunt') {
-              appendLog(logs, `${actor.name}: 使用嘲弄，本回合不攻击。`);
-              continue;
+          if (planned?.actionId === 'tactics' && planned.tactic === 'taunt') {
+            const tauntBlockBonus = _.round(12 * getTacticEffectMultiplier(actor), 2);
+            workingUnits = replaceUnit(workingUnits, { ...actor, blockBonus: tauntBlockBonus });
+            appendLog(logs, `${actor.name}: 使用嘲弄，强制目标攻击自己，格挡值+${tauntBlockBonus}，本回合不攻击。`);
+            continue;
+          }
+
+          if (planned?.actionId === 'tactics' && planned.tactic === 'defense') {
+            const blockBonus = _.round(18 * getTacticEffectMultiplier(actor), 2);
+            workingUnits = replaceUnit(workingUnits, { ...actor, blockBonus });
+            workingUnits = setUnitIntent(workingUnits, actor.id, '防御');
+            appendLog(logs, `${actor.name}: 进入防御姿态，格挡基础+${blockBonus}。`);
+            continue;
+          }
+
+          if (planned?.actionId === 'tactics' && planned.tactic === 'emergency_medical') {
+            const targetId =
+              selectedMedicalTargetId && getUnit(workingUnits, selectedMedicalTargetId)?.faction === 'friendly'
+                ? selectedMedicalTargetId
+                : actor.id;
+            const target = getUnit(workingUnits, targetId) ?? actor;
+            const intValue = Math.max(1, Math.round(actor.attributes.INT || 1));
+            const healAmount = _.round(actor.attributes.INT * 0.4 + _.random(1, intValue), 2);
+            const updatedTarget = { ...target, hp: Math.min(target.maxHp, Math.max(0, target.hp + healAmount)) };
+            if (updatedTarget.id === actor.id) {
+              workingUnits = replaceUnit(workingUnits, updatedTarget);
+            } else {
+              workingUnits = replaceUnit(workingUnits, actor);
+              workingUnits = replaceUnit(workingUnits, updatedTarget);
             }
+            workingUnits = setUnitIntent(workingUnits, actor.id, `紧急医治 ${target.name}`);
+            appendLog(logs, `${actor.name}: 对${target.name}进行紧急手动医治，恢复${healAmount}生命。`);
+            setPlannedActions(prevActions => {
+              const next = { ...prevActions };
+              delete next[actor.id];
+              return next;
+            });
+            continue;
+          }
 
-            if (planned?.actionId === 'tactics' && planned.tactic === 'defense') {
-              workingUnits = replaceUnit(workingUnits, { ...actor, defenseBonus: 15 });
-              workingUnits = setUnitIntent(workingUnits, actor.id, '防御');
-              appendLog(logs, `${actor.name}: 进入防御姿态，格挡基础+15。`);
-              continue;
-            }
+          if (planned?.actionId === 'tactics' && planned.tactic === 'medical') {
+            const targetId =
+              selectedMedicalTargetId && getUnit(workingUnits, selectedMedicalTargetId)?.faction === 'friendly'
+                ? selectedMedicalTargetId
+                : actor.id;
+            const target = getUnit(workingUnits, targetId) ?? actor;
+            const isSkeleton = (target.raceName || '').includes('骨人');
+            const chosenItem = planned.itemName || selectedMedicalItem || '';
 
-            if (planned?.actionId === 'tactics' && planned.tactic === 'medical') {
-              const targetId =
-                selectedMedicalTargetId && getUnit(workingUnits, selectedMedicalTargetId)?.faction === 'friendly'
-                  ? selectedMedicalTargetId
-                  : actor.id;
-              const target = getUnit(workingUnits, targetId) ?? actor;
-              const isSkeleton = (target.raceName || '').includes('骨人');
-              const chosenItem = planned.itemName || selectedMedicalItem || '';
+            const actorItemCounts = (name: string) => toNumber(actor.backpackItems[name]?.数量, 0);
 
-              const actorItemCounts = (name: string) => toNumber(actor.backpackItems[name]?.数量, 0);
-
-              const consumeItem = (unit: BattleCharacter, itemName: string) => {
-                const current = toNumber(unit.backpackItems[itemName]?.数量, 0);
-                const next = Math.max(0, current - 1);
-                const nextItems = {
-                  ...unit.backpackItems,
-                  [itemName]: { ...unit.backpackItems[itemName], 数量: next },
-                };
-                return { ...unit, backpackItems: nextItems };
+            const consumeItem = (unit: BattleCharacter, itemName: string) => {
+              const current = toNumber(unit.backpackItems[itemName]?.数量, 0);
+              const next = Math.max(0, current - 1);
+              const nextItems = {
+                ...unit.backpackItems,
+                [itemName]: { ...unit.backpackItems[itemName], 数量: next },
               };
+              return { ...unit, backpackItems: nextItems };
+            };
 
-              const hasAnyItem = Object.entries(actor.backpackItems || {}).some(([name, item]) => {
-                if (!isMedicalBackpackItem(name, item)) return false;
-                return actorItemCounts(name) > 0;
-              });
+            const hasAnyItem = Object.entries(actor.backpackItems || {}).some(([name, item]) => {
+              if (!isMedicalBackpackItem(name, item)) return false;
+              return actorItemCounts(name) > 0;
+            });
 
-              if (!hasAnyItem) {
-                workingUnits = setUnitIntent(workingUnits, actor.id, '医疗失败');
-                appendLog(logs, `${actor.name}: 此角色背包没有可用医疗物品。`);
-                continue;
-              }
-
-              if (!chosenItem) {
-                workingUnits = setUnitIntent(workingUnits, actor.id, '未选择医疗物品');
-                appendLog(logs, `${actor.name}: 未选择医疗物品。`);
-                continue;
-              }
-
-              if (actorItemCounts(chosenItem) <= 0) {
-                workingUnits = setUnitIntent(workingUnits, actor.id, '物品不足');
-                appendLog(logs, `${actor.name}: 选择的${chosenItem}不足。`);
-                continue;
-              }
-
-              const isSkeletonItem = ['骨人修理包', '骨人修理箱'].includes(chosenItem);
-              if (isSkeletonItem && !isSkeleton) {
-                workingUnits = setUnitIntent(workingUnits, actor.id, '物品不可用');
-                appendLog(logs, `${actor.name}: ${chosenItem}仅可用于骨人。`);
-                continue;
-              }
-              if (!isSkeletonItem && isSkeleton) {
-                workingUnits = setUnitIntent(workingUnits, actor.id, '物品不可用');
-                appendLog(logs, `${actor.name}: 非骨人医疗物品无法用于骨人。`);
-                continue;
-              }
-
-              let updatedTarget = target;
-              let updatedActor = actor;
-              let healAmount = 0;
-              let traumaReduce = 0;
-
-              if (['基础急救包', '标准急救包', '高级急救包', '骨人修理包', '骨人修理箱'].includes(chosenItem)) {
-                if (chosenItem === '基础急救包') healAmount = Math.round(target.maxHp * 0.1);
-                if (chosenItem === '标准急救包') healAmount = Math.round(target.maxHp * 0.2);
-                if (chosenItem === '高级急救包') healAmount = Math.round(target.maxHp * 0.35);
-                if (chosenItem === '骨人修理包') healAmount = Math.round(target.maxHp * 0.15);
-                if (chosenItem === '骨人修理箱') healAmount = Math.round(target.maxHp * 0.3);
-
-                const newHp = Math.min(target.maxHp, Math.max(0, target.hp + healAmount));
-                updatedTarget = { ...updatedTarget, hp: newHp };
-                updatedActor = consumeItem(updatedActor, chosenItem);
-                appendLog(logs, `${actor.name}: 对${target.name}使用${chosenItem}，恢复${healAmount}生命。`);
-              }
-
-              if (['普通夹板包', '高级夹板包'].includes(chosenItem)) {
-                traumaReduce = chosenItem === '高级夹板包' ? 2 : 1;
-                const entries = Object.entries(updatedTarget.traumaParts) as Array<
-                  ['左臂' | '右臂' | '左腿' | '右腿', number]
-                >;
-                const [partToHeal] = entries.sort((a, b) => b[1] - a[1])[0] || ['左臂', 0];
-                const currentLevel = updatedTarget.traumaParts[partToHeal] || 0;
-                const nextLevel = Math.max(0, currentLevel - traumaReduce);
-                updatedTarget = {
-                  ...updatedTarget,
-                  traumaParts: { ...updatedTarget.traumaParts, [partToHeal]: nextLevel },
-                  fractureStacks: 0,
-                };
-                updatedActor = consumeItem(updatedActor, chosenItem);
-                appendLog(
-                  logs,
-                  `${actor.name}: 对${target.name}使用${chosenItem}，${partToHeal}创伤降低${traumaReduce}级并解除骨折。`,
-                );
-              }
-
-              if (updatedActor.id === updatedTarget.id) {
-                const merged = { ...updatedTarget, backpackItems: updatedActor.backpackItems };
-                workingUnits = replaceUnit(workingUnits, merged);
-              } else {
-                workingUnits = replaceUnit(workingUnits, updatedActor);
-                workingUnits = replaceUnit(workingUnits, updatedTarget);
-              }
-              workingUnits = setUnitIntent(workingUnits, actor.id, `医疗 ${target.name}`);
+            if (!hasAnyItem) {
+              workingUnits = setUnitIntent(workingUnits, actor.id, '医疗失败');
+              appendLog(logs, `${actor.name}: 此角色背包没有可用医疗物品。`);
               continue;
             }
 
-            if (planned?.actionId === 'tactics' && planned.tactic === 'escape') {
-              const attackersCount = lastRoundAttackersCount[actor.id] ?? 0;
-              const escapeRoll = d100();
-              const traumaPenalty = getEscapeTraumaPenalty(actor);
-              const statusPenalty = getEscapeStatusPenalty(actor);
-              if (traumaPenalty >= 9999 || statusPenalty >= 9999) {
-                workingUnits = setUnitIntent(workingUnits, actor.id, '逃跑失败');
-                appendLog(logs, `${actor.name}: 逃跑失败，无法移动。`);
-                continue;
-              }
-              const escapePenalty = getEscapePenalty(actor) + attackersCount * 15 + traumaPenalty + statusPenalty;
-              const escapeChance = 70 - escapePenalty;
-              const criticalEscape = escapeRoll <= 5 && traumaPenalty < 25 && statusPenalty < 30;
+            if (!chosenItem) {
+              workingUnits = setUnitIntent(workingUnits, actor.id, '未选择医疗物品');
+              appendLog(logs, `${actor.name}: 未选择医疗物品。`);
+              continue;
+            }
+
+            if (actorItemCounts(chosenItem) <= 0) {
+              workingUnits = setUnitIntent(workingUnits, actor.id, '物品不足');
+              appendLog(logs, `${actor.name}: 选择的${chosenItem}不足。`);
+              continue;
+            }
+
+            const isSkeletonItem = ['骨人修理包', '骨人修理箱'].includes(chosenItem);
+            if (isSkeletonItem && !isSkeleton) {
+              workingUnits = setUnitIntent(workingUnits, actor.id, '物品不可用');
+              appendLog(logs, `${actor.name}: ${chosenItem}仅可用于骨人。`);
+              continue;
+            }
+            if (!isSkeletonItem && isSkeleton) {
+              workingUnits = setUnitIntent(workingUnits, actor.id, '物品不可用');
+              appendLog(logs, `${actor.name}: 非骨人医疗物品无法用于骨人。`);
+              continue;
+            }
+
+            let updatedTarget = target;
+            let updatedActor = actor;
+            let healAmount = 0;
+            let traumaReduce = 0;
+            const tacticEffectMultiplier = getTacticEffectMultiplier(actor);
+
+            if (['基础急救包', '标准急救包', '高级急救包', '骨人修理包', '骨人修理箱'].includes(chosenItem)) {
+              if (chosenItem === '基础急救包') healAmount = Math.round(target.maxHp * 0.2 * tacticEffectMultiplier);
+              if (chosenItem === '标准急救包') healAmount = Math.round(target.maxHp * 0.35 * tacticEffectMultiplier);
+              if (chosenItem === '高级急救包') healAmount = Math.round(target.maxHp * 0.55 * tacticEffectMultiplier);
+              if (chosenItem === '骨人修理包') healAmount = Math.round(target.maxHp * 0.35 * tacticEffectMultiplier);
+              if (chosenItem === '骨人修理箱') healAmount = Math.round(target.maxHp * 0.65 * tacticEffectMultiplier);
+
+              const newHp = Math.min(target.maxHp, Math.max(0, target.hp + healAmount));
+              updatedTarget = { ...updatedTarget, hp: newHp };
+              updatedActor = consumeItem(updatedActor, chosenItem);
+              appendLog(logs, `${actor.name}: 对${target.name}使用${chosenItem}，恢复${healAmount}生命。`);
+            }
+
+            if (['普通夹板包', '高级夹板包'].includes(chosenItem)) {
+              traumaReduce = Math.max(1, Math.round((chosenItem === '高级夹板包' ? 2 : 1) * tacticEffectMultiplier));
+              const entries = Object.entries(updatedTarget.traumaParts) as Array<
+                ['左臂' | '右臂' | '左腿' | '右腿', number]
+              >;
+              const [partToHeal] = entries.sort((a, b) => b[1] - a[1])[0] || ['左臂', 0];
+              const currentLevel = updatedTarget.traumaParts[partToHeal] || 0;
+              const nextLevel = Math.max(0, currentLevel - traumaReduce);
+              updatedTarget = {
+                ...updatedTarget,
+                traumaParts: { ...updatedTarget.traumaParts, [partToHeal]: nextLevel },
+                fractureStacks: 0,
+              };
+              updatedActor = consumeItem(updatedActor, chosenItem);
               appendLog(
                 logs,
-                `${actor.name}: 逃跑判定 d100=${escapeRoll} 成功率=${Math.max(0, Math.round(escapeChance))}。`,
+                `${actor.name}: 对${target.name}使用${chosenItem}，${partToHeal}创伤降低${traumaReduce}级并解除骨折。`,
               );
-              if (escapeRoll <= escapeChance || criticalEscape) {
-                workingUnits = replaceUnit(workingUnits, { ...actor, escaped: true });
-                workingUnits = setUnitIntent(workingUnits, actor.id, '逃跑成功');
-                appendLog(
-                  logs,
-                  `${actor.name}: 逃跑成功(${escapeRoll}<${Math.max(0, Math.round(escapeChance))})，退出战斗。`,
-                );
-              } else {
-                workingUnits = setUnitIntent(workingUnits, actor.id, '逃跑失败');
-                appendLog(
-                  logs,
-                  `${actor.name}: 逃跑失败(${escapeRoll}>=${Math.max(0, Math.round(escapeChance))})，被敌人锁定。`,
-                );
-              }
+            }
+
+            if (updatedActor.id === updatedTarget.id) {
+              const merged = { ...updatedTarget, backpackItems: updatedActor.backpackItems };
+              workingUnits = replaceUnit(workingUnits, merged);
+            } else {
+              workingUnits = replaceUnit(workingUnits, updatedActor);
+              workingUnits = replaceUnit(workingUnits, updatedTarget);
+            }
+            workingUnits = setUnitIntent(workingUnits, actor.id, `医疗 ${target.name}`);
+            continue;
+          }
+
+          if (planned?.actionId === 'tactics' && planned.tactic === 'escape') {
+            const attackersCount = lastRoundAttackersCount[actor.id] ?? 0;
+            const escapeRoll = d100();
+            const traumaPenalty = getEscapeTraumaPenalty(actor);
+            const statusPenalty = getEscapeStatusPenalty(actor);
+            if (traumaPenalty >= 9999 || statusPenalty >= 9999) {
+              workingUnits = setUnitIntent(workingUnits, actor.id, '逃跑失败');
+              appendLog(logs, `${actor.name}: 逃跑失败，无法移动。`);
               continue;
             }
-
-            if (planned?.actionId === 'surrender') {
-              workingUnits = setUnitIntent(workingUnits, actor.id, '投降');
-              appendLog(logs, `${actor.name}: 选择投降，战斗结束。`);
-              appendLog(logs, SETTLEMENT_LOG);
-              return {
-                ...prev,
-                logs: [...prev.logs, ...logs],
-                result: 'defeat',
-                endReason: 'surrender',
-                lastRoundAttackersCount: prev.lastRoundAttackersCount,
-              };
+            const escapePenalty = getEscapePenalty(actor) + attackersCount * 15 + traumaPenalty + statusPenalty;
+            const escapeChance = 70 - escapePenalty;
+            const criticalEscape = escapeRoll <= 5 && traumaPenalty < 25 && statusPenalty < 30;
+            appendLog(
+              logs,
+              `${actor.name}: 逃跑判定 d100=${escapeRoll} 成功率=${Math.max(0, Math.round(escapeChance))}。`,
+            );
+            if (escapeRoll <= escapeChance || criticalEscape) {
+              workingUnits = replaceUnit(workingUnits, { ...actor, escaped: true });
+              workingUnits = setUnitIntent(workingUnits, actor.id, '逃跑成功');
+              appendLog(
+                logs,
+                `${actor.name}: 逃跑成功(${escapeRoll}<${Math.max(0, Math.round(escapeChance))})，退出战斗。`,
+              );
+            } else {
+              workingUnits = setUnitIntent(workingUnits, actor.id, '逃跑失败');
+              appendLog(
+                logs,
+                `${actor.name}: 逃跑失败(${escapeRoll}>=${Math.max(0, Math.round(escapeChance))})，被敌人锁定。`,
+              );
             }
+            continue;
+          }
 
-            if (planned?.actionId === 'subdue') {
-              const plannedTargetIds = planned.targetIds || [];
-              let target: BattleCharacter | null = null;
-              if (planned.targetId) {
-                target = getUnit(workingUnits, planned.targetId) ?? null;
-              }
-              if (!target || !isCombatReadyUnit(target)) {
-                target = pickRandomTarget(workingUnits, 'enemy');
-              }
-              if (!target) {
-                workingUnits = setUnitIntent(workingUnits, actor.id, '无有效目标');
-                continue;
-              }
+          if (planned?.actionId === 'surrender') {
+            workingUnits = setUnitIntent(workingUnits, actor.id, '投降');
+            appendLog(logs, `${actor.name}: 选择投降，战斗结束。`);
+            appendLog(logs, SETTLEMENT_LOG);
+            return {
+              ...prev,
+              logs: [...prev.logs, ...logs],
+              result: 'defeat',
+              endReason: 'surrender',
+              lastRoundAttackersCount: prev.lastRoundAttackersCount,
+              playerEmergencyMedicalCooldown: prev.playerEmergencyMedicalCooldown,
+            };
+          }
 
-              workingUnits = setUnitIntent(workingUnits, actor.id, `制服 ${target.name}`);
-              attackPlans.set(actor.id, {
-                actionId: 'subdue',
-                targetId: target.id,
-                plannedTargetIds,
-                targetFaction: 'enemy',
-              });
-              continue;
-            }
-
+          if (planned?.actionId === 'subdue') {
+            const plannedTargetIds = planned.targetIds || [];
             let target: BattleCharacter | null = null;
-            const plannedTargetIds = planned?.actionId === 'attack' ? planned.targetIds || [] : [];
-            if (planned?.actionId === 'attack' && planned.targetId) {
+            if (planned.targetId) {
               target = getUnit(workingUnits, planned.targetId) ?? null;
             }
             if (!target || !isCombatReadyUnit(target)) {
@@ -2439,42 +2681,106 @@ export default function App() {
               workingUnits = setUnitIntent(workingUnits, actor.id, '无有效目标');
               continue;
             }
-
-            workingUnits = setUnitIntent(workingUnits, actor.id, `攻击 ${target.name}`);
+            workingUnits = setUnitIntent(workingUnits, actor.id, `制服 ${target.name}`);
             attackPlans.set(actor.id, {
-              actionId: 'attack',
+              actionId: 'subdue',
               targetId: target.id,
               plannedTargetIds,
               targetFaction: 'enemy',
             });
-          } else {
-            const target = pickRandomTarget(workingUnits, 'enemy');
-            if (!target) {
-              workingUnits = setUnitIntent(workingUnits, actor.id, '无有效目标');
-              continue;
-            }
-            workingUnits = setUnitIntent(workingUnits, actor.id, `攻击 ${target.name}`);
-            attackPlans.set(actor.id, {
-              actionId: 'attack',
-              targetId: target.id,
-              plannedTargetIds: [],
-              targetFaction: 'enemy',
-            });
+            continue;
           }
-        } else {
-          const targetId = enemyTargetMap[actor.id];
-          const target = targetId ? getUnit(workingUnits, targetId) : null;
+
+          let target: BattleCharacter | null = null;
+          const plannedTargetIds = planned?.actionId === 'attack' ? planned.targetIds || [] : [];
+          if (planned?.actionId === 'attack' && planned.targetId) {
+            target = getUnit(workingUnits, planned.targetId) ?? null;
+          }
+          if (!target || !isCombatReadyUnit(target)) {
+            target = pickRandomTarget(workingUnits, 'enemy');
+          }
           if (!target) {
             workingUnits = setUnitIntent(workingUnits, actor.id, '无有效目标');
             continue;
           }
+          workingUnits = setUnitIntent(workingUnits, actor.id, `攻击 ${target.name}`);
           attackPlans.set(actor.id, {
             actionId: 'attack',
             targetId: target.id,
-            plannedTargetIds: [],
-            targetFaction: 'friendly',
+            plannedTargetIds,
+            targetFaction: 'enemy',
           });
+          continue;
         }
+
+        const decision = aiDecisions.get(actor.id) || decideAiAction(actor, workingUnits, lastRoundAttackersCount);
+        workingUnits = setUnitIntent(workingUnits, actor.id, getAiIntentLabel(decision, actor, workingUnits));
+
+        if (decision.actionId === 'defense') {
+          const blockBonus = _.round(18 * getTacticEffectMultiplier(actor), 2);
+          workingUnits = replaceUnit(workingUnits, { ...actor, blockBonus, aiDefenseCooldown: 2 });
+          appendLog(logs, `${actor.name}: 选择防御，格挡基础+${blockBonus}。`);
+          continue;
+        }
+
+        if (decision.actionId === 'escape') {
+          const attackersCount = lastRoundAttackersCount[actor.id] ?? 0;
+          const escapeRoll = d100();
+          const traumaPenalty = getEscapeTraumaPenalty(actor);
+          const statusPenalty = getEscapeStatusPenalty(actor);
+          if (traumaPenalty >= 9999 || statusPenalty >= 9999) {
+            workingUnits = setUnitIntent(workingUnits, actor.id, '逃跑失败');
+            appendLog(logs, `${actor.name}: 逃跑失败，无法移动。`);
+            continue;
+          }
+          const escapePenalty = getEscapePenalty(actor) + attackersCount * 15 + traumaPenalty + statusPenalty;
+          const escapeChance = 70 - escapePenalty;
+          const criticalEscape = escapeRoll <= 5 && traumaPenalty < 25 && statusPenalty < 30;
+          if (escapeRoll <= escapeChance || criticalEscape) {
+            workingUnits = replaceUnit(workingUnits, { ...actor, escaped: true });
+            workingUnits = setUnitIntent(workingUnits, actor.id, '逃跑成功');
+            appendLog(logs, `${actor.name}: 逃跑成功(${escapeRoll}<${Math.max(0, Math.round(escapeChance))})。`);
+          } else {
+            workingUnits = setUnitIntent(workingUnits, actor.id, '逃跑失败');
+            appendLog(logs, `${actor.name}: 逃跑失败(${escapeRoll}>=${Math.max(0, Math.round(escapeChance))})。`);
+          }
+          continue;
+        }
+
+        if (decision.actionId === 'emergency_medical') {
+          const target = decision.targetId ? (getUnit(workingUnits, decision.targetId) ?? actor) : actor;
+          const intValue = Math.max(1, Math.round(actor.attributes.INT || 1));
+          const healAmount = _.round(actor.attributes.INT * 0.4 + _.random(1, intValue), 2);
+          const updatedTarget = { ...target, hp: Math.min(target.maxHp, Math.max(0, target.hp + healAmount)) };
+          const nextMedicalCooldown = actor.id === updatedTarget.id ? 3 : 2;
+          const updatedActor =
+            actor.id === updatedTarget.id
+              ? { ...updatedTarget, aiMedicalCooldown: nextMedicalCooldown }
+              : { ...actor, aiMedicalCooldown: nextMedicalCooldown };
+          if (updatedActor.id === updatedTarget.id) {
+            workingUnits = replaceUnit(workingUnits, updatedActor);
+          } else {
+            workingUnits = replaceUnit(workingUnits, updatedActor);
+            workingUnits = replaceUnit(workingUnits, updatedTarget);
+          }
+          workingUnits = setUnitIntent(workingUnits, actor.id, `紧急医治 ${target.name}`);
+          appendLog(logs, `${actor.name}: 对${target.name}进行紧急手动医治，恢复${healAmount}生命。`);
+          continue;
+        }
+
+        const targetFaction = actor.faction === 'friendly' ? 'enemy' : 'friendly';
+        const targetId = decision.targetId || (actor.faction === 'enemy' ? enemyTargetMap[actor.id] : undefined);
+        const target = targetId ? getUnit(workingUnits, targetId) : pickRandomTarget(workingUnits, targetFaction);
+        if (!target) {
+          workingUnits = setUnitIntent(workingUnits, actor.id, '无有效目标');
+          continue;
+        }
+        attackPlans.set(actor.id, {
+          actionId: 'attack',
+          targetId: target.id,
+          plannedTargetIds: [],
+          targetFaction,
+        });
       }
 
       const maxAttackCount = Math.max(
@@ -2606,14 +2912,85 @@ export default function App() {
         Array.from(lastRoundAttackersMap.entries()).map(([targetId, attackers]) => [targetId, attackers.size]),
       ) as Record<string, number>;
 
+      let previewUnits = workingUnits;
+      const nextAiPlans: Record<string, AiDecision> = {};
+      if (!result) {
+        const nextTauntTargets: Record<string, string> = {};
+        Object.entries(plannedActions).forEach(([actorId, action]) => {
+          if (action.actionId === 'tactics' && action.tactic === 'taunt' && action.targetId) {
+            const target = getUnit(previewUnits, action.targetId);
+            const actor = getUnit(previewUnits, actorId);
+            if (target && actor && isCombatReadyUnit(target) && isCombatReadyUnit(actor)) {
+              nextTauntTargets[target.id] = actor.id;
+            }
+          }
+        });
+
+        previewUnits = previewUnits.map(unit => {
+          if (!isCombatReadyUnit(unit)) return { ...unit, intent: undefined };
+
+          if (unit.subFaction !== 'squad') {
+            const tauntedBy = nextTauntTargets[unit.id];
+            if (tauntedBy) {
+              nextAiPlans[unit.id] = { actionId: 'attack', targetId: tauntedBy, reason: 'taunted_preview' };
+              const taunter = getUnit(previewUnits, tauntedBy);
+              return { ...unit, intent: taunter ? `攻击 ${taunter.name}` : '无有效目标' };
+            }
+            const decision = decideAiAction(unit, previewUnits, nextLastRoundAttackersCount);
+            nextAiPlans[unit.id] = decision;
+            return { ...unit, intent: getAiIntentLabel(decision, unit, previewUnits) };
+          }
+
+          const planned = plannedActions[unit.id];
+          if (planned?.actionId === 'tactics') {
+            if (planned.tactic === 'taunt') {
+              const target = planned.targetId ? getUnit(previewUnits, planned.targetId) : null;
+              return { ...unit, intent: target ? `嘲弄 ${target.name}` : '嘲弄失败' };
+            }
+            if (planned.tactic === 'medical' || planned.tactic === 'emergency_medical') {
+              const target =
+                selectedMedicalTargetId && getUnit(previewUnits, selectedMedicalTargetId)?.faction === 'friendly'
+                  ? getUnit(previewUnits, selectedMedicalTargetId)
+                  : unit;
+              return {
+                ...unit,
+                intent:
+                  planned.tactic === 'emergency_medical'
+                    ? `紧急医治 ${(target || unit).name}`
+                    : `医疗 ${(target || unit).name}`,
+              };
+            }
+            if (planned.tactic === 'defense') return { ...unit, intent: '防御' };
+            if (planned.tactic === 'escape') return { ...unit, intent: '逃跑' };
+          }
+
+          if (planned?.actionId === 'subdue') {
+            const target = planned.targetId
+              ? getUnit(previewUnits, planned.targetId)
+              : pickRandomTarget(previewUnits, 'enemy');
+            return { ...unit, intent: target ? `制服 ${target.name}` : '无有效目标' };
+          }
+
+          const target = planned?.targetId
+            ? getUnit(previewUnits, planned.targetId)
+            : pickRandomTarget(previewUnits, 'enemy');
+          return { ...unit, intent: target ? `攻击 ${target.name}` : '无有效目标' };
+        });
+      }
+
       return {
         round: prev.round + 1,
-        units: workingUnits,
+        units: previewUnits,
         logs: [...prev.logs, ...logs],
         result,
         endReason: result ? 'normal' : prev.endReason,
         lastRoundAttackersCount: nextLastRoundAttackersCount,
         nonLethalActorIds: prev.nonLethalActorIds,
+        aiPlans: result ? prev.aiPlans : nextAiPlans,
+        playerEmergencyMedicalCooldown:
+          plannedActions[playerId]?.actionId === 'tactics' && plannedActions[playerId]?.tactic === 'emergency_medical'
+            ? 1
+            : Math.max(0, (prev.playerEmergencyMedicalCooldown || 0) - 1),
       };
     });
   };
@@ -2701,6 +3078,19 @@ export default function App() {
       }
     });
 
+    const moodRewardMap: Partial<Record<BattleOutcome, number>> = {
+      酣畅大胜: 150,
+      略处上风: 130,
+      血战险胜: 110,
+      史诗大捷: 200,
+    };
+    const baseMoodReward = moodRewardMap[displayOutcome] ?? 0;
+    const getMoodRewardForUnit = (unit: BattleCharacter) => {
+      if (baseMoodReward <= 0) return 0;
+      if (unit.escaped) return Math.round(baseMoodReward / 2);
+      return baseMoodReward;
+    };
+
     const summarizeUnit = (unit: BattleCharacter) => {
       const baseHp = Number.isFinite(unit.startHp) ? unit.startHp : unit.hp;
       const damageTaken = Math.max(0, Math.round(baseHp - unit.hp));
@@ -2724,7 +3114,9 @@ export default function App() {
         if (entries.length === 0) return '';
         return `，消耗了${entries.map(([name, count]) => `${name}X${count}`).join('，')}`;
       })();
-      return `${unit.name}: 受到伤害${damageTaken}, 当前血量${currentHp}, 创伤(${traumaLabel}), 状态${buildStatusLabel(unit)}${combatStatText}${expText}${consumedMedicalText}`;
+      const moodReward = getMoodRewardForUnit(unit);
+      const moodText = moodReward > 0 ? `，心情+${moodReward}` : '';
+      return `${unit.name}: 受到伤害${damageTaken}, 当前血量${currentHp}, 创伤(${traumaLabel}), 状态${buildStatusLabel(unit)}${combatStatText}${expText}${consumedMedicalText}${moodText}`;
     };
 
     const friendLines = battleState.units
@@ -2863,7 +3255,11 @@ export default function App() {
   };
 
   return (
-    <div className="w-full h-auto aspect-[9/16] sm:aspect-[3/4] lg:aspect-[16/9] bg-[#050505] text-stone-300 font-sans selection:bg-stone-700 selection:text-white flex flex-col relative overflow-hidden">
+    <div
+      className={`w-full h-[100dvh] min-h-[100dvh] lg:h-auto lg:min-h-0 lg:aspect-[16/9] bg-[#050505] text-stone-300 font-sans selection:bg-stone-700 selection:text-white flex flex-col relative overflow-hidden ${
+        isMobile && isFullscreen ? 'pb-[124px]' : 'pb-[88px]'
+      } lg:pb-0`}
+    >
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-stone-900/20 via-[#050505] to-black pointer-events-none"></div>
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-[0.03] pointer-events-none mix-blend-overlay"></div>
 
@@ -2897,8 +3293,8 @@ export default function App() {
             终末之诗
           </div>
         </div>
-        <div className="flex items-center gap-3 lg:gap-6">
-          <div className="text-sm lg:text-lg font-serif text-stone-400 tracking-widest border-l border-stone-800 pl-3 lg:pl-6 flex items-center gap-1.5 lg:gap-2 relative">
+        <div className="flex items-center gap-2 lg:gap-6 shrink-0">
+          <div className="text-sm lg:text-lg font-serif text-stone-400 tracking-widest border-l border-stone-800 pl-3 lg:pl-6 flex items-center gap-1 lg:gap-2 relative shrink-0 whitespace-nowrap">
             回合数
             <span className="text-stone-200 font-mono text-xl lg:text-2xl">
               {roundLimit
@@ -3136,9 +3532,19 @@ export default function App() {
                     if (!unit.escaped) {
                       setSelectedMedicalTargetId(unit.id);
                       const actorId = medicalActorId || selectedActorId || playerId;
-                      if (actorId) updateUnitIntent(actorId, `医疗 ${unit.name}`);
+                      const plannedTactic = actorId ? plannedActions[actorId]?.tactic : null;
+                      if (actorId) {
+                        updateUnitIntent(
+                          actorId,
+                          plannedTactic === 'emergency_medical' ? `紧急医治 ${unit.name}` : `医疗 ${unit.name}`,
+                        );
+                      }
                       setMedicalSelecting(false);
-                      setMedicalItemSelecting(true);
+                      if (plannedTactic === 'emergency_medical') {
+                        setMedicalItemSelecting(false);
+                      } else {
+                        setMedicalItemSelecting(true);
+                      }
                     }
                     return;
                   }
@@ -3153,86 +3559,105 @@ export default function App() {
         <div
           className={`order-2 lg:order-none flex flex-col relative ${
             isMobile && mobileLogCollapsed
-              ? 'flex-none h-[44px] min-h-0 p-0'
-              : 'flex-1 min-h-[28vh] lg:min-h-0 p-2.5 lg:p-8'
+              ? 'flex-none h-[260px] min-h-0 p-2.5'
+              : mobileDetailExpanded
+                ? 'flex-none h-[136px] min-h-0 p-2.5'
+                : isMobile
+                  ? 'flex-none h-[180px] min-h-0 p-2.5'
+                  : 'flex-1 min-h-0 p-2.5 lg:p-8'
           }`}
         >
-          {!(isMobile && mobileLogCollapsed) && (
-            <div className="absolute inset-0 bg-stone-950/40 backdrop-blur-sm m-2.5 lg:m-8 rounded-sm border border-stone-800/40 shadow-[inset_0_0_60px_rgba(0,0,0,0.8)]"></div>
-          )}
+          <div className="absolute inset-0 bg-stone-950/40 backdrop-blur-sm m-2.5 lg:m-8 rounded-sm border border-stone-800/40 shadow-[inset_0_0_60px_rgba(0,0,0,0.8)]"></div>
 
           <button
             type="button"
-            aria-label={mobileLogCollapsed ? '展开战斗日志' : '折叠战斗日志'}
+            aria-label={mobileLogCollapsed ? '收起战斗日志' : '展开战斗日志'}
             onClick={() => setMobileLogCollapsed(prev => !prev)}
-            className={`${isMobile ? 'grid' : 'hidden'} absolute right-2 top-1/2 -translate-y-1/2 z-30 w-8 h-8 rounded-sm border border-stone-700/70 bg-black/60 text-stone-200 hover:bg-black/80 active:bg-black/90 transition-colors place-items-center shadow-[0_0_18px_rgba(0,0,0,0.6)]`}
+            className={`${isMobile ? 'grid' : 'hidden'} absolute right-2 top-2 z-30 w-8 h-8 rounded-sm border border-stone-700/70 bg-black/60 text-stone-200 hover:bg-black/80 active:bg-black/90 transition-colors place-items-center shadow-[0_0_18px_rgba(0,0,0,0.6)]`}
           >
             {mobileLogCollapsed ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
           </button>
 
-          {!(isMobile && mobileLogCollapsed) && (
+          <div
+            ref={logScrollRef}
+            className={`relative z-10 flex-1 overflow-y-auto font-serif text-base leading-[1.8] text-stone-300 space-y-3 scrollbar-hide overscroll-contain ${
+              mobileDetailExpanded ? 'p-3' : 'p-6 lg:p-10'
+            }`}
+            style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
+          >
             <div
-              ref={logScrollRef}
-              className="relative z-10 flex-1 overflow-y-auto p-6 lg:p-10 font-serif text-base leading-[1.8] text-stone-300 space-y-3 scrollbar-hide overscroll-contain"
-              style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
+              className={`flex items-center justify-center gap-2.5 ${mobileDetailExpanded ? 'mb-2' : 'mb-4 lg:mb-6'}`}
             >
-              <div className="mb-4 lg:mb-6 flex items-center justify-center gap-2.5">
-                <span className="inline-block px-4 py-1 border border-stone-800/60 rounded-sm text-xs font-mono text-stone-500 tracking-widest bg-stone-900/30">
-                  战斗日志
-                </span>
+              <span className="inline-block px-4 py-1 border border-stone-800/60 rounded-sm text-xs font-mono text-stone-500 tracking-widest bg-stone-900/30">
+                战斗日志
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowCurrentRoundOnly(prev => !prev)}
+                className="px-3 py-1 border border-stone-800/70 rounded-sm text-[11px] font-mono text-stone-400 bg-stone-900/40 hover:text-stone-200 hover:border-stone-600/70 transition-colors"
+              >
+                {showCurrentRoundOnly ? '显示全部' : '显示当前回合'}
+              </button>
+            </div>
+
+            {!isMobile && loadError ? (
+              <div className="space-y-3 text-center">
+                <div className="text-amber-300 text-sm font-mono">无法读取 MVU 变量</div>
+                <div className="text-xs text-stone-500 font-mono break-all">{loadError}</div>
                 <button
                   type="button"
-                  onClick={() => setShowCurrentRoundOnly(prev => !prev)}
-                  className="px-3 py-1 border border-stone-800/70 rounded-sm text-[11px] font-mono text-stone-400 bg-stone-900/40 hover:text-stone-200 hover:border-stone-600/70 transition-colors"
+                  onClick={handleRetryLoad}
+                  disabled={loading}
+                  className={`mx-auto px-4 py-2 text-xs font-mono border rounded-sm transition-colors ${
+                    loading
+                      ? 'text-stone-600 border-stone-800/60 cursor-not-allowed'
+                      : 'text-amber-200 border-amber-900/60 hover:bg-amber-900/30'
+                  }`}
                 >
-                  {showCurrentRoundOnly ? '显示全部' : '显示当前回合'}
+                  {loading ? '重试中...' : '删除此消息，重新点击战斗栏，多试几次，我为此感到很抱歉'}
                 </button>
               </div>
-
-              {!isMobile && loadError ? (
-                <div className="space-y-3 text-center">
-                  <div className="text-amber-300 text-sm font-mono">无法读取 MVU 变量</div>
-                  <div className="text-xs text-stone-500 font-mono break-all">{loadError}</div>
-                  <button
-                    type="button"
-                    onClick={handleRetryLoad}
-                    disabled={loading}
-                    className={`mx-auto px-4 py-2 text-xs font-mono border rounded-sm transition-colors ${
-                      loading
-                        ? 'text-stone-600 border-stone-800/60 cursor-not-allowed'
-                        : 'text-amber-200 border-amber-900/60 hover:bg-amber-900/30'
-                    }`}
-                  >
-                    {loading ? '重试中...' : '删除此消息，重新点击战斗栏，多试几次，我为此感到很抱歉'}
-                  </button>
-                </div>
-              ) : displayedLogs.length === 0 ? (
-                <div className="text-center text-stone-500 text-sm font-mono">等待你的指令...</div>
-              ) : (
-                <div className="space-y-2 font-mono text-sm whitespace-pre-wrap">
-                  {displayedLogs.map((line, index) => {
-                    const isSettlement = line.startsWith(SETTLEMENT_LOG);
-                    return (
-                      <div
-                        key={`${line}-${index}`}
-                        className={`${getLogLineClass(line)} ${isSettlement ? 'cursor-pointer text-base sm:text-lg text-center' : ''}`}
-                        onClick={() => {
-                          if (isSettlement) setResultConfirmed(true);
-                        }}
-                      >
-                        {line}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
+            ) : displayedLogs.length === 0 ? (
+              <div className={`text-center text-stone-500 font-mono ${mobileDetailExpanded ? 'text-xs' : 'text-sm'}`}>
+                等待你的指令...
+              </div>
+            ) : (
+              <div
+                className={`space-y-2 font-mono whitespace-pre-wrap ${mobileDetailExpanded ? 'text-xs leading-6' : 'text-sm'}`}
+              >
+                {displayedLogs.map((line, index) => {
+                  const isSettlement = line.startsWith(SETTLEMENT_LOG);
+                  return (
+                    <div
+                      key={`${line}-${index}`}
+                      className={`${getLogLineClass(line)} ${isSettlement ? 'cursor-pointer text-base sm:text-lg text-center' : ''}`}
+                      onClick={() => {
+                        if (isSettlement) setResultConfirmed(true);
+                      }}
+                    >
+                      {line}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
 
         <div
-          className="order-3 lg:order-none shrink-0 h-[188px] lg:h-auto lg:min-h-0 w-full lg:w-[28%] lg:min-w-[300px] p-2.5 lg:p-6 overflow-x-auto overflow-y-visible lg:overflow-x-hidden lg:overflow-y-auto border-t border-stone-800/30 lg:border-t-0 lg:border-l lg:border-stone-800/30 bg-gradient-to-l from-black/80 to-transparent scrollbar-hide flex flex-col min-h-0 overscroll-contain"
-          style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x' }}
+          className={`order-3 lg:order-none w-full lg:w-[28%] lg:min-w-[300px] p-2.5 lg:p-6 border-t border-stone-800/30 lg:border-t-0 lg:border-l lg:border-stone-800/30 bg-gradient-to-l from-black/80 to-transparent scrollbar-hide flex flex-col min-h-0 overscroll-contain ${
+            mobileLogCollapsed
+              ? 'flex-none h-auto max-h-[280px] overflow-x-hidden overflow-y-auto'
+              : mobileDetailExpanded
+                ? 'flex-none h-auto max-h-[52dvh] overflow-x-hidden overflow-y-auto'
+                : isMobile
+                  ? 'flex-1 min-h-0 overflow-x-hidden overflow-y-auto'
+                  : 'shrink-0 h-[72px] lg:h-auto lg:min-h-0 overflow-x-auto overflow-y-visible lg:overflow-x-hidden lg:overflow-y-auto'
+          }`}
+          style={{
+            WebkitOverflowScrolling: 'touch',
+            touchAction: mobileLogCollapsed || mobileDetailExpanded || isMobile ? 'pan-y' : 'pan-x',
+          }}
         >
           <div className="flex items-center justify-between mb-3 lg:mb-6 pb-2 border-b border-stone-800/50">
             <span className="text-xs font-mono text-stone-600">
@@ -3243,7 +3668,11 @@ export default function App() {
               <div className="w-1.5 h-4 bg-red-600 rounded-sm shadow-[0_0_10px_rgba(220,38,38,0.8)]"></div>
             </h2>
           </div>
-          <div className="flex flex-row items-end lg:items-stretch lg:flex-col gap-3 lg:gap-4 flex-1 min-w-max lg:min-w-0 pb-1 lg:pb-0">
+          <div
+            className={`flex flex-row lg:items-stretch lg:flex-col gap-3 min-w-max lg:min-w-0 pb-1 lg:pb-0 ${
+              mobileBottomExpanded || isMobile ? 'items-start content-start lg:gap-4' : 'flex-1 items-end lg:gap-4'
+            }`}
+          >
             {enemyUnits.map(unit => (
               <CharacterCard
                 key={unit.id}
@@ -3316,12 +3745,20 @@ export default function App() {
         </div>
       </main>
 
-      <footer className="relative z-20 mt-10 lg:mt-0 border-t border-stone-800/50 bg-black/60 backdrop-blur-xl pb-[env(safe-area-inset-bottom)]">
-        <div className="max-w-4xl mx-auto p-2.5 lg:p-4 flex items-center justify-center gap-2.5 lg:gap-6">
-          <div className="relative">
+      <footer className="fixed bottom-0 left-0 right-0 z-30 lg:relative lg:bottom-auto lg:left-auto lg:right-auto border-t border-stone-800/50 bg-black/92 backdrop-blur-xl pb-[min(max(env(safe-area-inset-bottom),0px),8px)] shadow-[0_-8px_24px_rgba(0,0,0,0.65)]">
+        <div
+          className={`w-full px-2 py-2 lg:px-4 lg:py-4 ${
+            isMobile && isFullscreen
+              ? 'grid grid-cols-12 gap-2'
+              : 'flex items-center justify-center gap-2 lg:gap-6 overflow-x-auto scrollbar-hide'
+          } lg:flex lg:items-center lg:justify-center lg:gap-6`}
+        >
+          <div className={`relative ${isMobile && isFullscreen ? 'col-[1/4] row-[1/2]' : 'shrink-0'}`}>
             <button
               onClick={() => setNonLethalMenuOpen(!nonLethalMenuOpen)}
-              className="group relative flex flex-col items-center justify-center w-16 h-16 sm:w-24 sm:h-24 lg:w-28 lg:h-28 rounded-sm border bg-stone-900/40 backdrop-blur-md transition-all duration-300 text-fuchsia-300 border-fuchsia-900/50 hover:bg-fuchsia-950/40 hover:border-fuchsia-500/50 group-hover:shadow-[0_0_20px_rgba(217,70,239,0.3)] overflow-hidden"
+              className={`group relative flex flex-col items-center justify-center h-16 sm:w-24 sm:h-24 lg:w-28 lg:h-28 rounded-sm border bg-stone-900/40 backdrop-blur-md transition-all duration-300 text-fuchsia-300 border-fuchsia-900/50 hover:bg-fuchsia-950/40 hover:border-fuchsia-500/50 group-hover:shadow-[0_0_20px_rgba(217,70,239,0.3)] overflow-hidden ${
+                isMobile && isFullscreen ? 'w-full' : 'w-16 shrink-0'
+              }`}
             >
               <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-current opacity-30 group-hover:opacity-100 transition-opacity"></div>
@@ -3406,7 +3843,9 @@ export default function App() {
           <button
             ref={autoSelectRef}
             onClick={autoSelectTargets}
-            className="group relative flex flex-col items-center justify-center w-16 h-16 sm:w-24 sm:h-24 lg:w-28 lg:h-28 rounded-sm border bg-stone-900/40 backdrop-blur-md transition-all duration-300 text-amber-300 border-amber-900/50 hover:bg-amber-950/40 hover:border-amber-500/50 group-hover:shadow-[0_0_20px_rgba(251,191,36,0.3)] overflow-hidden"
+            className={`group relative flex flex-col items-center justify-center h-16 sm:w-24 sm:h-24 lg:w-28 lg:h-28 rounded-sm border bg-stone-900/40 backdrop-blur-md transition-all duration-300 text-amber-300 border-amber-900/50 hover:bg-amber-950/40 hover:border-amber-500/50 group-hover:shadow-[0_0_20px_rgba(251,191,36,0.3)] overflow-hidden ${
+              isMobile && isFullscreen ? 'w-full col-[4/7] row-[1/2]' : 'w-16 shrink-0'
+            }`}
           >
             <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
             <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-current opacity-30 group-hover:opacity-100 transition-opacity"></div>
@@ -3424,7 +3863,26 @@ export default function App() {
                 actionButtonRefs.current[action.id] = el;
               }}
               onClick={() => handleActionClick(action)}
-              className={`group relative flex flex-col items-center justify-center w-16 h-16 sm:w-24 sm:h-24 lg:w-28 lg:h-28 rounded-sm border bg-stone-900/40 backdrop-blur-md transition-all duration-300 ${action.color} ${action.glow} overflow-hidden`}
+              className={`group relative flex flex-col items-center justify-center h-16 sm:w-24 sm:h-24 lg:w-28 lg:h-28 rounded-sm border bg-stone-900/40 backdrop-blur-md transition-all duration-300 ${action.color} ${action.glow} overflow-hidden ${
+                isMobile && isFullscreen ? 'w-full' : 'w-16 shrink-0'
+              }`}
+              style={
+                isMobile && isFullscreen
+                  ? action.id === 'attack'
+                    ? { gridColumn: '1 / 5', gridRow: '2 / 3' }
+                    : action.id === 'tactics'
+                      ? { gridColumn: '5 / 9', gridRow: '2 / 3' }
+                      : action.id === 'end_round'
+                        ? { gridColumn: '9 / 13', gridRow: '2 / 3' }
+                        : action.id === 'auto'
+                          ? { gridColumn: '4 / 7', gridRow: '1 / 2' }
+                          : action.id === 'subdue'
+                            ? { gridColumn: '7 / 10', gridRow: '1 / 2' }
+                            : action.id === 'surrender'
+                              ? { gridColumn: '10 / 13', gridRow: '1 / 2' }
+                              : { gridColumn: '1 / 4', gridRow: '1 / 2' }
+                  : undefined
+              }
             >
               <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-current opacity-30 group-hover:opacity-100 transition-opacity"></div>
@@ -3463,6 +3921,19 @@ export default function App() {
           logs={battleState.logs}
           onCopy={handleCopyLogs}
         />
+      )}
+      {battleNotice && (
+        <div className="pointer-events-none fixed left-1/2 top-24 z-50 -translate-x-1/2 px-4">
+          <div
+            className={`rounded-sm border px-5 py-3 text-center font-serif text-sm tracking-[0.12em] shadow-[0_0_30px_rgba(0,0,0,0.45)] backdrop-blur-md animate-fade-in-up ${
+              battleNotice.tone === 'rose'
+                ? 'border-rose-700/40 bg-rose-950/25 text-transparent bg-clip-text bg-gradient-to-r from-rose-200 via-rose-400 to-orange-300'
+                : 'border-amber-700/40 bg-amber-950/20 text-transparent bg-clip-text bg-gradient-to-r from-stone-100 via-amber-300 to-yellow-200'
+            }`}
+          >
+            {battleNotice.text}
+          </div>
+        </div>
       )}
       {surrenderConfirmOpen && !battleState.result && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -3521,19 +3992,25 @@ export default function App() {
                 onClick={() => applyTactic('taunt')}
                 className="w-full text-left px-4 py-2 border border-stone-700/60 rounded-sm hover:bg-stone-800/60"
               >
-                嘲弄：强制选中的敌人攻击我，本回合不攻击
+                嘲弄：强制选中的敌人攻击我，格挡值+12，本回合不攻击
               </button>
               <button
                 onClick={() => applyTactic('defense')}
                 className="w-full text-left px-4 py-2 border border-stone-700/60 rounded-sm hover:bg-stone-800/60"
               >
-                防御：格挡基础+15，本回合不攻击
+                防御：格挡基础+18，本回合不攻击
               </button>
               <button
                 onClick={() => applyTactic('medical')}
                 className="w-full text-left px-4 py-2 border border-stone-700/60 rounded-sm hover:bg-stone-800/60"
               >
                 医疗：选择目标与物品
+              </button>
+              <button
+                onClick={() => applyTactic('emergency_medical')}
+                className="w-full text-left px-4 py-2 border border-stone-700/60 rounded-sm hover:bg-stone-800/60"
+              >
+                紧急手动医治：恢复量=智力*0.4+1D智力
               </button>
               <button
                 onClick={() => applyTactic('escape')}

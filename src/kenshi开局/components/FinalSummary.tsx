@@ -95,15 +95,6 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
 即便牧师不断警告，教国边境之外是一片充满野蛮杀戮、异端横行，且到处游荡着巨大怪物的恐怖绝地，但这反而成了催化你冒险的毒药。
 今天，你终于背起行囊，站在了某座教国城镇的边缘。
 带着些许对神明的敬畏与对未知的好奇，你决定打破这安逸的牢笼，去亲眼见证真实的血肉世界。`,
-    holy_crusade: `菲尼克斯六十二世将手掌按在你的额头
-圣殿穹顶下，祷告声如雷，主祭高呼：你已被任命为新一代圣国牧师，统领一场“净化异端”的东征
-“去吧，我的牧师，成为我愤怒的延伸，让黑暗在你的光芒下颤抖！”
-神谕像铁钉般钉入脑海。你走出城门，身后补给车堆满粮食、葡萄酒与武备
-空气中仿佛已传来战友的嘶吼与异教徒的惨叫
-现在
-不要怜悯，不要迟疑
-让圣国的敌人在你的战锤下忏悔
-让奥克兰的福音传遍这片污秽的大地`,
     rock_bottom: `毫无疑问，你的人生已经彻底跌破了谷底。
 你记不清遭遇了何种厄运，此刻的你正孤身一人，饥肠辘辘地瘫倒在广袤无垠、烈日炎炎的大沙漠荒野之中。
 你浑身上下一丝不挂，没有半个开币与防身武器。
@@ -197,11 +188,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
   const resolvedRaceTitle =
     data.race === 'custom_race'
       ? data.customStart.customRaceName?.trim() || '自定义种族'
-      : data.subrace === 'skeleton_false_savior'
-        ? '骨人-虚伪者'
-        : race && ['west_hive', 'south_hive', 'dark_hive'].includes(race.id) && subrace?.title
-          ? `${race.title}-${subrace.title}`
-          : subrace?.title || race?.title || '人类';
+      : subrace?.title || race?.title || '人类';
 
   const attributeLabels: Record<keyof CharacterData['attributes'], string> = {
     strength: '力量',
@@ -230,45 +217,17 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
   const raceTraitSource = [race?.description ?? '', subrace?.description ?? ''].join(' ');
   const raceTraits = Array.from(new Set(raceTraitSource.match(/[^。！？\n]+（[^）]+）/g) || []));
 
-  const stripAttributeTextFromDescription = (text: string) =>
-    text
-      .replace(/[，、；\s]*(力量|敏捷|感知|体质|意志|智力|魅力)\s*[+-]\s*\d+/g, '')
-      .replace(/[，、；\s]+$/g, '')
-      .trim();
-
-  const parseMergedTraits = (nameText: string, descText: string) => {
-    if (!nameText || !descText) return [] as Array<{ name: string; description: string }>;
-    const segments = descText
-      .split('；')
-      .map(part => part.trim())
-      .filter(Boolean)
-      .map(part => {
-        const idx = part.indexOf('：');
-        if (idx <= 0) return null;
-        const name = part.slice(0, idx).trim();
-        const description = stripAttributeTextFromDescription(part.slice(idx + 1).trim());
-        return name && description ? { name, description } : null;
-      })
-      .filter(Boolean) as Array<{ name: string; description: string }>;
-
-    if (segments.length > 0) return segments;
-    return [{ name: nameText, description: stripAttributeTextFromDescription(descText) }];
-  };
-
   const buildTraitsRecord = () => {
     const traits: Record<string, string> = {};
     data.traits.forEach(traitId => {
       const trait = allTraits.find(t => t.id === traitId);
       if (trait) {
-        traits[trait.title] = stripAttributeTextFromDescription(trait.description);
+        traits[trait.title] = trait.description;
       }
     });
-    parseMergedTraits(data.scenarioTraitName || '', data.scenarioTraitDescription || '').forEach(item => {
-      traits[item.name] = item.description;
-    });
-    parseMergedTraits(data.customTraitName || '', data.customTraitDescription || '').forEach(item => {
-      traits[item.name] = item.description;
-    });
+    if (data.customTraitName && data.customTraitDescription) {
+      traits[data.customTraitName] = data.customTraitDescription;
+    }
     return traits;
   };
 
@@ -314,8 +273,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
     }
 
     const equipmentList = scenario?.equipment ?? [];
-    const scenarioForcedWeapon =
-      scenario?.id === 'monster_hunter' ? '利维坦狩猎之刃' : scenario?.id === 'holy_crusade' ? '圣杖' : undefined;
+    const scenarioForcedWeapon = scenario?.id === 'monster_hunter' ? '利维坦狩猎之刃' : undefined;
     const weaponItem = scenarioForcedWeapon ?? equipmentList.find(item => /刀|剑|棒|斧|弓|弩|锤|枪|矛|刃/.test(item));
     const armorItem = equipmentList.find(item => /衣|甲|护|裤|靴|袍|盔|披风|披肩|衫|服/.test(item));
 
@@ -419,13 +377,6 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
           type: '中甲',
           dr: 16,
           desc: '由多层耐磨皮革与金属衬片缝制的猎手护甲及披风，可分散切割冲击并保持高机动。',
-        };
-      }
-      if (/奥克兰赐福祭司服（链甲内衬）/.test(item)) {
-        return {
-          type: '中甲',
-          dr: 15,
-          desc: '奥克兰赐福过的祭司衣物，内衬细密链甲；外层圣纹布料可遮蔽护环结构，在庄严与防护间取得平衡。',
         };
       }
       if (/贴身太空服/.test(item)) {
@@ -561,15 +512,6 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
           damage: '切割:0.65/钝伤:0.35',
         };
       }
-      if (/圣杖/.test(item)) {
-        return {
-          name: '圣杖',
-          type: '长柄刀类',
-          quality: '圣火精炼',
-          dice: '1d22',
-          damage: '切割:0.3/钝伤:0.7',
-        };
-      }
       if (/大剑/.test(item)) {
         return {
           name: item.replace(/\s*\(.*?\)\s*/, ''),
@@ -645,116 +587,6 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
     };
   };
 
-  const buildEquipmentSummaryFromList = (equipmentList: string[], scenarioId?: string) => {
-    const weaponItem = equipmentList.find(item => /刀|剑|棒|斧|弓|弩|锤|枪|矛|刃/.test(item));
-    const armorItem = equipmentList.find(item => /衣|甲|护|裤|靴|袍|盔|披风|披肩|衫|服|背心|夹克/.test(item));
-
-    const resolveArmorType = (item?: string) => {
-      if (!item || item === '无') return '无甲';
-      if (/重|板甲|重铠/.test(item)) return '重甲';
-      if (/中|链甲|锁子/.test(item)) return '中甲';
-      return '轻甲';
-    };
-
-    const resolveArmorMeta = (item?: string) => {
-      if (!item || item === '无') {
-        return { type: '无甲', dr: 0, desc: '未穿戴护甲' };
-      }
-      if ((scenarioId === 'slave' || scenarioId === 'male_slave') && /破布衫/.test(item)) {
-        return {
-          type: '轻甲',
-          dr: 1,
-          desc: '几块发灰破布草草缠在身上，只够遮住关键部位；布料粗硬、边缘磨烂，却是你仅有的体面与遮护。',
-        };
-      }
-      if (/破布衫|旧布衫/.test(item)) {
-        return {
-          type: '轻甲',
-          dr: 1,
-          desc: '一件薄而磨损严重的旧布衫披在身上，缝线多次返工，只能提供最基础的遮挡。',
-        };
-      }
-      if (/拓荒者夹克|旧皮夹克|破旧皮甲/.test(item)) {
-        return {
-          type: '轻甲',
-          dr: 6,
-          desc: '以旧皮革和补丁布料拼成的外层护具，能挡住一些擦伤和轻微劈砍，适合荒野拓荒者长时间劳作。',
-        };
-      }
-      if (/布背心/.test(item)) {
-        return {
-          type: '轻甲',
-          dr: 3,
-          desc: '一件夹了薄衬层的布背心，轻便透气，穿着它干活和赶路都比较利索。',
-        };
-      }
-      if (/雇佣兵之甲/.test(item)) {
-        return {
-          type: '中甲',
-          dr: 14,
-          desc: '由几种不同的金属板护层制成。几片护甲被设计成肌肉外形，严密保护从肩部到胸部中部的部分。',
-        };
-      }
-      const armorType = resolveArmorType(item);
-      return { type: armorType, dr: 0, desc: `你穿着${item}，提供最低限度的防护。` };
-    };
-
-    const resolveWeaponMeta = (item?: string) => {
-      if (!item || item === '无') {
-        return { name: '武术', type: '武术', quality: '普通', dice: '1d4', damage: '钝伤:1.0' };
-      }
-      if (/生锈短刀/.test(item)) {
-        return { name: '生锈短刀', type: '武士刀类', quality: '普通', dice: '1d6', damage: '切割:0.8/钝伤:0.2' };
-      }
-      if (/铁棒/.test(item)) {
-        return { name: '铁棒', type: '钝器类', quality: '普通', dice: '1d8', damage: '钝伤:1.0' };
-      }
-      if (/沙克大剑/.test(item)) {
-        return { name: '沙克大剑', type: '大型类', quality: '普通', dice: '1d15', damage: '切割:0.7/钝伤:0.3' };
-      }
-      if (/鱼矛/.test(item)) {
-        return { name: '鱼矛', type: '长柄刀类', quality: '普通', dice: '1d12', damage: '切割:0.7/钝伤:0.3' };
-      }
-      return { name: item, type: '武士刀类', quality: '普通', dice: '1d4', damage: '钝伤:1.0' };
-    };
-
-    const armorMeta = resolveArmorMeta(armorItem);
-    const weaponMeta = resolveWeaponMeta(weaponItem);
-    const cleanedBackpackItems = equipmentList.filter(
-      item => item && item !== '无' && item !== weaponItem && item !== armorItem,
-    );
-
-    return {
-      主武器: {
-        名字: weaponMeta.name,
-        种类: weaponMeta.type,
-        品质: weaponMeta.quality,
-        介绍: weaponItem ?? '',
-        伤害骰: weaponMeta.dice,
-        伤害类型: weaponMeta.damage,
-        特效: {},
-        价值: 0,
-      },
-      副武器: {
-        名字: '无',
-        种类: '无',
-        品质: '普通',
-        介绍: '',
-        伤害骰: '1d4',
-        伤害类型: '钝伤:1.0',
-        特效: {},
-        价值: 0,
-      },
-      护甲: {
-        种类: armorMeta.type,
-        '防护能力(DR)': armorMeta.dr,
-        介绍: armorMeta.desc,
-        特性: {},
-      },
-      背包物品: cleanedBackpackItems,
-    };
-  };
-
   const parseAttributeModifiers = (text: string) => {
     const modifiers = {
       strength: 0,
@@ -781,69 +613,6 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
     return modifiers;
   };
 
-  const getScenarioAttributeBonus = () => {
-    if (data.scenario === 'holy_crusade') {
-      return {
-        strength: 5,
-        dexterity: 5,
-        perception: 5,
-        constitution: 5,
-        will: 5,
-        intelligence: 5,
-        charisma: 10,
-      };
-    }
-
-    if (data.scenario === 'false_savior') {
-      return {
-        strength: 0,
-        dexterity: 0,
-        perception: 0,
-        constitution: 0,
-        will: 0,
-        intelligence: 0,
-        charisma: 0,
-      };
-    }
-
-    return {
-      strength: 0,
-      dexterity: 0,
-      perception: 0,
-      constitution: 0,
-      will: 0,
-      intelligence: 0,
-      charisma: 0,
-    };
-  };
-
-  const getSelectedTraitAttributeBonus = () => {
-    const bonus = {
-      strength: 0,
-      dexterity: 0,
-      perception: 0,
-      constitution: 0,
-      will: 0,
-      intelligence: 0,
-      charisma: 0,
-    };
-
-    data.traits.forEach(traitId => {
-      const trait = allTraits.find(t => t.id === traitId);
-      if (!trait) return;
-      const parsed = parseAttributeModifiers(trait.description);
-      bonus.strength += parsed.strength;
-      bonus.dexterity += parsed.dexterity;
-      bonus.perception += parsed.perception;
-      bonus.constitution += parsed.constitution;
-      bonus.will += parsed.will;
-      bonus.intelligence += parsed.intelligence;
-      bonus.charisma += parsed.charisma;
-    });
-
-    return bonus;
-  };
-
   const buildAttributesRecord = () => {
     const raceModifiers = parseAttributeModifiers(
       [race?.description ?? '', (race as { attributeSummary?: string })?.attributeSummary ?? ''].join(' '),
@@ -851,46 +620,13 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
     const subraceModifiers = parseAttributeModifiers(
       [subrace?.description ?? '', (subrace as { attributeSummary?: string })?.attributeSummary ?? ''].join(' '),
     );
-    const scenarioBonus = getScenarioAttributeBonus();
-    const traitBonus = getSelectedTraitAttributeBonus();
-    const finalStrength =
-      data.attributes.strength +
-      raceModifiers.strength +
-      subraceModifiers.strength +
-      scenarioBonus.strength +
-      traitBonus.strength;
-    const finalDexterity =
-      data.attributes.dexterity +
-      raceModifiers.dexterity +
-      subraceModifiers.dexterity +
-      scenarioBonus.dexterity +
-      traitBonus.dexterity;
-    const finalPerception =
-      data.attributes.perception +
-      raceModifiers.perception +
-      subraceModifiers.perception +
-      scenarioBonus.perception +
-      traitBonus.perception;
-    const finalConstitution =
-      data.attributes.constitution +
-      raceModifiers.constitution +
-      subraceModifiers.constitution +
-      scenarioBonus.constitution +
-      traitBonus.constitution;
-    const finalWill =
-      data.attributes.will + raceModifiers.will + subraceModifiers.will + scenarioBonus.will + traitBonus.will;
-    const finalIntelligence =
-      data.attributes.intelligence +
-      raceModifiers.intelligence +
-      subraceModifiers.intelligence +
-      scenarioBonus.intelligence +
-      traitBonus.intelligence;
-    const finalCharisma =
-      data.attributes.charisma +
-      raceModifiers.charisma +
-      subraceModifiers.charisma +
-      scenarioBonus.charisma +
-      traitBonus.charisma;
+    const finalStrength = data.attributes.strength + raceModifiers.strength + subraceModifiers.strength;
+    const finalDexterity = data.attributes.dexterity + raceModifiers.dexterity + subraceModifiers.dexterity;
+    const finalPerception = data.attributes.perception + raceModifiers.perception + subraceModifiers.perception;
+    const finalConstitution = data.attributes.constitution + raceModifiers.constitution + subraceModifiers.constitution;
+    const finalWill = data.attributes.will + raceModifiers.will + subraceModifiers.will;
+    const finalIntelligence = data.attributes.intelligence + raceModifiers.intelligence + subraceModifiers.intelligence;
+    const finalCharisma = data.attributes.charisma + raceModifiers.charisma + subraceModifiers.charisma;
     return {
       STR: { 基础: finalStrength, 加成: 0 },
       DEX: { 基础: finalDexterity, 加成: 0 },
@@ -907,14 +643,11 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
     member.traits.forEach((traitId: string) => {
       const trait = allTraits.find(t => t.id === traitId);
       if (trait) {
-        traits[trait.title] = stripAttributeTextFromDescription(trait.description);
+        traits[trait.title] = trait.description;
       }
     });
-    if (member.scenarioTraitName && member.scenarioTraitDescription) {
-      traits[member.scenarioTraitName] = stripAttributeTextFromDescription(member.scenarioTraitDescription);
-    }
     if (member.customTraitName && member.customTraitDescription) {
-      traits[member.customTraitName] = stripAttributeTextFromDescription(member.customTraitDescription);
+      traits[member.customTraitName] = member.customTraitDescription;
     }
     return traits;
   };
@@ -997,7 +730,6 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
       monster_hunter: '怪物猎人',
       holy_sword: '通缉犯',
       holy_commoner: '圣国平民',
-      holy_crusade: '圣国东征牧师',
       rock_bottom: '落难者',
       dark_daughter: '黑暗遗民',
       officer_son: '军官遗孤',
@@ -1018,13 +750,6 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
     _.set(mvuData, 'stat_data.当前角色.属性', buildAttributesRecord());
     _.set(mvuData, 'stat_data.当前角色.特质', buildTraitsRecord());
     const attrsForInit = buildAttributesRecord();
-    const scenarioBonus = getScenarioAttributeBonus();
-    if (Object.values(scenarioBonus).some(value => value !== 0)) {
-      _.set(mvuData, 'stat_data.当前角色.临时特质.剧本属性加成', {
-        描述: `力量${scenarioBonus.strength >= 0 ? '+' : ''}${scenarioBonus.strength}，敏捷${scenarioBonus.dexterity >= 0 ? '+' : ''}${scenarioBonus.dexterity}，感知${scenarioBonus.perception >= 0 ? '+' : ''}${scenarioBonus.perception}，体质${scenarioBonus.constitution >= 0 ? '+' : ''}${scenarioBonus.constitution}，意志${scenarioBonus.will >= 0 ? '+' : ''}${scenarioBonus.will}，智力${scenarioBonus.intelligence >= 0 ? '+' : ''}${scenarioBonus.intelligence}，魅力${scenarioBonus.charisma >= 0 ? '+' : ''}${scenarioBonus.charisma}`,
-        消除: '不可移除',
-      });
-    }
     const tgh = Number(attrsForInit.TGH?.基础 || 1);
     const wil = Number(attrsForInit.WIL?.基础 || 1);
     const bodyHeight = Number(data.appearance.height || 180) / 100;
@@ -1132,12 +857,6 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
           属性点: calcSquadRemainingPoints(member),
           特质: buildSquadTraitsRecord(member),
         };
-
-        const memberEquipment = buildEquipmentSummaryFromList(member.equipment ?? [], data.scenario);
-        squadEntry.主武器 = memberEquipment.主武器;
-        squadEntry.副武器 = memberEquipment.副武器;
-        squadEntry.护甲 = memberEquipment.护甲;
-        squadEntry.背包 = { 物品: {} };
 
         if (memberSubrace?.title) {
           _.set(squadEntry, '种族.亚种', memberSubrace.title);
@@ -1248,17 +967,6 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
         },
         allied: {
           库尔林: '同为难民势力互相扶持',
-        },
-      },
-      holy_crusade: {
-        hostile: {
-          沙克王国: '圣国将其视作亵渎教义的武力威胁',
-          联合城: '东境战争与宗教对立导致长期敌视',
-          浪忍团: '其劫掠与渎神行径破坏圣国秩序',
-          反蓄奴者: '其理念被圣国视作动摇神授秩序',
-        },
-        allied: {
-          神圣教国: '受菲尼克斯六十二世亲自任命并授予东征军权',
         },
       },
     };
@@ -1510,67 +1218,6 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
             进度: {
               当前: 0,
               目标: 1,
-            },
-            状态: '进行中',
-          },
-        },
-      });
-    }
-
-    if (data.scenario === 'holy_crusade') {
-      _.set(mvuData, 'stat_data.任务系统.支援巴斯特的战友', {
-        描述: '巴斯特战线正在溃散边缘，东征军必须迅速重整支点。沿圣路北上抵达奥克兰之剑，与守军会合并接应关键联络人“金麟”，将其纳入你的队伍。',
-        奖励: '1200经验，神圣教国声望提升',
-        主任务状态: '进行中',
-        子任务: {
-          到达奥克兰之剑: {
-            进度: {
-              当前: 0,
-              目标: 1,
-            },
-            状态: '进行中',
-          },
-          支援金麟招募进队: {
-            进度: {
-              当前: 0,
-              目标: 1,
-            },
-            状态: '进行中',
-          },
-        },
-      });
-
-      _.set(mvuData, 'stat_data.任务系统.坏牙镇的祭司委托', {
-        描述: '坏牙镇教区出现一系列扰乱民心的麻烦。前往当地与克拉伦斯祭司接头，查明其困境并决定你要以审判、赎罪或镇压的方式解决此事。',
-        奖励: '800经验，教区补给与情报支持',
-        主任务状态: '进行中',
-        子任务: {
-          前往坏牙镇: {
-            进度: {
-              当前: 0,
-              目标: 1,
-            },
-            状态: '进行中',
-          },
-          询问克拉伦斯祭司需要什么帮助: {
-            进度: {
-              当前: 0,
-              目标: 1,
-            },
-            状态: '进行中',
-          },
-        },
-      });
-
-      _.set(mvuData, 'stat_data.任务系统.圣言同盟', {
-        描述: '以“圣言”影响四个中立派系领袖，使其在信念、利益或恐惧中选择站到你的旗帜下。你不必征服他们的土地，但必须征服他们的意志。',
-        奖励: '1600经验，新增四方盟友关系',
-        主任务状态: '进行中',
-        子任务: {
-          洗脑4个中立派系成为盟友: {
-            进度: {
-              当前: 0,
-              目标: 4,
             },
             状态: '进行中',
           },
@@ -2000,25 +1647,14 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
     const subraceModifiers = parseAttributeModifiers(
       [subrace?.description ?? '', (subrace as { attributeSummary?: string })?.attributeSummary ?? ''].join(' '),
     );
-    const scenarioBonus = getScenarioAttributeBonus();
     const finalAttributes = {
-      strength: data.attributes.strength + raceModifiers.strength + subraceModifiers.strength + scenarioBonus.strength,
-      dexterity:
-        data.attributes.dexterity + raceModifiers.dexterity + subraceModifiers.dexterity + scenarioBonus.dexterity,
-      perception:
-        data.attributes.perception + raceModifiers.perception + subraceModifiers.perception + scenarioBonus.perception,
-      constitution:
-        data.attributes.constitution +
-        raceModifiers.constitution +
-        subraceModifiers.constitution +
-        scenarioBonus.constitution,
-      will: data.attributes.will + raceModifiers.will + subraceModifiers.will + scenarioBonus.will,
-      intelligence:
-        data.attributes.intelligence +
-        raceModifiers.intelligence +
-        subraceModifiers.intelligence +
-        scenarioBonus.intelligence,
-      charisma: data.attributes.charisma + raceModifiers.charisma + subraceModifiers.charisma + scenarioBonus.charisma,
+      strength: data.attributes.strength + raceModifiers.strength + subraceModifiers.strength,
+      dexterity: data.attributes.dexterity + raceModifiers.dexterity + subraceModifiers.dexterity,
+      perception: data.attributes.perception + raceModifiers.perception + subraceModifiers.perception,
+      constitution: data.attributes.constitution + raceModifiers.constitution + subraceModifiers.constitution,
+      will: data.attributes.will + raceModifiers.will + subraceModifiers.will,
+      intelligence: data.attributes.intelligence + raceModifiers.intelligence + subraceModifiers.intelligence,
+      charisma: data.attributes.charisma + raceModifiers.charisma + subraceModifiers.charisma,
     };
     const attributeLine = Object.entries(finalAttributes)
       .map(([key, value]) => `${attributeLabels[key as keyof CharacterData['attributes']]}=${value}`)
@@ -2031,23 +1667,16 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
     const selectedTraitLines = data.traits
       .map(traitId => allTraits.find(t => t.id === traitId))
       .filter(Boolean)
-      .map(trait => ` 【${trait!.title}】：${stripAttributeTextFromDescription(trait!.description)}`);
-    if (
-      selectedTraitLines.length > 0 ||
-      (data.scenarioTraitName && data.scenarioTraitDescription) ||
-      (data.customTraitName && data.customTraitDescription)
-    ) {
+      .map(trait => ` 【${trait!.title}】：${trait!.description}`);
+    if (selectedTraitLines.length > 0 || (data.customTraitName && data.customTraitDescription)) {
       lines.push('特质：');
     }
     if (selectedTraitLines.length > 0) {
       lines.push(...selectedTraitLines);
     }
-    parseMergedTraits(data.scenarioTraitName || '', data.scenarioTraitDescription || '').forEach(item => {
-      lines.push(` 【${item.name}】：${item.description}`);
-    });
-    parseMergedTraits(data.customTraitName || '', data.customTraitDescription || '').forEach(item => {
-      lines.push(` 【${item.name}】：${item.description}`);
-    });
+    if (data.customTraitName && data.customTraitDescription) {
+      lines.push(` 【${data.customTraitName}】：${data.customTraitDescription}`);
+    }
     lines.push(`种族：${resolvedRaceTitle || '未选择'}`);
     lines.push(`开局剧本：${scenario?.title || '未选择'}`);
     const openingEquipment = buildEquipmentSummary();
@@ -2085,12 +1714,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
         .forEach(member => {
           const memberRace = RACES.find(r => r.id === member.race);
           const memberSubrace = memberRace?.subraces.find(s => s.id === member.subrace);
-          const memberRaceTitle =
-            member.subrace === 'skeleton_false_savior'
-              ? '骨人-虚伪者'
-              : memberRace && ['west_hive', 'south_hive', 'dark_hive'].includes(memberRace.id) && memberSubrace?.title
-                ? `${memberRace.title}-${memberSubrace.title}`
-                : memberSubrace?.title || memberRace?.title || '该种族';
+          const memberRaceTitle = memberSubrace?.title || memberRace?.title || '该种族';
           const memberAppearanceDescription = member.appearance.description?.trim() || `默认${memberRaceTitle}的外貌`;
 
           lines.push('');
@@ -2101,25 +1725,14 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
             .map(traitId => allTraits.find(t => t.id === traitId))
             .filter(Boolean)
             .map(trait => ` 【${trait!.title}】：${trait!.description}`);
-          if (
-            memberTraitLines.length > 0 ||
-            (member.scenarioTraitName && member.scenarioTraitDescription) ||
-            (member.customTraitName && member.customTraitDescription)
-          ) {
+          if (memberTraitLines.length > 0 || (member.customTraitName && member.customTraitDescription)) {
             lines.push('特质：');
           }
           if (memberTraitLines.length > 0) {
             lines.push(...memberTraitLines);
           }
-          if (member.scenarioTraitName && member.scenarioTraitDescription) {
-            lines.push(
-              ` 【${member.scenarioTraitName}】：${stripAttributeTextFromDescription(member.scenarioTraitDescription)}`,
-            );
-          }
           if (member.customTraitName && member.customTraitDescription) {
-            lines.push(
-              ` 【${member.customTraitName}】：${stripAttributeTextFromDescription(member.customTraitDescription)}`,
-            );
+            lines.push(` 【${member.customTraitName}】：${member.customTraitDescription}`);
           }
           lines.push(`种族：${memberRaceTitle}`);
           if (scenario?.id === 'slave_master') {
@@ -2216,16 +1829,9 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
                     </span>
                   );
                 })}
-                {parseMergedTraits(data.scenarioTraitName || '', data.scenarioTraitDescription || '').map(item => (
-                  <span key={`scenario-${item.name}`} className="px-2 py-1 bg-white/10 rounded text-xs text-[#C2B280]">
-                    {item.name}
-                  </span>
-                ))}
-                {parseMergedTraits(data.customTraitName || '', data.customTraitDescription || '').map(item => (
-                  <span key={`custom-${item.name}`} className="px-2 py-1 bg-white/10 rounded text-xs text-[#C2B280]">
-                    {item.name}
-                  </span>
-                ))}
+                {data.customTraitName && data.customTraitDescription && (
+                  <span className="px-2 py-1 bg-white/10 rounded text-xs text-[#C2B280]">{data.customTraitName}</span>
+                )}
               </div>
             </div>
           </div>

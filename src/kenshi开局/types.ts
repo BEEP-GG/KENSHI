@@ -16,7 +16,6 @@ export interface SquadMemberData {
   subrace: string;
   level: number;
   attributes: Attributes;
-  equipment?: string[];
   name: string;
   gender: 'male' | 'female' | 'other';
   age: number;
@@ -31,8 +30,6 @@ export interface SquadMemberData {
   traits: string[];
   customTraitName: string;
   customTraitDescription: string;
-  scenarioTraitName: string;
-  scenarioTraitDescription: string;
 }
 
 export type CustomArmorType = '重甲' | '中甲' | '轻甲';
@@ -135,7 +132,6 @@ export const INITIAL_SQUAD_MEMBER: SquadMemberData = {
   subrace: '',
   level: 1,
   attributes: INITIAL_ATTRIBUTES,
-  equipment: [],
   name: '',
   gender: 'male',
   age: 25,
@@ -143,8 +139,6 @@ export const INITIAL_SQUAD_MEMBER: SquadMemberData = {
   traits: [],
   customTraitName: '',
   customTraitDescription: '',
-  scenarioTraitName: '',
-  scenarioTraitDescription: '',
 };
 
 const createInitialSquadMember = (): SquadMemberData => ({
