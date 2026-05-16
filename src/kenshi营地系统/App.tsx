@@ -992,10 +992,10 @@ const actionDescriptions: Record<
     大成功: (name, target) => `仿佛预见了未来的一切变数！${name}制定的完美计划毫无破绽，连战争大师都自愧不如！`,
   },
   h1: {
-    大失败: name => `${name}本想好好休整，睡袋却破了个大洞，冻了一晚状态更差了。`,
-    失败: name => `${name}翻来覆去睡不着，这趟休整的效果实在令人失望。`,
-    成功: name => `${name}在粗糙的睡袋里找了个舒服位置，难得打了个安稳的盹。`,
-    大成功: name => `高品质的长眠！${name}在这片角落里深度放松，伤痛与疲惫一扫而空！`,
+    大失败: name => `${name}本想好好休整，却被糟糕的环境折腾了一整晚，状态反而变得更差了。`,
+    失败: name => `${name}翻来覆去始终无法真正放松，这趟休整的效果实在令人失望。`,
+    成功: name => `${name}总算找到了一个还算能歇息的地方，难得安稳地缓过了一口气。`,
+    大成功: name => `高质量的充分休整！${name}难得彻底放松下来，伤痛与疲惫一扫而空！`,
   },
   b1: {
     大失败: (name, target) => `由于分歧严重，你们在篝火前爆发了口角，甚至有人拔出了刀。情况变得更糟了。`,
@@ -1004,10 +1004,10 @@ const actionDescriptions: Record<
     大成功: (name, target) => `极其罕见的欢乐安宁时光！痛苦似乎暂时离去，你们甚至开始畅想那遥不可及的未来。`,
   },
   b2: {
-    大失败: (name, target) => `你们分享时为了分配不均吵了起来，感觉彼此都是自私自利的混蛋。`,
-    失败: (name, target) => `互相看了看对方手里劣质的黑面包，你们都没什么胃口。`,
-    成功: (name, target) => `通过交换一些能用的物资，你们之间的感情拉近了些许。`,
-    大成功: (name, target) => `犹如久旱逢甘霖！你们不仅交换到了梦寐以求的物资，更在互帮互助中感受到了兄弟般的情谊！`,
+    大失败: (name, target) => `你们在分配时谁也不肯退让，气氛迅速变得紧绷，最后闹得不欢而散。`,
+    失败: (name, target) => `你们彼此打量了一阵，却始终提不起分享的兴致，这次互动最终草草收场。`,
+    成功: (name, target) => `你们顺手交换了些彼此更需要的东西，关系也在这点默契中拉近了些许。`,
+    大成功: (name, target) => `这次分享异常顺利，彼此都得到了想要的帮助，一种难得的信任感也悄然生长。`,
   },
   sm1: {
     大失败: (name, target) => `${name}强行亲吻${target}，却被${target}一把推开，反而挨了一记耳光，狼狈不堪。`,
@@ -1145,7 +1145,7 @@ const actionDescriptions: Record<
   f2: {
     大失败: name => `${name}发呆时想起了痛苦的绝望回忆，精神直接坠入崩溃的深渊。`,
     失败: name => `风沙打在脸上，${name}觉得发呆冥想纯粹在白白挨饿受冻。`,
-    成功: name => `放空大脑凝视废土红日，${name}难得体会到了内心的绝对平静。`,
+    成功: name => `放空大脑，任由思绪慢慢沉寂，${name}难得体会到了内心的绝对平静。`,
     大成功: name => `超凡脱俗的顿悟！在深度冥想中，${name}的精神仿佛脱离了苦海，灵魂受到了极致洗涤！`,
   },
   t1: {
@@ -1673,13 +1673,13 @@ export default function App() {
         const bondEffectPrefix = bondTargetName ? `${memberName}和${bondTargetName}的心情值` : '心情值';
         if (type === '大失败') effectStr = `${bondEffectPrefix}-25`;
         else if (type === '失败') effectStr = `${bondEffectPrefix}-15`;
-        else if (type === '成功') effectStr = `${bondEffectPrefix}+20`;
-        else if (type === '大成功') effectStr = `${bondEffectPrefix}+30`;
+        else if (type === '成功') effectStr = `${bondEffectPrefix}+55`;
+        else if (type === '大成功') effectStr = `${bondEffectPrefix}+65`;
       } else if (activeCategory?.id === 'fun') {
         if (type === '大失败') effectStr = `心情值-20`;
         else if (type === '失败') effectStr = `心情值-10`;
-        else if (type === '成功') effectStr = `心情值+25`;
-        else if (type === '大成功') effectStr = `心情值+40`;
+        else if (type === '成功') effectStr = `心情值+60`;
+        else if (type === '大成功') effectStr = `心情值+75`;
       } else if (subId === 'in1') {
         if (type === '大失败') effectStr = `好感度-20`;
         else if (type === '失败') effectStr = `好感度-10`;
@@ -1700,14 +1700,14 @@ export default function App() {
           effectStr = `心情值-10`;
           targetEffectStr = `心情值-30`;
         } else if (type === '失败') {
-          effectStr = `心情值+10`;
+          effectStr = `心情值+45`;
           targetEffectStr = `心情值-20`;
         } else if (type === '成功') {
-          effectStr = `心情值+15`;
+          effectStr = `心情值+50`;
           targetEffectStr = `心情值不变`;
         } else if (type === '大成功') {
-          effectStr = `心情值+20`;
-          targetEffectStr = `心情值+10`;
+          effectStr = `心情值+55`;
+          targetEffectStr = `心情值+45`;
         }
       } else if (subId === 'sm2') {
         if (type === '大失败') {
@@ -1727,6 +1727,13 @@ export default function App() {
       else if (type === '失败') effectStr = attrName === '心情' ? '心情沉重' : `${attrName}无变化`;
       else if (type === '成功') effectStr = `${attrName}得到改善`;
       else if (type === '大成功') effectStr = `${attrName}极大提升`;
+
+      if (subId === 'h1') {
+        if (type === '大失败') effectStr = `心情值-25`;
+        else if (type === '失败') effectStr = `心情值-10`;
+        else if (type === '成功') effectStr = `心情值+65`;
+        else if (type === '大成功') effectStr = `心情值+85`;
+      }
 
       if (isTradeAction) {
         effectStr = tradeResultText;
@@ -1758,7 +1765,19 @@ export default function App() {
         const repairedParts = runtime.repairableTraumaParts;
         const traumaText = repairedParts.length > 0 ? `，${repairedParts.join('、')}创伤已完全恢复` : '';
 
-        effectStr = `回复${recoveredHp}血量${traumaText}`;
+        if (subId === 'h1') {
+          const moodText =
+            type === '大失败'
+              ? '，心情值-25'
+              : type === '失败'
+                ? '，心情值-10'
+                : type === '成功'
+                  ? '，心情值+30'
+                  : '，心情值+50';
+          effectStr = `回复${recoveredHp}血量${traumaText}${moodText}`;
+        } else {
+          effectStr = `回复${recoveredHp}血量${traumaText}`;
+        }
         if (subId === 'h1') {
           desc =
             actionDescriptions[subId]?.[type]?.(currentMember?.name || '你', '', craftItemName, bodyPartName) || desc;

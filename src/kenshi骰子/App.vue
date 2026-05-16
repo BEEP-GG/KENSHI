@@ -48,7 +48,7 @@
             </div>
             <div class="roll-details" :class="{ 'is-visible': showResult }">
               <div class="roll-breakdown">{{ breakdownText }}</div>
-              <div class="roll-formula">掷骰基础: 1d20 + 属性修正 (大于20，每10点为1)</div>
+              <div class="roll-formula">掷骰基础: 1d20 + 属性修正 (大于25，每10点为1)</div>
             </div>
           </div>
         </div>
@@ -138,15 +138,11 @@ const parseTextToParams = (text: string): DiceParamsInput => {
     if (key === '掷骰公式') formulaRaw = value;
     if (key === 'DC' || key === 'dc') dcRaw = value;
     if (key === '结果') {
-      const normalizedValue = stripQuotes(value);
       const quoted = extractQuoted(value);
-      const compactValue = normalizedValue.replace(/\s+/g, '');
-      const isOutcomeText = /^(成功|失败|大成功|大失败)$/u.test(compactValue);
-
-      if (quoted || isOutcomeText) {
-        outcomeRaw = quoted || normalizedValue;
-      } else if (/^[+-]?\d+(?:\.\d+)?$/.test(compactValue)) {
-        totalRaw = normalizedValue;
+      if (quoted) {
+        outcomeRaw = quoted;
+      } else {
+        totalRaw = stripQuotes(value);
       }
     }
   });
@@ -185,7 +181,6 @@ const parseTextToParams = (text: string): DiceParamsInput => {
     if (!baseRaw && leadingNumber) {
       result.baseRoll = leadingNumber[1];
     }
-
     const mods: Modifier[] = [];
     const regex = /([+-]\d+)(?:\(([^)]+)\))?/g;
     let match: RegExpExecArray | null = null;
@@ -196,21 +191,8 @@ const parseTextToParams = (text: string): DiceParamsInput => {
         mods.push({ v: value, n: name });
       }
     }
-
     if (mods.length) {
       result.modifiers = mods;
-    } else {
-      const fallbackMatch = cleaned.match(/^[+-]?\d+((?:[+-]\d+)+)$/);
-      if (fallbackMatch) {
-        const fallbackMods = fallbackMatch[1]
-          .match(/[+-]\d+/g)
-          ?.map(segment => ({ v: Number(segment), n: '' }))
-          .filter(mod => Number.isFinite(mod.v));
-
-        if (fallbackMods?.length) {
-          result.modifiers = fallbackMods;
-        }
-      }
     }
   }
 
@@ -340,17 +322,9 @@ const roll = (input?: DiceParamsInput) => {
 
   const totalOverrideRaw = mergedInput?.totalResult;
   if (typeof totalOverrideRaw === 'string' || typeof totalOverrideRaw === 'number') {
-    const totalOverrideText = String(totalOverrideRaw).trim();
-    const totalOverride = Number(totalOverrideText);
-    const normalizedOutcomeText = totalOverrideText.replace(/\s+/g, '');
-    const shouldUseOverride =
-      Number.isFinite(totalOverride) &&
-      normalizedOutcomeText !== '' &&
-      !/^(成功|失败|大成功|大失败)$/u.test(normalizedOutcomeText);
-
-    if (shouldUseOverride) {
+    const totalOverride = Number(totalOverrideRaw);
+    if (Number.isFinite(totalOverride)) {
       totalRoll = totalOverride;
-      breakdownStr = mergedInput?.formulaText || `${actualBase}`;
     }
   }
 

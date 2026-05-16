@@ -574,6 +574,9 @@
         display: flex;
         flex-wrap: wrap;
         gap: 6px;
+        width: 100%;
+        min-width: 0;
+        overflow: hidden;
       }
       .item-tag {
         background: rgba(255, 255, 255, 0.08);
@@ -581,6 +584,11 @@
         padding: 3px 8px;
         font-size: 0.9em;
         cursor: help;
+        max-width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+        word-break: break-word;
+        overflow-wrap: anywhere;
       }
       .item-tag:hover {
         border-color: var(--accent-gold);
@@ -758,6 +766,30 @@
       .modal-move-btn:hover {
         background: rgba(46, 204, 113, 0.25);
         box-shadow: 0 0 8px rgba(46, 204, 113, 0.4);
+      }
+      .modal-view-btn {
+        position: absolute;
+        right: 156px;
+        top: 22px;
+        min-width: 76px;
+        height: 34px;
+        padding: 0 10px;
+        border-radius: 3px;
+        border: 1px solid var(--accent-yellow);
+        background: rgba(241, 196, 15, 0.12);
+        color: var(--accent-yellow);
+        font-family: var(--font-header);
+        font-size: 0.8em;
+        font-weight: bold;
+        cursor: pointer;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+      }
+      .modal-view-btn:hover {
+        background: rgba(241, 196, 15, 0.25);
+        box-shadow: 0 0 8px rgba(241, 196, 15, 0.35);
       }
       .stance-popover {
         position: absolute;
@@ -1041,12 +1073,21 @@
         }
         .section-box {
           padding: 14px;
+          min-width: 0;
+          overflow: hidden;
         }
         .detail-grid {
           grid-template-columns: 1fr;
         }
         .stat-grid {
           grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
+        }
+        .tag-box {
+          gap: 5px;
+        }
+        .item-tag {
+          font-size: 0.82em;
+          padding: 3px 6px;
         }
         .char-card {
           flex-direction: column;
@@ -1165,6 +1206,7 @@
         currentModalEntity = { entityType, entityName };
         const gearBtn = document.getElementById('stance-gear');
         const moveBtn = document.getElementById('move-squad-btn');
+        const moveToViewBtn = document.getElementById('move-to-view-btn');
         const enslaveBtn = document.getElementById('enslave-btn');
         const popover = document.getElementById('stance-popover');
         if (gearBtn) {
@@ -1209,6 +1251,14 @@
             moveBtn.style.display = 'none';
           }
         }
+        if (moveToViewBtn) {
+          if (entityType === 'other' && entityName) {
+            moveToViewBtn.style.display = 'flex';
+            moveToViewBtn.textContent = '进入视野';
+          } else {
+            moveToViewBtn.style.display = 'none';
+          }
+        }
         if (enslaveBtn) {
           if (entityType === 'squad' && entityName) {
             enslaveBtn.style.display = 'inline-flex';
@@ -1232,6 +1282,14 @@
         } else if (entityType === 'other') {
           // 异地成员入队
           openMoveConfirm(entityName, 'squad');
+        }
+      }
+
+      function handleModalMoveToViewBtn() {
+        if (!currentModalEntity || !currentModalEntity.entityName) return;
+        const { entityType, entityName } = currentModalEntity;
+        if (entityType === 'other') {
+          openMoveConfirm(entityName, 'view');
         }
       }
 
@@ -1816,7 +1874,7 @@
           $('#confirm-modal .confirm-title').next('div').text(`是否确认移除"视野"，如果角色已离开但仍然存在视野请使用`);
           $('#confirm-ok').text('删除').addClass('danger');
           $('#confirm-cancel').text('取消');
-          $('#confirm-third').css('display', 'none');
+          $('#confirm-third').text('我想记住他').css('display', 'inline-block');
           $('#confirm-modal').css('display', 'flex');
         }
 
@@ -2037,9 +2095,17 @@
           const member = squadData[name];
           if (!member) return;
 
+          const region = _.get(mvuData, 'stat_data.世界.区域', '未知区域');
+          const town = _.get(mvuData, 'stat_data.世界.城镇', '荒野');
+          const defaultAddress = `${region}+${town}`;
+          const nextMember = _.cloneDeep(member);
+          if (nextMember && typeof nextMember === 'object') {
+            _.set(nextMember, '所处地址', _.get(nextMember, '所处地址', '') || defaultAddress);
+          }
+
           const nextSquadData = _.omit(squadData, [name]);
           _.set(mvuData, 'stat_data.小队成员', nextSquadData);
-          _.set(mvuData, `stat_data.异地.${name}`, member);
+          _.set(mvuData, `stat_data.异地.${name}`, nextMember);
           await Mvu.replaceMvuData(mvuData, option);
           if (
             currentModalEntity &&
@@ -2051,6 +2117,38 @@
           update();
         }
         window.moveSquadToOther = moveSquadToOther;
+
+        async function moveViewToOther(name) {
+          if (!name) return;
+          const option = { type: 'message', message_id: getCurrentMessageId() };
+          const mvuData = Mvu.getMvuData(option) || {};
+          const viewData = _.get(mvuData, 'stat_data.视野', {});
+          if (!viewData || typeof viewData !== 'object') return;
+
+          const char = viewData[name];
+          if (!char) return;
+
+          const region = _.get(mvuData, 'stat_data.世界.区域', '未知区域');
+          const town = _.get(mvuData, 'stat_data.世界.城镇', '荒野');
+          const nextChar = _.cloneDeep(char);
+          if (nextChar && typeof nextChar === 'object') {
+            _.set(nextChar, '所处地址', `${region}+${town}`);
+          }
+
+          const nextViewData = _.omit(viewData, [name]);
+          _.set(mvuData, 'stat_data.视野', nextViewData);
+          _.set(mvuData, `stat_data.异地.${name}`, nextChar);
+          await Mvu.replaceMvuData(mvuData, option);
+          if (
+            currentModalEntity &&
+            currentModalEntity.entityType === 'view' &&
+            currentModalEntity.entityName === name
+          ) {
+            closeModal();
+          }
+          update();
+        }
+        window.moveViewToOther = moveViewToOther;
 
         async function moveViewToSquad(name) {
           if (!name) return;
@@ -2099,6 +2197,31 @@
           update();
         }
         window.moveOtherToSquad = moveOtherToSquad;
+
+        async function moveOtherToView(name) {
+          if (!name) return;
+          const option = { type: 'message', message_id: getCurrentMessageId() };
+          const mvuData = Mvu.getMvuData(option) || {};
+          const otherData = _.get(mvuData, 'stat_data.异地', {});
+          if (!otherData || typeof otherData !== 'object') return;
+
+          const char = otherData[name];
+          if (!char) return;
+
+          const nextOtherData = _.omit(otherData, [name]);
+          _.set(mvuData, 'stat_data.异地', nextOtherData);
+          _.set(mvuData, `stat_data.视野.${name}`, char);
+          await Mvu.replaceMvuData(mvuData, option);
+          if (
+            currentModalEntity &&
+            currentModalEntity.entityType === 'other' &&
+            currentModalEntity.entityName === name
+          ) {
+            closeModal();
+          }
+          update();
+        }
+        window.moveOtherToView = moveOtherToView;
 
         async function saveOtherAddress(name, address) {
           if (!name) return;
@@ -2256,8 +2379,9 @@
           closeConfirmModal();
         });
         $('#confirm-third').on('click', async () => {
-          // 第三个按钮 - 暂时分别（移至异地）
-          if (window.pendingMoveName && !window.pendingMoveTarget) {
+          if (pendingViewDeleteName) {
+            await moveViewToOther(pendingViewDeleteName);
+          } else if (window.pendingMoveName && !window.pendingMoveTarget) {
             await moveSquadToOther(window.pendingMoveName);
           }
           closeConfirmModal();
@@ -2277,9 +2401,23 @@
           } else if (window.pendingMoveName) {
             // 处理移动操作
             if (window.pendingMoveTarget === 'view') {
-              await moveSquadToView(window.pendingMoveName);
+              const option = { type: 'message', message_id: getCurrentMessageId() };
+              const mvuData = Mvu.getMvuData(option) || {};
+              const otherData = _.get(mvuData, 'stat_data.异地', {});
+              if (otherData && otherData[window.pendingMoveName]) {
+                await moveOtherToView(window.pendingMoveName);
+              } else {
+                await moveSquadToView(window.pendingMoveName);
+              }
             } else if (window.pendingMoveTarget === 'other') {
-              await moveSquadToOther(window.pendingMoveName);
+              const option = { type: 'message', message_id: getCurrentMessageId() };
+              const mvuData = Mvu.getMvuData(option) || {};
+              const viewData = _.get(mvuData, 'stat_data.视野', {});
+              if (viewData && viewData[window.pendingMoveName]) {
+                await moveViewToOther(window.pendingMoveName);
+              } else {
+                await moveSquadToOther(window.pendingMoveName);
+              }
             } else if (window.pendingMoveTarget === 'squad') {
               // 需要判断是来自视野还是异地
               const option = { type: 'message', message_id: getCurrentMessageId() };
@@ -2296,6 +2434,9 @@
         });
         $('#move-squad-btn').on('click', function () {
           handleModalMoveBtn();
+        });
+        $('#move-to-view-btn').on('click', function () {
+          handleModalMoveToViewBtn();
         });
         // 设置相关事件
         $('#settings-tab-btn').on('click', function (e) {
@@ -2476,6 +2617,7 @@
           );
           // 实时更新move按钮显示
           const moveBtn = document.getElementById('move-squad-btn');
+          const moveToViewBtn = document.getElementById('move-to-view-btn');
           if (
             moveBtn &&
             currentModalEntity &&
@@ -2488,6 +2630,9 @@
             } else {
               moveBtn.style.display = 'none';
             }
+          }
+          if (moveToViewBtn) {
+            moveToViewBtn.style.display = currentModalEntity?.entityType === 'other' ? 'flex' : 'none';
           }
         });
 
@@ -2503,33 +2648,20 @@
 
         function showTip(text, x, y) {
           if (!text) return;
-          const gap = 12;
-          const offset = 15;
-
           tip.text(text).show();
+          const gap = 12;
+          const tipWidth = tip.outerWidth();
+          const tipHeight = tip.outerHeight();
+          const viewportWidth = window.innerWidth;
+          const viewportHeight = window.innerHeight;
 
-          let l = x + offset;
-          let t = y + offset;
-          const w = tip.outerWidth();
-          const h = tip.outerHeight();
-          const vw = window.innerWidth;
-          const vh = window.innerHeight;
+          let t = y + 15;
+          let l = x + 15;
 
-          if (l + w > vw - gap) {
-            l = x - w - offset;
-          }
+          if (l + tipWidth > viewportWidth - gap) l = viewportWidth - tipWidth - gap;
+          if (t + tipHeight > viewportHeight - gap) t = y - tipHeight - 10;
           if (l < gap) l = gap;
-          if (l + w > vw - gap) {
-            l = Math.max(gap, vw - w - gap);
-          }
-
-          if (t + h > vh - gap) {
-            t = y - h - offset;
-          }
           if (t < gap) t = gap;
-          if (t + h > vh - gap) {
-            t = Math.max(gap, vh - h - gap);
-          }
 
           tip.css({ top: t, left: l });
         }
@@ -2678,6 +2810,7 @@
       <div class="modal-content">
         <button class="close-btn" onclick="closeModal()">×</button>
         <button id="enslave-btn" class="enslave-btn" style="display: none">贬为奴隶</button>
+        <button id="move-to-view-btn" class="modal-view-btn" onclick="handleModalMoveToViewBtn()">进入视野</button>
         <button id="move-squad-btn" class="modal-move-btn" onclick="handleModalMoveBtn()">离队</button>
         <button id="stance-gear" class="stance-gear-btn" onclick="toggleStancePopover()">⚙</button>
         <div id="stance-popover" class="stance-popover">
