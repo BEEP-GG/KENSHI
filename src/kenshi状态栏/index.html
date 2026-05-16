@@ -608,7 +608,10 @@
         line-height: 1.5;
         white-space: pre-wrap;
         box-shadow: 0 5px 20px rgba(0, 0, 0, 0.8);
-        max-width: 300px;
+        max-width: min(300px, calc(100vw - 24px));
+        word-break: break-word;
+        overflow-wrap: anywhere;
+        box-sizing: border-box;
       }
 
       .modal-overlay {
@@ -2500,11 +2503,34 @@
 
         function showTip(text, x, y) {
           if (!text) return;
+          const gap = 12;
+          const offset = 15;
+
           tip.text(text).show();
-          let t = y + 15;
-          let l = x + 15;
-          if (l + tip.outerWidth() > window.innerWidth) l = x - tip.outerWidth() - 10;
-          if (t + tip.outerHeight() > window.innerHeight) t = y - tip.outerHeight() - 10;
+
+          let l = x + offset;
+          let t = y + offset;
+          const w = tip.outerWidth();
+          const h = tip.outerHeight();
+          const vw = window.innerWidth;
+          const vh = window.innerHeight;
+
+          if (l + w > vw - gap) {
+            l = x - w - offset;
+          }
+          if (l < gap) l = gap;
+          if (l + w > vw - gap) {
+            l = Math.max(gap, vw - w - gap);
+          }
+
+          if (t + h > vh - gap) {
+            t = y - h - offset;
+          }
+          if (t < gap) t = gap;
+          if (t + h > vh - gap) {
+            t = Math.max(gap, vh - h - gap);
+          }
+
           tip.css({ top: t, left: l });
         }
 
