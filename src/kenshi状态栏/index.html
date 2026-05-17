@@ -2511,6 +2511,12 @@
           _.set(mvuData, attrPointPath, attrPoint - 1);
           await Mvu.replaceMvuData(mvuData, option);
           update();
+
+          if (entityType === 'squad' && entityName) {
+            const latestRaw = getAllVariables();
+            const latestMember = _.get(latestRaw, ['stat_data', '小队成员', entityName], _.get(mvuData, basePath));
+            $('#modal-content-inner').html(buildCharHTML(latestMember, false, 'squad', entityName));
+          }
         });
 
         function closeMoodHistoryModal() {
