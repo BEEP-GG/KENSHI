@@ -1686,7 +1686,7 @@
               const isPending = v === '待初始化';
               const hpLabel = isPending ? '待初始化' : _.get(v, '血量.当前', '--');
               const card = $(
-                `<div class="char-card"><div><span style="font-weight:bold">${k}</span></div><div>HP: ${hpLabel}</div></div>`,
+                `<div class="char-card"><div><span style="font-weight:bold">${_.get(v, '名字') || k}</span></div><div>HP: ${hpLabel}</div></div>`,
               );
               card.on('click', () => {
                 $('#modal-content-inner').html(buildCharHTML(v, false, 'squad', k));
@@ -1714,7 +1714,7 @@
               if (stance === '友方') color = 'var(--accent-positive)';
 
               const card = $(
-                `<div class="char-card view-char-card" style="border-left:3px solid ${color}"><button class="view-remove-btn" data-name="${k}" title="移除视野角色">X</button><div><span style="font-size:0.8em; color:${color}; margin-right:8px;">${displayString}</span><span>${k}</span><span class="identity-tag">${identity}</span></div><div style="font-size:0.9em; color:#888;">${isPending ? '待初始化' : _.get(v, '种族.名称', '')}</div></div>`,
+                `<div class="char-card view-char-card" style="border-left:3px solid ${color}"><button class="view-remove-btn" data-name="${k}" title="移除视野角色">X</button><div><span style="font-size:0.8em; color:${color}; margin-right:8px;">${displayString}</span><span>${_.get(v, '名字') || k}</span><span class="identity-tag">${identity}</span></div><div style="font-size:0.9em; color:#888;">${isPending ? '待初始化' : _.get(v, '种族.名称', '')}</div></div>`,
               );
               card.on('click', () => {
                 $('#modal-content-inner').html(buildCharHTML(v, false, 'view', k));
