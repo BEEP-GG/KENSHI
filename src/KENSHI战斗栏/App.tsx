@@ -1341,7 +1341,6 @@ export default function App() {
   const [battleNotice, setBattleNotice] = useState<{ text: string; tone: 'amber' | 'rose' } | null>(null);
 
   const getWillDamageReductionRate = (unit: BattleCharacter) => {
-    if (unit.faction !== 'friendly' || unit.subFaction !== 'squad') return 0;
     return (unit.attributes.WIL / 20) * 0.025;
   };
 
@@ -2505,7 +2504,7 @@ export default function App() {
               workingUnits = replaceUnit(workingUnits, updatedTarget);
             }
             workingUnits = setUnitIntent(workingUnits, actor.id, `紧急医治 ${target.name}`);
-            appendLog(logs, `${actor.name}: 对${target.name}进行紧急手动医治，恢复${healAmount}生命。`);
+            appendLog(logs, `${actor.name}: 对${target.name}进行紧急手动医治，恢复${healAmount}血量。`);
             setPlannedActions(prevActions => {
               const next = { ...prevActions };
               delete next[actor.id];
@@ -2586,7 +2585,7 @@ export default function App() {
               const newHp = Math.min(target.maxHp, Math.max(0, target.hp + healAmount));
               updatedTarget = { ...updatedTarget, hp: newHp };
               updatedActor = consumeItem(updatedActor, chosenItem);
-              appendLog(logs, `${actor.name}: 对${target.name}使用${chosenItem}，恢复${healAmount}生命。`);
+              appendLog(logs, `${actor.name}: 对${target.name}使用${chosenItem}，恢复${healAmount}血量。`);
             }
 
             if (['普通夹板包', '高级夹板包'].includes(chosenItem)) {
@@ -2764,7 +2763,7 @@ export default function App() {
             workingUnits = replaceUnit(workingUnits, updatedTarget);
           }
           workingUnits = setUnitIntent(workingUnits, actor.id, `紧急医治 ${target.name}`);
-          appendLog(logs, `${actor.name}: 对${target.name}进行紧急手动医治，恢复${healAmount}生命。`);
+          appendLog(logs, `${actor.name}: 对${target.name}进行紧急手动医治，恢复${healAmount}血量。`);
           continue;
         }
 
@@ -3119,7 +3118,7 @@ export default function App() {
         const escapedName = _.escapeRegExp(unit.name);
         let healed = 0;
         for (const line of battleState.logs) {
-          const m = line.match(new RegExp(`^${escapedName}:.+?恢复([0-9]+(?:\\.[0-9]+)?)生命`));
+          const m = line.match(new RegExp(`^${escapedName}:.+?恢复([0-9]+(?:\\.[0-9]+)?)血量`));
           if (!m) continue;
           healed += Number(m[1]) || 0;
         }
@@ -3130,7 +3129,7 @@ export default function App() {
       const displayDamageTaken = Number.isInteger(netDamageTaken) ? netDamageTaken : _.round(netDamageTaken, 2);
       const displayHealedOverflow = Number.isInteger(healedOverflow) ? healedOverflow : _.round(healedOverflow, 2);
       const damageTakenText = `受到伤害${displayDamageTaken}`;
-      const healedOverflowText = healedOverflow > 0 ? `，恢复${displayHealedOverflow}生命` : '';
+      const healedOverflowText = healedOverflow > 0 ? `，恢复${displayHealedOverflow}血量` : '';
       const moodReward = getMoodRewardForUnit(unit);
       const moodText = moodReward > 0 ? `，心情+${moodReward}` : '';
       return `${unit.name}: ${damageTakenText}, 当前血量${currentHp}, 创伤(${traumaLabel}), 状态${buildStatusLabel(unit)}${combatStatText}${expText}${consumedMedicalText}${healedOverflowText}${moodText}`;
