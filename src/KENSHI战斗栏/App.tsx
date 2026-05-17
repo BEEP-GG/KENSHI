@@ -2086,8 +2086,8 @@ export default function App() {
     const isMartialArts = /武术/.test(currentWeapon.type);
     const isMartialSpeed = isMartialArts && attacker.attributes.DEX >= attacker.attributes.STR;
     const isMartialHeavy = isMartialArts && attacker.attributes.STR > attacker.attributes.DEX;
-    const isCrit = rawRoll >= 93;
     const isHeavyWeapon = /大型/.test(currentWeapon.type);
+    const isCrit = rawRoll >= (isHeavyWeapon ? 90 : 93);
     const isFumble = rawRoll <= (isHeavyWeapon ? 10 : 5);
 
     if (isFumble) {
@@ -3042,9 +3042,9 @@ export default function App() {
     });
 
     const expReceivers = battleState.units.filter(
-      unit => unit.faction === 'friendly' && unit.subFaction === 'squad' && !unit.escaped,
+      unit => unit.faction === 'friendly' && !unit.escaped && (unit.subFaction === 'squad' || unit.id === playerId),
     );
-    const perMemberExp = expReceivers.length > 0 ? Math.round(totalExp / expReceivers.length) : 0;
+    const perMemberExp = expReceivers.length > 0 ? Math.round(totalExp) : 0;
     const expMap = new Map<string, number>();
     expReceivers.forEach(unit => {
       expMap.set(unit.id, perMemberExp);
@@ -3094,7 +3094,7 @@ export default function App() {
 
     const summarizeUnit = (unit: BattleCharacter) => {
       const baseHp = Number.isFinite(unit.startHp) ? unit.startHp : unit.hp;
-      const damageTaken = Math.max(0, Math.round(baseHp - unit.hp));
+      const rawDamageTaken = Math.max(0, Math.round(baseHp - unit.hp));
       const currentHp = Math.max(0, Math.round(unit.hp));
       const traumaLabel = getTraumaDetailLabel(unit);
       const expText = expMap.has(unit.id) ? `，获得${expMap.get(unit.id)}经验` : '';
@@ -3115,9 +3115,25 @@ export default function App() {
         if (entries.length === 0) return '';
         return `，消耗了${entries.map(([name, count]) => `${name}X${count}`).join('，')}`;
       })();
+      const totalHealed = (() => {
+        const escapedName = _.escapeRegExp(unit.name);
+        let healed = 0;
+        for (const line of battleState.logs) {
+          const m = line.match(new RegExp(`^${escapedName}:.+?恢复([0-9]+(?:\\.[0-9]+)?)生命`));
+          if (!m) continue;
+          healed += Number(m[1]) || 0;
+        }
+        return healed;
+      })();
+      const netDamageTaken = Math.max(0, rawDamageTaken - totalHealed);
+      const healedOverflow = Math.max(0, totalHealed - rawDamageTaken);
+      const displayDamageTaken = Number.isInteger(netDamageTaken) ? netDamageTaken : _.round(netDamageTaken, 2);
+      const displayHealedOverflow = Number.isInteger(healedOverflow) ? healedOverflow : _.round(healedOverflow, 2);
+      const damageTakenText = `受到伤害${displayDamageTaken}`;
+      const healedOverflowText = healedOverflow > 0 ? `，恢复${displayHealedOverflow}生命` : '';
       const moodReward = getMoodRewardForUnit(unit);
       const moodText = moodReward > 0 ? `，心情+${moodReward}` : '';
-      return `${unit.name}: 受到伤害${damageTaken}, 当前血量${currentHp}, 创伤(${traumaLabel}), 状态${buildStatusLabel(unit)}${combatStatText}${expText}${consumedMedicalText}${moodText}`;
+      return `${unit.name}: ${damageTakenText}, 当前血量${currentHp}, 创伤(${traumaLabel}), 状态${buildStatusLabel(unit)}${combatStatText}${expText}${consumedMedicalText}${healedOverflowText}${moodText}`;
     };
 
     const friendLines = battleState.units
