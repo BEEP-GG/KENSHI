@@ -3666,12 +3666,12 @@ export default function App() {
               : mobileDetailExpanded
                 ? 'flex-none h-auto max-h-[52dvh] overflow-x-hidden overflow-y-auto'
                 : isMobile
-                  ? 'flex-1 min-h-0 overflow-x-hidden overflow-y-auto'
+                  ? 'shrink-0 min-h-[156px] overflow-x-auto overflow-y-visible'
                   : 'shrink-0 h-[72px] lg:h-auto lg:min-h-0 overflow-x-auto overflow-y-visible lg:overflow-x-hidden lg:overflow-y-auto'
           }`}
           style={{
             WebkitOverflowScrolling: 'touch',
-            touchAction: mobileLogCollapsed || mobileDetailExpanded || isMobile ? 'pan-y' : 'pan-x',
+            touchAction: mobileLogCollapsed || mobileDetailExpanded ? 'pan-y' : 'pan-x',
           }}
         >
           <div className="flex items-center justify-between mb-3 lg:mb-6 pb-2 border-b border-stone-800/50">
