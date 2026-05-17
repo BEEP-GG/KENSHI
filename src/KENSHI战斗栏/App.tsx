@@ -224,7 +224,7 @@ const BATTLE_RULES = `战斗轮结构:
   - 逻辑: 从目标 HP 中扣除最终伤害。
   - 创伤判定 (脚本触发条件):
       条件A: 本次最终伤害 > (目标体质 * 0.4)
-      条件B: 攻击方命中检定为大成功 (01-07)
+      条件B: 攻击方命中检定为大成功 (93-100)
       满足任一条件，随机部位【创伤等级】+1，并触发相应层级的残废/减值效果。
   - 濒死判定:
       HP > 0: 继续战斗。
@@ -249,10 +249,10 @@ const BATTLE_RULES = `战斗轮结构:
         3. 再治疗血量 < 40% 的其他友军AI中最低血者。
         4. 若以上都不存在，且自身血量 ≤ 75%，才可能治疗自己。
 - 大成功与大失败:
-    攻击大成功 (01-07): 伤害结算x1.5且无法格挡。
+    攻击大成功 (93-100): 伤害结算x1.5且无法格挡。
     武术例外:
-      速度型(DEX>=STR): 大成功区间01-10，触发额外攻击1次。
-      重击型(STR>DEX): 大成功区间01-07，伤害x2且无视5点DR。
+      速度型(DEX>=STR): 大成功区间93-100，触发额外攻击1次。
+      重击型(STR>DEX): 大成功区间93-100，伤害x2且无视5点DR。
     攻击大失败 (01-05): 攻击者失去平衡，下一轮无法执行格挡，且防御方可获得一次即时反击。
 - 濒死与韧性:
     倒地判定: 当 HP 归零时，角色需进行一次【体质】检定。
@@ -279,17 +279,17 @@ const WEAPON_CATEGORY_GUIDE = `武器类别详解：
 
 砍刀：
 - 无视对方7点DR。
-- 攻击检定大成功（01-07）时触发“破甲”：目标DR降低8（可叠加，对该目标全局生效）。
+- 攻击检定大成功（93-100）时触发“破甲”：目标DR降低8（可叠加，对该目标全局生效）。
 
 长柄类：
 - 每次攻击时可选择最多3个敌人进行攻击检定；每多一个目标，攻击检定-7。
 
 钝器：
-- 攻击检定大成功（01-07）时，目标必定获得1层“骨折”；每层骨折使力量/敏捷-10、逃跑检定-15（可叠加，直到夹板包清除）。
+- 攻击检定大成功（93-100）时，目标必定获得1层“骨折”；每层骨折使力量/敏捷-10、逃跑检定-15（可叠加，直到夹板包清除）。
 
 大型武器：
 - 每次攻击时对2个敌人进行攻击检定。
-- 攻击检定大失败（90-100）或两名目标均被【闪避】时，进入失衡，防御检定-15。
+- 攻击检定大失败（01-10）或两名目标均被【闪避】时，进入失衡，防御检定-15。
 
 弩：
 - 基础效果：无视对方7点DR。
@@ -305,8 +305,8 @@ const WEAPON_CATEGORY_GUIDE = `武器类别详解：
 
 武术：
 - 识别种类为“武术”。
-- 速度型（DEX>=STR）：基础攻速3；大成功区间01-10，触发额外攻击1次。
-- 重击型（STR>DEX）：基础攻速2；无视5点DR；大成功区间01-07，伤害x2。
+- 速度型（DEX>=STR）：基础攻速3；大成功区间93-100，触发额外攻击1次。
+- 重击型（STR>DEX）：基础攻速2；无视5点DR；大成功区间93-100，伤害x2。
 - 两种武术的伤害比例均沿用变量中的伤害比例。
 - 大失败与其他武器一致。`;
 
@@ -926,15 +926,15 @@ const getLegPenalty = (level: number) => {
 };
 
 const getKillExpByLevel = (level: number) => {
-  if (level > 80) return 30 + level * 3;
-  if (level > 50) return 30 + level * 2.5;
-  return 30 + level * 2;
+  if (level > 80) return 80 + level * 4.5;
+  if (level > 50) return 70 + level * 3.5;
+  return 60 + level * 2.5;
 };
 
 const getDownExpByLevel = (level: number) => {
-  if (level > 80) return 10 + level * 3;
-  if (level > 50) return 10 + level * 2.5;
-  return 10 + level * 2;
+  if (level > 80) return 70 + level * 4.5;
+  if (level > 50) return 60 + level * 3.5;
+  return 50 + level * 2;
 };
 
 const getEscapeExpByLevel = (level: number) => getDownExpByLevel(level) * 0.3;
@@ -2105,14 +2105,14 @@ export default function App() {
             Math.max(
               0,
               isBowOrCrossbow(currentWeapon.type)
-                ? (attacker.attributes.STR * 0.6 + attacker.attributes.PER * 0.7) * 0.4
-                : (attacker.attributes.STR * 0.65 + attacker.attributes.DEX * 0.35) * 0.4,
+                ? (attacker.attributes.STR * 0.45 + attacker.attributes.PER * 0.85) * 0.35
+                : (attacker.attributes.STR * 0.6 + attacker.attributes.DEX * 0.4) * 0.35,
             );
           const rawDamage = Math.max(0, baseDamage);
           const finalDamage = rawDamage;
           const cutDamage = Math.round(finalDamage * ratio.cut);
           const bluntDamage = Math.round(finalDamage * ratio.blunt);
-          const drIgnore = /弩/.test(currentWeapon.type) ? 7 : 0;
+          const drIgnore = /弩/.test(currentWeapon.type) ? 8 : 0;
           const effectiveDR = Math.max(0, ally.armorDR - drIgnore);
           const cutAfterDR = Math.max(0, Math.round(cutDamage - effectiveDR));
           const bluntScale = /钝器|盾牌/.test(currentWeapon.type)
@@ -2193,8 +2193,8 @@ export default function App() {
       Math.max(
         0,
         isBowOrCrossbow(currentWeapon.type)
-          ? (attacker.attributes.STR * 0.6 + attacker.attributes.PER * 0.7) * 0.4
-          : (attacker.attributes.STR * 0.65 + attacker.attributes.DEX * 0.35) * 0.4,
+          ? (attacker.attributes.STR * 0.45 + attacker.attributes.PER * 0.85) * 0.35
+          : (attacker.attributes.STR * 0.6 + attacker.attributes.DEX * 0.4) * 0.35,
       );
     const rawDamage = Math.max(0, baseDamage);
     const critMultiplier = isCrit ? (isMartialHeavy ? 2 : isMartialSpeed ? 1 : 1.5) : 1;
@@ -2208,7 +2208,7 @@ export default function App() {
       bluntDamage = Math.round(bluntDamage * 0.5);
     }
 
-    const drIgnore = /砍刀/.test(currentWeapon.type) ? 7 : /弩/.test(currentWeapon.type) ? 7 : isMartialHeavy ? 5 : 0;
+    const drIgnore = /砍刀/.test(currentWeapon.type) ? 6 : /弩/.test(currentWeapon.type) ? 8 : isMartialHeavy ? 5 : 0;
     const effectiveDR = Math.max(0, defender.armorDR - drIgnore);
     const cutAfterDR = Math.max(0, Math.round(cutDamage - effectiveDR));
     const bluntScale = /钝器|盾牌/.test(currentWeapon.type)
@@ -3087,6 +3087,7 @@ export default function App() {
     const baseMoodReward = moodRewardMap[displayOutcome] ?? 0;
     const getMoodRewardForUnit = (unit: BattleCharacter) => {
       if (baseMoodReward <= 0) return 0;
+      if (unit.faction !== 'friendly') return 0;
       if (unit.escaped) return Math.round(baseMoodReward / 2);
       return baseMoodReward;
     };
