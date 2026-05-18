@@ -3682,7 +3682,7 @@ export default function App() {
               : mobileDetailExpanded
                 ? 'flex-none h-auto max-h-[52dvh] overflow-x-hidden overflow-y-auto'
                 : isMobile
-                  ? 'shrink-0 min-h-[156px] overflow-x-auto overflow-y-visible'
+                  ? 'shrink-0 min-h-[156px] overflow-x-visible overflow-y-visible'
                   : 'shrink-0 h-[72px] lg:h-auto lg:min-h-0 overflow-x-auto overflow-y-visible lg:overflow-x-hidden lg:overflow-y-auto'
           }`}
           style={{
