@@ -677,6 +677,34 @@
       .confirm-btn.danger:hover {
         background: rgba(231, 76, 60, 0.12);
       }
+      .confirm-input {
+        width: 100%;
+        margin-top: 14px;
+        padding: 10px 12px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(193, 163, 95, 0.35);
+        color: var(--text-main);
+        font-size: 0.95em;
+        outline: none;
+      }
+      .confirm-input:focus {
+        border-color: var(--accent-gold);
+        box-shadow: 0 0 0 1px rgba(193, 163, 95, 0.2);
+      }
+      .confirm-select {
+        width: 100%;
+        margin-top: 14px;
+        padding: 10px 12px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(193, 163, 95, 0.35);
+        color: var(--text-main);
+        font-size: 0.95em;
+        outline: none;
+      }
+      .confirm-select:focus {
+        border-color: var(--accent-gold);
+        box-shadow: 0 0 0 1px rgba(193, 163, 95, 0.2);
+      }
       .setting-item {
         display: flex;
         justify-content: space-between;
@@ -1144,7 +1172,99 @@
       }
     </style>
 
+    <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"></script>
     <script type="module">
+      function errorCatched(fn) {
+        return async function (...args) {
+          try {
+            return await fn(...args);
+          } catch (error) {
+            console.error(error);
+            throw error;
+          }
+        };
+      }
+
+      async function waitGlobalInitialized(name) {
+        const checker = () => (name ? window[name] : true);
+        if (checker()) return checker();
+        await new Promise(resolve => setTimeout(resolve, 0));
+        return checker();
+      }
+
+      window.__KENSHI_TEST_VARIABLES = window.__KENSHI_TEST_VARIABLES || {
+        stat_data: {
+          世界: { 天数: 1, 时间: '下午', 当前事件: '' },
+          我方派系名称: '无派系',
+          小队成员: {},
+          资产: {},
+          异地: {},
+          局势: { 已知派系: {}, 敌对派系: {}, 友方派系: {} },
+          任务系统: {},
+          往事: { 城镇记录: [], 击杀记录: [], 关键记忆: [] },
+          闲言: { 当前内容: '' },
+        },
+      };
+
+      if (typeof window.getAllVariables !== 'function') {
+        window.getAllVariables = function () {
+          return _.cloneDeep(window.__KENSHI_TEST_VARIABLES || { stat_data: {} });
+        };
+      }
+
+      if (typeof window.getCurrentMessageId !== 'function') {
+        window.getCurrentMessageId = function () {
+          return 0;
+        };
+      }
+
+      if (!window.Mvu) {
+        window.Mvu = {
+          events: {
+            VARIABLE_UPDATE_ENDED: 'VARIABLE_UPDATE_ENDED',
+          },
+          getMvuData() {
+            return _.cloneDeep(window.__KENSHI_TEST_VARIABLES || { stat_data: {} });
+          },
+          async replaceMvuData(nextData) {
+            window.__KENSHI_TEST_VARIABLES = _.cloneDeep(nextData || { stat_data: {} });
+            return window.__KENSHI_TEST_VARIABLES;
+          },
+        };
+      } else if (!window.Mvu.events) {
+        window.Mvu.events = {
+          VARIABLE_UPDATE_ENDED: 'VARIABLE_UPDATE_ENDED',
+        };
+      }
+
+      if (typeof window.eventOn !== 'function') {
+        window.eventOn = function () {};
+      }
+
+      async function syncMainPerspectiveWorldBook(mainControllerName, squadName) {
+        const squadText = String(squadName || '').trim();
+        if (!squadText) return;
+        const controllerText = String(mainControllerName || '').trim();
+        const roleText = controllerText ? `【${controllerText}】` : '没有主要角色';
+        const worldBookContent = `当前主角是：${roleText}\n\n后续所有故事情节基于小队【${squadText}】的视角来进行`;
+        if (typeof window.getCharWorldbookNames !== 'function' || typeof window.updateWorldbookWith !== 'function') {
+          return;
+        }
+        const charWorldbook = window.getCharWorldbookNames('current');
+        const wbName = String(charWorldbook?.primary || '').trim();
+        if (!wbName) return;
+        await window.updateWorldbookWith(wbName, entries =>
+          entries.map(entry => {
+            if (Number(entry.uid) !== 2) return entry;
+            return {
+              ...entry,
+              enabled: true,
+              content: worldBookContent,
+            };
+          }),
+        );
+      }
+
       function switchTab(tabName) {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         document.querySelector(`.tab-btn[data-tab="${tabName}"]`).classList.add('active');
@@ -1161,11 +1281,20 @@
       const SETTINGS_KEYS = {
         IDENTITY_EDIT: 'kenshi_statusbar_show_identity_edit',
         STANCE_GEAR: 'kenshi_statusbar_show_stance_gear',
+        MAIN_SQUAD: 'kenshi_statusbar_main_squad',
+        MAIN_CONTROLLER: 'kenshi_statusbar_main_controller',
+        SQUAD_ACTIONS_VISIBLE: 'kenshi_statusbar_squad_actions_visible',
+        SQUAD_COLLAPSED: 'kenshi_statusbar_squad_collapsed',
       };
       const DEFAULT_SETTINGS = {
         [SETTINGS_KEYS.IDENTITY_EDIT]: false,
         [SETTINGS_KEYS.STANCE_GEAR]: true,
+        [SETTINGS_KEYS.MAIN_SQUAD]: '',
+        [SETTINGS_KEYS.MAIN_CONTROLLER]: '',
+        [SETTINGS_KEYS.SQUAD_ACTIONS_VISIBLE]: false,
+        [SETTINGS_KEYS.SQUAD_COLLAPSED]: {},
       };
+      const NO_MAIN_CONTROLLER_TOKEN = '__NONE__';
 
       function loadSettings() {
         try {
@@ -1187,6 +1316,53 @@
       function getSetting(key) {
         const settings = loadSettings();
         return settings[key] ?? DEFAULT_SETTINGS[key];
+      }
+
+      function appendTextToPlayerInput(text) {
+        const nextText = String(text ?? '').trim();
+        if (!nextText) return;
+        const selectors = ['#send_textarea', '#send_text', 'textarea[name="send_textarea"]', '#chat-input textarea'];
+        const input = selectors
+          .map(selector => document.querySelector(selector))
+          .find(element => element && typeof element.value === 'string' && !element.disabled);
+        if (!input) return;
+        const prevText = String(input.value || '');
+        input.value = prevText ? `${prevText}\n${nextText}` : nextText;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: nextText }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        input.focus();
+        if (typeof input.setSelectionRange === 'function') {
+          const cursor = input.value.length;
+          input.setSelectionRange(cursor, cursor);
+        }
+      }
+
+      function getSquadCollapsedMap() {
+        const collapsed = getSetting(SETTINGS_KEYS.SQUAD_COLLAPSED);
+        return collapsed && typeof collapsed === 'object' ? collapsed : {};
+      }
+
+      function isSquadCollapsed(name) {
+        return Boolean(getSquadCollapsedMap()[name]);
+      }
+
+      function toggleSquadCollapsed(name) {
+        if (!name) return;
+        const settings = loadSettings();
+        const collapsedMap =
+          settings[SETTINGS_KEYS.SQUAD_COLLAPSED] && typeof settings[SETTINGS_KEYS.SQUAD_COLLAPSED] === 'object'
+            ? { ...settings[SETTINGS_KEYS.SQUAD_COLLAPSED] }
+            : {};
+        collapsedMap[name] = !collapsedMap[name];
+        settings[SETTINGS_KEYS.SQUAD_COLLAPSED] = collapsedMap;
+        saveSettings(settings);
+      }
+
+      function setSquadActionsVisible(visible) {
+        const settings = loadSettings();
+        settings[SETTINGS_KEYS.SQUAD_ACTIONS_VISIBLE] = Boolean(visible);
+        saveSettings(settings);
       }
 
       function openSettingsModal() {
@@ -1227,7 +1403,8 @@
             } else if (entityType === 'view') {
               const option = { type: 'message', message_id: getCurrentMessageId() };
               const mvuData = Mvu.getMvuData(option) || {};
-              const viewData = _.get(mvuData, 'stat_data.视野', {});
+              const statData = _.get(mvuData, 'stat_data', {});
+              const viewData = _.get(getMainSquadData(statData), '视野', {});
               const charData = viewData[entityName];
               const stance = _.get(charData, '立场', '');
               showMoveBtn = stance === '友方';
@@ -1383,6 +1560,34 @@
         return ITEM_SUBCATEGORY_MAP[text] || text;
       };
 
+      function getMainSquadName(data) {
+        const squadData = _.get(data, '小队成员', {});
+        const savedName = String(getSetting(SETTINGS_KEYS.MAIN_SQUAD) || '').trim();
+        if (savedName && _.has(squadData, savedName)) return savedName;
+        return Object.keys(squadData)[0] || '';
+      }
+
+      function getMainSquadData(data) {
+        const squadName = getMainSquadName(data);
+        return squadName ? _.get(data, ['小队成员', squadName], {}) : {};
+      }
+
+      function getMainControllerName(data) {
+        const squad = getMainSquadData(data);
+        const members = _.get(squad, '成员', {});
+        const savedName = String(getSetting(SETTINGS_KEYS.MAIN_CONTROLLER) || '').trim();
+        if (savedName === NO_MAIN_CONTROLLER_TOKEN) return '';
+        if (savedName && _.has(members, savedName)) return savedName;
+        return Object.keys(members)[0] || '';
+      }
+
+      function getMainControllerData(data) {
+        const squad = getMainSquadData(data);
+        const members = _.get(squad, '成员', {});
+        const controllerName = getMainControllerName(data);
+        return controllerName ? _.get(members, controllerName) : null;
+      }
+
       function buildCharHTML(data, isMain = false, entityType = 'current', entityName = '') {
         if (!data || typeof data !== 'object') {
           return "<div style='padding:20px; text-align:center; color:#666;'>角色数据待初始化</div>";
@@ -1402,11 +1607,6 @@
         const hpMax = Math.max(1, toSafeNumber(_.get(data, '血量.最大', 100), 100));
         const expCur = toSafeNumber(_.get(data, '经验值.当前', 0), 0);
         const expMax = Math.max(1, toSafeNumber(_.get(data, '经验值.升级所需', 100), 100));
-        const moodCur = toSafeNumber(_.get(data, '心情.当前', 100), 100);
-        const moodMax = Math.max(1, toSafeNumber(_.get(data, '心情.最大', 100), 100));
-        const favorability = toSafeNumber(_.get(data, '好感度', 0), 0);
-        const attitude = String(_.get(data, '态度', '陌生') ?? '陌生').trim() || '陌生';
-        const showRelation = !isMain;
         const wCur = toSafeNumber(_.get(data, '背包.负重.当前', 0), 0);
         const wMax = Math.max(1, toSafeNumber(_.get(data, '背包.负重.最大', 100), 100));
         const bodySize = _.get(data, '体型', '1.75m');
@@ -1450,9 +1650,9 @@
             const desc = _.get(d, '介绍', '无描述');
             const w = _.get(d, '重量', 0);
             const val = _.get(d, '价值', 0);
-            const rawSubCategory = _.get(d, '子分类', '');
-            const subCategory = normalizeItemSubCategory(rawSubCategory) || '其他';
-            const tip = `${name}\n分类: ${subCategory}\n重量: ${w}kg\n价值: ${val} c.cat\n\n${desc}`;
+            const rawCategory = _.get(d, '分类', '');
+            const itemCategory = normalizeItemSubCategory(rawCategory) || '其他';
+            const tip = `${name}\n分类: ${itemCategory}\n重量: ${w}kg\n价值: ${val} c.cat\n\n${desc}`;
             return `<div class="item-tag has-tooltip" data-tooltip="${tip}">${name} x${_.get(d, '数量', 1)}</div>`;
           })
           .join('');
@@ -1462,6 +1662,24 @@
         const temporaryTraits = _.get(data, '临时特质', {});
         const positiveEffects = _.get(data, '正面效果', {});
         const negativeEffects = _.get(data, '负面效果', {});
+        const relationData = _.get(data, '人际关系', {});
+        const relationEntries = Object.entries(relationData)
+          .filter(([name]) => String(name || '').trim() !== '')
+          .map(([name, value]) => {
+            if (value && typeof value === 'object') {
+              const attitude = _.get(value, '态度', _.get(value, '关系', _.get(value, '评价', '')));
+              const desc = _.get(value, '描述', _.get(value, '备注', ''));
+              const detail = [attitude, desc].filter(Boolean).join(' · ');
+              const tooltip = detail ? `${name}\n\n${detail}` : String(name);
+              return `<span class="item-tag has-tooltip" data-tooltip="${_.escape(tooltip)}">${_.escape(String(name))}${detail ? `：${_.escape(String(attitude || desc || ''))}` : ''}</span>`;
+            }
+            const text = String(value ?? '').trim();
+            const tooltip = text ? `${name}\n\n${text}` : String(name);
+            return `<span class="item-tag has-tooltip" data-tooltip="${_.escape(tooltip)}">${_.escape(String(name))}${text ? `：${_.escape(text)}` : ''}</span>`;
+          });
+        const relationHTML = relationEntries.length
+          ? relationEntries.join('')
+          : '<span style="color:#666">暂无人际关系</span>';
         let allTraitsHTML = [];
         /* 添加正面效果 (绿色) */
         Object.entries(positiveEffects).forEach(([name, desc]) => {
@@ -1560,15 +1778,10 @@
                                 <div class="status-header"><span>经验值 (EXP)</span><span>${expCur} / ${expMax}</span></div>
                                 <div class="bar-container"><div class="bar-fill bar-exp" style="width:${toPercent(expCur, expMax)}%"></div></div>
                             </div>
-                            <div class="status-row">
-                                <div class="status-header"><span><button type="button" class="mood-history-trigger" data-entity="${entityType}" data-name="${entityName}" title="点击查看心情变化原因">心情值(点击查看)</button></span><span>${moodCur} / ${moodMax}</span></div>
-                                <div class="bar-container"><div class="bar-fill bar-morale" style="width:${toPercent(moodCur, moodMax)}%"></div></div>
-                                ${
-                                  showRelation
-                                    ? `<div class="relation-row"><span>关系信息</span><span class="relation-pills"><span class="relation-pill">好感度 ${favorability}</span><span class="relation-pill attitude">${_.escape(attitude)}</span></span></div>`
-                                    : ''
-                                }
-                            </div>
+                        </div>
+                        <div class="section-box">
+                            <div class="section-title">人际关系</div>
+                            <div class="tag-box">${relationHTML}</div>
                         </div>
                         <div class="section-box">
                             <div class="section-title">身体属性</div>
@@ -1580,7 +1793,7 @@
                         <div class="section-box">
                             <div class="section-title">装备与特质</div>
                             <div style="margin-bottom:10px;" class="has-tooltip" data-tooltip="${wepTooltip}"><span style="color:#888">武器:</span> <span style="color:var(--text-main); border-bottom:1px dashed #666;">${mainName}</span>${hasSubWeapon ? `<span style="color:#666; margin-left:8px;">/ ${_.get(subWep, '名字')}</span>` : ''}</div>
-                            <div style="margin-bottom:15px;" class="has-tooltip" data-tooltip="防护等级(DR): ${armorDR}\n\n${_.get(arm, '介绍', '无')}"><span style="color:#888">护甲:</span> <span style="color:var(--text-main); border-bottom:1px dashed #666;">${_.get(arm, '种类', '无')}</span></div>
+                            <div style="margin-bottom:15px;" class="has-tooltip" data-tooltip="防护等级(DR): ${armorDR}\n重量: ${_.get(arm, '重量', 0)}kg\n\n${_.get(arm, '介绍', '无')}"><span style="color:#888">护甲:</span> <span style="color:var(--text-main); border-bottom:1px dashed #666;">${_.get(arm, '种类', '无')}</span></div>
                             <div class="tag-box">${traitHTML || '<span style="color:#666">无特质</span>'}</div>
                         </div>
                         <div class="section-box">
@@ -1634,10 +1847,8 @@
         }
         if (!pastRaw || typeof pastRaw !== 'object') return [];
         const map = [
-          { key: '城镇更替', label: '城镇更替' },
-          { key: '广交良友', label: '广交良友' },
-          { key: '击杀记录', label: '肃敌战绩' },
-          { key: '肃敌战绩', label: '肃敌战绩' },
+          { key: '城镇记录', label: '城镇记录' },
+          { key: '击杀记录', label: '击杀记录' },
           { key: '关键记忆', label: '关键记忆' },
         ];
         const out = [];
@@ -1666,39 +1877,142 @@
           const data = _.get(raw, 'stat_data', {});
           const world = _.get(data, '世界', {});
           const worldDay = _.get(world, '天数', 1);
+          const mainSquadName = getMainSquadName(data);
+          const mainSquad = getMainSquadData(data) || {};
+          const mainControllerName = getMainControllerName(data);
+          const mainController = getMainControllerData(data);
+          const squadData = _.get(data, '小队成员', {});
+          const mainMembers = _.get(mainSquad, '成员', {});
           $('#top-day').text(`第 ${worldDay} 天`);
-          const locationStr = `${_.get(world, '区域', '未知区域')} - ${_.get(world, '城镇', '荒野')} - ${_.get(world, '时间', '--:--')}`;
+          const locationStr = `${_.get(mainSquad, '区域', '未知区域')} - ${_.get(mainSquad, '城镇', '荒野')} - ${_.get(world, '时间', '--:--')}`;
           $('#top-loc').text(locationStr);
-          $('#top-money').text(_.get(world, '金钱', 0) + ' c.cat');
+          $('#top-money').text(_.get(mainSquad, '金钱', 0) + ' c.cat');
           $('#my-faction').text(_.get(data, '我方派系名称', '无派系'));
           const eventText = _.get(world, '当前事件', '');
           $('#world-event').text(eventText && eventText !== '' ? eventText : '当前无特殊事件');
-          $('#world-player').html(
-            buildCharHTML(_.get(data, '当前角色'), true, 'current', _.get(data, '当前角色.id', '')),
+          $('#world-player').html(buildCharHTML(mainController, true, 'current', mainControllerName));
+          $('#main-squad-btn').text(
+            mainSquadName ? `主控设定：${mainSquadName} / ${mainControllerName || '未设主控'}` : '主控设定',
+          );
+          $('#no-main-controller-btn').attr(
+            'style',
+            mainControllerName
+              ? 'padding: 6px 12px; border: 1px solid #666; background: rgba(255, 255, 255, 0.04); color: #888; cursor: pointer; border-radius: 2px;'
+              : 'padding: 6px 12px; border: 1px solid var(--accent-positive); background: rgba(46, 204, 113, 0.12); color: var(--accent-positive); cursor: pointer; border-radius: 2px;',
           );
 
           const squadList = $('#squad-list').empty();
-          const squadData = _.get(data, '小队成员', {});
+          const showSquadActions = getSetting(SETTINGS_KEYS.SQUAD_ACTIONS_VISIBLE);
           if (Object.keys(squadData).length === 0) {
-            squadList.html('<div style="text-align:center; padding:40px; color:#666;">当前没有小队成员</div>');
+            squadList.html('<div style="text-align:center; padding:40px; color:#666;">当前没有小队</div>');
           } else {
-            Object.entries(squadData).forEach(([k, v]) => {
-              const isPending = v === '待初始化';
-              const hpLabel = isPending ? '待初始化' : _.get(v, '血量.当前', '--');
-              const card = $(
-                `<div class="char-card"><div><span style="font-weight:bold">${_.get(v, '名字') || k}</span></div><div>HP: ${hpLabel}</div></div>`,
+            Object.entries(squadData).forEach(([squadName, squadValue]) => {
+              const squadMembers = _.get(squadValue, '成员', {});
+              const squadRegion = _.get(squadValue, '区域', '未知区域');
+              const squadTown = _.get(squadValue, '城镇', '荒野');
+              const squadMoney = _.get(squadValue, '金钱', 0);
+              const squadViewCount = Object.keys(_.get(squadValue, '视野', {})).length;
+              const isMainSquad = squadName === mainSquadName;
+              const collapsed = isSquadCollapsed(squadName);
+              const squadCard = $(
+                `<div class="section-box" style="padding:14px 16px; margin-bottom:14px;">
+                  <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; margin-bottom:${collapsed ? '0' : '10px'};">
+                    <div style="display:flex; align-items:flex-start; gap:10px; min-width:0; flex:1;">
+                      <button type="button" class="toggle-squad-collapse-btn" data-squad="${_.escape(String(squadName))}" style="width:26px; height:26px; border:1px solid rgba(193,163,95,0.45); background:rgba(193,163,95,0.08); color:var(--accent-gold); cursor:pointer; border-radius:2px; display:flex; align-items:center; justify-content:center; flex:0 0 26px; margin-top:2px;">${collapsed ? '+' : '−'}</button>
+                      <div>
+                        <div style="font-family:var(--font-header); color:var(--accent-gold); font-size:1.05em;">${_.escape(String(squadName))}${isMainSquad ? '<span style="color:var(--accent-positive); margin-left:8px; font-size:0.82em;">[主控小队]</span>' : ''}</div>
+                        <div style="margin-top:4px; color:var(--text-dim); font-size:0.9em;">${_.escape(String(squadRegion))} · ${_.escape(String(squadTown))} · 资金 ${_.escape(String(squadMoney))} c.cat · 视野 ${squadViewCount} 人</div>
+                      </div>
+                    </div>
+                    ${
+                      showSquadActions
+                        ? `<div class="squad-actions-wrap" style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;">
+                      <button type="button" class="set-main-squad-btn" onclick="event.stopPropagation()" data-squad="${_.escape(String(squadName))}" style="padding:4px 10px; border:1px solid var(--accent-gold); background:rgba(193,163,95,0.08); color:var(--accent-gold); cursor:pointer; border-radius:2px;">主控设定</button>
+                      <button type="button" class="rename-squad-btn" onclick="event.stopPropagation()" data-squad="${_.escape(String(squadName))}" style="padding:4px 10px; border:1px solid rgba(193,163,95,0.45); background:rgba(193,163,95,0.05); color:var(--text-main); cursor:pointer; border-radius:2px;">重命名</button>
+                      <button type="button" class="merge-squad-btn" onclick="event.stopPropagation()" data-squad="${_.escape(String(squadName))}" style="padding:4px 10px; border:1px solid rgba(193,163,95,0.45); background:rgba(193,163,95,0.05); color:var(--text-main); cursor:pointer; border-radius:2px;">合并小队</button>
+                      <button type="button" class="delete-squad-btn" onclick="event.stopPropagation()" data-squad="${_.escape(String(squadName))}" style="padding:4px 10px; border:1px solid rgba(231,76,60,0.55); background:rgba(231,76,60,0.08); color:var(--accent-danger); cursor:pointer; border-radius:2px;">删除小队</button>
+                    </div>`
+                        : ''
+                    }
+                  </div>
+                  <div class="squad-members-box" style="display:${collapsed ? 'none' : 'block'};"></div>
+                </div>`,
               );
-              card.on('click', () => {
-                $('#modal-content-inner').html(buildCharHTML(v, false, 'squad', k));
-                setModalEntity('squad', k);
-                openModal();
+              squadCard.find('.toggle-squad-collapse-btn').on('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleSquadCollapsed(squadName);
+                update();
               });
-              squadList.append(card);
+              squadCard.find('.set-main-squad-btn').on('click', async function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                await setMainSquad(squadName);
+              });
+              squadCard.find('.rename-squad-btn').on('click', async function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                openSquadRenameModal(squadName);
+              });
+              squadCard.find('.merge-squad-btn').on('click', async function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                openSquadMergeTargetModal(squadName);
+              });
+              squadCard.find('.delete-squad-btn').on('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                openSquadDeleteConfirm(squadName);
+              });
+
+              const membersBox = squadCard.find('.squad-members-box');
+              if (!collapsed) {
+                membersBox.prepend(
+                  `<div style="display:flex; justify-content:flex-end; margin-bottom:10px;"><label style="display:inline-flex; align-items:center; gap:8px; padding:4px 10px; border:1px solid rgba(193,163,95,0.3); background:rgba(193,163,95,0.04); color:var(--text-dim); border-radius:999px; font-size:0.84em; cursor:pointer;"><span style="color:var(--accent-gold);">小队操作</span><input type="checkbox" class="toggle-squad-actions-visibility" ${showSquadActions ? 'checked' : ''} style="accent-color: var(--accent-gold); cursor:pointer;" /></label></div>`,
+                );
+                squadCard.find('.toggle-squad-actions-visibility').on('change', function (e) {
+                  e.stopPropagation();
+                  setSquadActionsVisible($(this).is(':checked'));
+                  update();
+                });
+                if (Object.keys(squadMembers).length === 0) {
+                  membersBox.append('<div style="color:#666; padding:8px 2px;">该小队暂无成员</div>');
+                } else {
+                  Object.entries(squadMembers).forEach(([k, v]) => {
+                    const isPending = v === '待初始化';
+                    const hpLabel = isPending ? '待初始化' : _.get(v, '血量.当前', '--');
+                    const isMainController = isMainSquad && k === mainControllerName;
+                    const mainTag = isMainController
+                      ? '<span style="color:var(--accent-positive); margin-left:8px; font-size:0.85em;">[主角]</span>'
+                      : '';
+                    const card = $(
+                      `<div class="char-card" style="margin-bottom:8px;"><div style="display:flex; justify-content:space-between; gap:12px; align-items:center;"><div><span style="font-weight:bold">${_.get(v, '名字') || k}</span>${mainTag}</div><button type="button" class="set-main-controller-btn" onclick="event.stopPropagation()" data-name="${k}" data-squad="${_.escape(String(squadName))}" style="padding:4px 8px; border:1px solid var(--accent-gold); background:rgba(193,163,95,0.08); color:var(--accent-gold); cursor:pointer; border-radius:2px;">主控设定</button></div><div>HP: ${hpLabel}</div></div>`,
+                    );
+                    card.find('.set-main-controller-btn').on('click', async function (e) {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      await setMainController(squadName, k);
+                    });
+                    card.on('click', () => {
+                      $('#modal-content-inner').html(buildCharHTML(v, false, 'squad', k));
+                      setModalEntity('squad', k);
+                      openModal();
+                    });
+                    membersBox.append(card);
+                  });
+                }
+              }
+
+              squadList.append(squadCard);
             });
+
+            squadList.append(
+              `<div style="display:flex; justify-content:center; margin-top:12px;"><button type="button" id="add-squad-btn" style="padding:8px 18px; border:1px solid var(--accent-gold); background:linear-gradient(180deg, rgba(193,163,95,0.12), rgba(193,163,95,0.04)); color:var(--accent-gold); font-family:var(--font-header); letter-spacing:1px; border-radius:2px; cursor:pointer;">新建小队</button></div>`,
+            );
           }
 
           const viewList = $('#view-list').empty();
-          const viewData = _.get(data, '视野', {});
+          const viewData = _.get(mainSquad, '视野', {});
           if (Object.keys(viewData).length === 0)
             viewList.html('<div style="text-align:center; padding:30px; color:#555;">视野内无其他成员</div>');
           else {
@@ -1727,7 +2041,7 @@
 
           const otherList = $('#other-list').empty();
           const otherData = _.get(data, '异地', {});
-          const currentRegion = _.get(data, '世界.区域', '未知区域');
+          const currentRegion = _.get(mainSquad, '区域', '未知区域');
           if (Object.keys(otherData).length === 0) {
             otherList.html('<div style="text-align:center; padding:30px; color:#555;">无异地成员</div>');
           } else {
@@ -1849,14 +2163,137 @@
         let pendingViewDeleteName = '';
         let pendingOtherDeleteName = '';
         let pendingMissionDeleteName = '';
+        let pendingSquadDeleteName = '';
+        let pendingSquadMergeSource = '';
+        let pendingSquadMergeTarget = '';
+        let pendingSquadRenameSource = '';
         window.pendingMoveName = '';
         window.pendingMoveTarget = '';
+
+        function clearPendingSquadActions() {
+          pendingSquadDeleteName = '';
+          pendingSquadMergeSource = '';
+          pendingSquadMergeTarget = '';
+          pendingSquadRenameSource = '';
+        }
+
+        function openSquadDeleteConfirm(name) {
+          const data = getAllVariables();
+          const squad = _.get(data, ['stat_data', '小队成员', name], null);
+          const memberCount = Object.keys(_.get(squad, '成员', {})).length;
+          if (!squad || memberCount > 0) return;
+          clearPendingSquadActions();
+          pendingPastDeleteIndex = null;
+          pendingViewDeleteName = '';
+          pendingOtherDeleteName = '';
+          pendingMissionDeleteName = '';
+          pendingSquadDeleteName = name || '';
+          $('#confirm-modal .confirm-title').text('确认删除小队');
+          $('#confirm-modal .confirm-title').next('div').text(`是否确定删除小队“${name}”？`);
+          $('#confirm-input').val('').hide();
+          $('#confirm-ok').text('删除小队').addClass('danger');
+          $('#confirm-cancel').text('取消');
+          $('#confirm-third').css('display', 'none');
+          $('#confirm-modal').css('display', 'flex');
+        }
+
+        function openSquadRenameModal(name) {
+          if (!name) return;
+          clearPendingSquadActions();
+          pendingPastDeleteIndex = null;
+          pendingViewDeleteName = '';
+          pendingOtherDeleteName = '';
+          pendingMissionDeleteName = '';
+          pendingSquadRenameSource = name;
+          $('#confirm-modal .confirm-title').text('重命名小队');
+          $('#confirm-modal .confirm-title').next('div').text('请输入新的小队名称');
+          $('#confirm-input').val(name).show().trigger('focus');
+          $('#confirm-ok').text('确认重命名').removeClass('danger');
+          $('#confirm-cancel').text('取消');
+          $('#confirm-third').css('display', 'none');
+          $('#confirm-modal').css('display', 'flex');
+        }
+
+        function openSquadMergeTargetModal(sourceSquadName) {
+          if (!sourceSquadName) return;
+          const data = getAllVariables();
+          const squadData = _.get(data, 'stat_data.小队成员', {});
+          const targetNames = Object.keys(squadData).filter(name => name && name !== sourceSquadName);
+          if (targetNames.length === 0) return;
+          clearPendingSquadActions();
+          pendingPastDeleteIndex = null;
+          pendingViewDeleteName = '';
+          pendingOtherDeleteName = '';
+          pendingMissionDeleteName = '';
+          pendingSquadMergeSource = sourceSquadName;
+          $('#confirm-modal .confirm-title').text('选择合并目标');
+          $('#confirm-modal .confirm-title').next('div').text(`请选择小队“${sourceSquadName}”要并入的目标小队`);
+          $('#confirm-input').val('').hide();
+          $('#confirm-select')
+            .html(
+              targetNames
+                .map(name => `<option value="${_.escape(String(name))}">${_.escape(String(name))}</option>`)
+                .join(''),
+            )
+            .show()
+            .trigger('focus');
+          $('#confirm-ok').text('下一步').removeClass('danger');
+          $('#confirm-cancel').text('取消');
+          $('#confirm-third').css('display', 'none');
+          $('#confirm-modal').css('display', 'flex');
+        }
+
+        function openSquadMergeConfirm(sourceSquadName, targetSquadName) {
+          if (!sourceSquadName || !targetSquadName || sourceSquadName === targetSquadName) return;
+          pendingSquadMergeSource = sourceSquadName;
+          pendingSquadMergeTarget = targetSquadName;
+          $('#confirm-modal .confirm-title').text('确认合并小队');
+          $('#confirm-modal .confirm-title')
+            .next('div')
+            .text(`是否将小队“${sourceSquadName}”并入小队“${targetSquadName}”？`);
+          $('#confirm-input').val('').hide();
+          $('#confirm-select').hide();
+          $('#confirm-ok').text('确认合并').removeClass('danger');
+          $('#confirm-cancel').text('取消');
+          $('#confirm-third').css('display', 'none');
+          $('#confirm-modal').css('display', 'flex');
+        }
+
+        async function renameSquad(name, nextNameInput) {
+          if (!name) return;
+          const nextName = String(nextNameInput || '').trim();
+          if (!nextName || nextName === name) return;
+          const option = { type: 'message', message_id: getCurrentMessageId() };
+          const mvuData = Mvu.getMvuData(option) || {};
+          const squadData = _.get(mvuData, 'stat_data.小队成员', {});
+          if (!squadData || !squadData[name] || squadData[nextName]) return;
+          const source = _.get(squadData, name);
+          const nextSquadData = _.omit(squadData, [name]);
+          nextSquadData[nextName] = source;
+          _.set(mvuData, 'stat_data.小队成员', nextSquadData);
+          const rawVars = getAllVariables();
+          const statData = _.get(rawVars, 'stat_data', {});
+          const mainControllerName = getMainControllerName(statData) || '主控';
+          const memberNames = Object.keys(_.get(source, '成员', {}));
+          const memberText = memberNames.length ? memberNames.join('，') : '暂无成员';
+          await Mvu.replaceMvuData(mvuData, option);
+          appendTextToPlayerInput(
+            `${mainControllerName}决定将我们这个小队(${name})修改为${nextName}，成员是${memberText}`,
+          );
+          const settings = loadSettings();
+          if (settings[SETTINGS_KEYS.MAIN_SQUAD] === name) {
+            settings[SETTINGS_KEYS.MAIN_SQUAD] = nextName;
+            saveSettings(settings);
+          }
+          update();
+        }
 
         function openPastDeleteConfirm(index) {
           pendingPastDeleteIndex = index;
           pendingViewDeleteName = '';
           pendingOtherDeleteName = '';
           pendingMissionDeleteName = '';
+          $('#confirm-input').val('').hide();
           $('#confirm-modal .confirm-title').text('确认删除');
           $('#confirm-modal .confirm-title').next('div').text('是否删除该往事记录？');
           $('#confirm-ok').text('删除').addClass('danger');
@@ -1932,8 +2369,11 @@
           pendingViewDeleteName = '';
           pendingOtherDeleteName = '';
           pendingMissionDeleteName = '';
+          clearPendingSquadActions();
           window.pendingMoveName = '';
           window.pendingMoveTarget = '';
+          $('#confirm-input').val('').hide();
+          $('#confirm-select').hide().empty();
           $('#confirm-cancel').text('取消');
           $('#confirm-ok').text('删除').addClass('danger');
           $('#confirm-third').css('display', 'none');
@@ -1972,9 +2412,11 @@
           if (!name) return;
           const option = { type: 'message', message_id: getCurrentMessageId() };
           const mvuData = Mvu.getMvuData(option) || {};
-          const member = _.get(mvuData, ['stat_data', '小队成员', name]);
+          const statData = _.get(mvuData, 'stat_data', {});
+          const mainSquadName = getMainSquadName(statData);
+          const member = _.get(mvuData, ['stat_data', '小队成员', mainSquadName, '成员', name]);
           if (!member || member === '待初始化' || typeof member !== 'object') return;
-          _.set(mvuData, ['stat_data', '小队成员', name, '身份'], '奴隶');
+          _.set(mvuData, ['stat_data', '小队成员', mainSquadName, '成员', name, '身份'], '奴隶');
           await Mvu.replaceMvuData(mvuData, option);
           update();
 
@@ -1984,7 +2426,7 @@
             currentModalEntity.entityType === 'squad' &&
             currentModalEntity.entityName === name
           ) {
-            const updated = _.get(mvuData, ['stat_data', '小队成员', name]);
+            const updated = _.get(mvuData, ['stat_data', '小队成员', mainSquadName, '成员', name]);
             if (updated && typeof updated === 'object') {
               $('#modal-content-inner').html(buildCharHTML(updated, false, 'squad', name));
             }
@@ -1994,12 +2436,15 @@
         async function saveIdentity(entityType, entityName, identityValue) {
           const option = { type: 'message', message_id: getCurrentMessageId() };
           const mvuData = Mvu.getMvuData(option) || {};
+          const statData = _.get(mvuData, 'stat_data', {});
+          const mainSquadName = getMainSquadName(statData);
           const value = String(identityValue ?? '').trim();
           if (!value) return;
           let basePath = null;
-          if (entityType === 'current') basePath = ['stat_data', '当前角色'];
-          if (entityType === 'squad') basePath = ['stat_data', '小队成员', entityName];
-          if (entityType === 'view') basePath = ['stat_data', '视野', entityName];
+          if (entityType === 'current')
+            basePath = ['stat_data', '小队成员', mainSquadName, '成员', getMainControllerName(statData)];
+          if (entityType === 'squad') basePath = ['stat_data', '小队成员', mainSquadName, '成员', entityName];
+          if (entityType === 'view') basePath = ['stat_data', '小队成员', mainSquadName, '视野', entityName];
           if (entityType === 'other') basePath = ['stat_data', '异地', entityName];
           if (!basePath) return;
           const target = _.get(mvuData, basePath);
@@ -2064,15 +2509,17 @@
           if (!name) return;
           const option = { type: 'message', message_id: getCurrentMessageId() };
           const mvuData = Mvu.getMvuData(option) || {};
-          const squadData = _.get(mvuData, 'stat_data.小队成员', {});
+          const statData = _.get(mvuData, 'stat_data', {});
+          const mainSquadName = getMainSquadName(statData);
+          const squadData = _.get(mvuData, ['stat_data', '小队成员', mainSquadName, '成员'], {});
           if (!squadData || typeof squadData !== 'object') return;
 
           const member = squadData[name];
           if (!member) return;
 
           const nextSquadData = _.omit(squadData, [name]);
-          _.set(mvuData, 'stat_data.小队成员', nextSquadData);
-          _.set(mvuData, `stat_data.视野.${name}`, member);
+          _.set(mvuData, ['stat_data', '小队成员', mainSquadName, '成员'], nextSquadData);
+          _.set(mvuData, ['stat_data', '小队成员', mainSquadName, '视野', name], member);
           await Mvu.replaceMvuData(mvuData, option);
           if (
             currentModalEntity &&
@@ -2154,15 +2601,17 @@
           if (!name) return;
           const option = { type: 'message', message_id: getCurrentMessageId() };
           const mvuData = Mvu.getMvuData(option) || {};
-          const viewData = _.get(mvuData, 'stat_data.视野', {});
+          const statData = _.get(mvuData, 'stat_data', {});
+          const mainSquadName = getMainSquadName(statData);
+          const viewData = _.get(mvuData, ['stat_data', '小队成员', mainSquadName, '视野'], {});
           if (!viewData || typeof viewData !== 'object') return;
 
           const char = viewData[name];
           if (!char) return;
 
           const nextViewData = _.omit(viewData, [name]);
-          _.set(mvuData, 'stat_data.视野', nextViewData);
-          _.set(mvuData, `stat_data.小队成员.${name}`, char);
+          _.set(mvuData, ['stat_data', '小队成员', mainSquadName, '视野'], nextViewData);
+          _.set(mvuData, ['stat_data', '小队成员', mainSquadName, '成员', name], char);
           await Mvu.replaceMvuData(mvuData, option);
           if (
             currentModalEntity &&
@@ -2202,6 +2651,8 @@
           if (!name) return;
           const option = { type: 'message', message_id: getCurrentMessageId() };
           const mvuData = Mvu.getMvuData(option) || {};
+          const statData = _.get(mvuData, 'stat_data', {});
+          const mainSquadName = getMainSquadName(statData);
           const otherData = _.get(mvuData, 'stat_data.异地', {});
           if (!otherData || typeof otherData !== 'object') return;
 
@@ -2210,7 +2661,7 @@
 
           const nextOtherData = _.omit(otherData, [name]);
           _.set(mvuData, 'stat_data.异地', nextOtherData);
-          _.set(mvuData, `stat_data.视野.${name}`, char);
+          _.set(mvuData, ['stat_data', '小队成员', mainSquadName, '视野', name], char);
           await Mvu.replaceMvuData(mvuData, option);
           if (
             currentModalEntity &&
@@ -2222,6 +2673,97 @@
           update();
         }
         window.moveOtherToView = moveOtherToView;
+
+        async function createSquad() {
+          const option = { type: 'message', message_id: getCurrentMessageId() };
+          const mvuData = Mvu.getMvuData(option) || {};
+          const statData = _.get(mvuData, 'stat_data', {});
+          const squadData = _.get(statData, '小队成员', {});
+          let index = 1;
+          while (squadData[`小队${index}`]) index += 1;
+          _.set(mvuData, ['stat_data', '小队成员', `小队${index}`], {
+            区域: '未知区域',
+            城镇: '未知城镇',
+            金钱: 0,
+            成员: {},
+            视野: {},
+          });
+          await Mvu.replaceMvuData(mvuData, option);
+          update();
+        }
+
+        async function setMainSquad(squadName) {
+          const settings = loadSettings();
+          settings[SETTINGS_KEYS.MAIN_SQUAD] = squadName;
+          settings[SETTINGS_KEYS.MAIN_CONTROLLER] = NO_MAIN_CONTROLLER_TOKEN;
+          saveSettings(settings);
+          const raw = getAllVariables();
+          const statData = _.get(raw, 'stat_data', {});
+          const nextMainControllerName = getMainControllerName(
+            _.set(_.cloneDeep(statData), ['小队成员'], _.get(statData, '小队成员', {})),
+          );
+          await syncMainPerspectiveWorldBook(nextMainControllerName, squadName);
+          update();
+        }
+
+        async function setMainController(squadName, memberName) {
+          const settings = loadSettings();
+          settings[SETTINGS_KEYS.MAIN_SQUAD] = squadName;
+          const nextControllerName = String(memberName || '').trim();
+          settings[SETTINGS_KEYS.MAIN_CONTROLLER] = nextControllerName || NO_MAIN_CONTROLLER_TOKEN;
+          saveSettings(settings);
+          await syncMainPerspectiveWorldBook(nextControllerName, squadName);
+          update();
+        }
+
+        async function deleteSquad(squadName) {
+          if (!squadName) return;
+          const option = { type: 'message', message_id: getCurrentMessageId() };
+          const mvuData = Mvu.getMvuData(option) || {};
+          const squadData = _.get(mvuData, 'stat_data.小队成员', {});
+          const squad = _.get(squadData, squadName);
+          if (!squadData || !squad) return;
+          const memberCount = Object.keys(_.get(squad, '成员', {})).length;
+          if (memberCount > 0) return;
+          const nextSquadData = _.omit(squadData, [squadName]);
+          _.set(mvuData, 'stat_data.小队成员', nextSquadData);
+          await Mvu.replaceMvuData(mvuData, option);
+          const settings = loadSettings();
+          if (settings[SETTINGS_KEYS.MAIN_SQUAD] === squadName) {
+            settings[SETTINGS_KEYS.MAIN_SQUAD] = Object.keys(nextSquadData)[0] || '';
+            settings[SETTINGS_KEYS.MAIN_CONTROLLER] = '';
+            saveSettings(settings);
+          }
+          update();
+        }
+
+        async function mergeSquad(sourceSquadName, targetSquadName) {
+          if (!sourceSquadName || !targetSquadName || sourceSquadName === targetSquadName) return;
+          const option = { type: 'message', message_id: getCurrentMessageId() };
+          const mvuData = Mvu.getMvuData(option) || {};
+          const rawVars = getAllVariables();
+          const statData = _.get(rawVars, 'stat_data', {});
+          const mainControllerName = getMainControllerName(statData) || '主控';
+          const sourceSquad = _.get(mvuData, ['stat_data', '小队成员', sourceSquadName], {});
+          const targetSquad = _.get(mvuData, ['stat_data', '小队成员', targetSquadName], {});
+          const mergedMembers = { ..._.get(targetSquad, '成员', {}), ..._.get(sourceSquad, '成员', {}) };
+          const mergedView = { ..._.get(targetSquad, '视野', {}), ..._.get(sourceSquad, '视野', {}) };
+          _.set(mvuData, ['stat_data', '小队成员', targetSquadName, '成员'], mergedMembers);
+          _.set(mvuData, ['stat_data', '小队成员', targetSquadName, '视野'], mergedView);
+          _.set(
+            mvuData,
+            ['stat_data', '小队成员', targetSquadName, '金钱'],
+            Number(_.get(targetSquad, '金钱', 0)) + Number(_.get(sourceSquad, '金钱', 0)),
+          );
+          _.set(mvuData, 'stat_data.小队成员', _.omit(_.get(mvuData, 'stat_data.小队成员', {}), [sourceSquadName]));
+          const mergedMemberNames = Object.keys(mergedMembers);
+          const mergedMemberText = mergedMemberNames.length ? mergedMemberNames.join('，') : '暂无成员';
+          await Mvu.replaceMvuData(mvuData, option);
+          appendTextToPlayerInput(
+            `${mainControllerName}决定将小队A(${sourceSquadName})和小队B进行人员合并，成员是${mergedMemberText}`,
+          );
+          update();
+        }
 
         async function saveOtherAddress(name, address) {
           if (!name) return;
@@ -2274,6 +2816,11 @@
           if (!Number.isNaN(index)) {
             openPastDeleteConfirm(index);
           }
+        });
+        $(document).on('click', '#add-squad-btn', async function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          await createSquad();
         });
         $('#view-list').on('click', '.view-remove-btn', function (e) {
           e.preventDefault();
@@ -2387,7 +2934,19 @@
           closeConfirmModal();
         });
         $('#confirm-ok').on('click', async () => {
-          if (window.pendingMoveName && !window.pendingMoveTarget) {
+          if (pendingSquadDeleteName) {
+            await deleteSquad(pendingSquadDeleteName);
+          } else if (pendingSquadRenameSource) {
+            await renameSquad(pendingSquadRenameSource, $('#confirm-input').val());
+          } else if (pendingSquadMergeSource) {
+            if (!pendingSquadMergeTarget) {
+              const selectedTarget = String($('#confirm-select').val() || '').trim();
+              if (!selectedTarget) return;
+              openSquadMergeConfirm(pendingSquadMergeSource, selectedTarget);
+              return;
+            }
+            await mergeSquad(pendingSquadMergeSource, pendingSquadMergeTarget);
+          } else if (window.pendingMoveName && !window.pendingMoveTarget) {
             // 赶出小队（移至视野）
             await moveSquadToView(window.pendingMoveName);
           } else if (pendingPastDeleteIndex !== null) {
@@ -2412,7 +2971,8 @@
             } else if (window.pendingMoveTarget === 'other') {
               const option = { type: 'message', message_id: getCurrentMessageId() };
               const mvuData = Mvu.getMvuData(option) || {};
-              const viewData = _.get(mvuData, 'stat_data.视野', {});
+              const statData = _.get(mvuData, 'stat_data', {});
+              const viewData = _.get(getMainSquadData(statData), '视野', {});
               if (viewData && viewData[window.pendingMoveName]) {
                 await moveViewToOther(window.pendingMoveName);
               } else {
@@ -2422,7 +2982,8 @@
               // 需要判断是来自视野还是异地
               const option = { type: 'message', message_id: getCurrentMessageId() };
               const mvuData = Mvu.getMvuData(option) || {};
-              const viewData = _.get(mvuData, 'stat_data.视野', {});
+              const statData = _.get(mvuData, 'stat_data', {});
+              const viewData = _.get(getMainSquadData(statData), '视野', {});
               if (viewData && viewData[window.pendingMoveName]) {
                 await moveViewToSquad(window.pendingMoveName);
               } else {
@@ -2434,6 +2995,13 @@
         });
         $('#move-squad-btn').on('click', function () {
           handleModalMoveBtn();
+        });
+        $('#no-main-controller-btn').on('click', async function () {
+          const raw = getAllVariables();
+          const statData = _.get(raw, 'stat_data', {});
+          const squadName = getMainSquadName(statData);
+          if (!squadName) return;
+          await setMainController(squadName, '');
         });
         $('#move-to-view-btn').on('click', function () {
           handleModalMoveToViewBtn();
@@ -2464,7 +3032,6 @@
             closeConfirmModal();
           }
         });
-
         $(document).on('click', '.stat-item.stat-clickable', async function () {
           const attrKey = $(this).attr('data-attr');
           const entityType = $(this).attr('data-entity');
@@ -2482,11 +3049,13 @@
           }
 
           let basePath = [];
+          const statData = _.get(mvuData, 'stat_data', {});
+          const mainSquadName = getMainSquadName(statData);
           if (entityType === 'current') {
-            basePath = ['stat_data', '当前角色'];
+            basePath = ['stat_data', '小队成员', mainSquadName, '成员', getMainControllerName(statData)];
           } else if (entityType === 'squad' && entityName) {
             // 使用数组路径避免成员名中包含 "."、"["、"]" 等字符时被 lodash 误解析
-            basePath = ['stat_data', '小队成员', entityName];
+            basePath = ['stat_data', '小队成员', mainSquadName, '成员', entityName];
           } else {
             return;
           }
@@ -2526,9 +3095,12 @@
         window.closeMoodHistoryModal = closeMoodHistoryModal;
 
         function resolveEntityData(data, entityType, entityName) {
-          if (entityType === 'current') return _.get(data, '当前角色');
+          if (entityType === 'current') return getMainControllerData(data);
           if (entityType === 'squad' && entityName) return _.get(data, ['小队成员', entityName]);
-          if (entityType === 'view' && entityName) return _.get(data, ['视野', entityName]);
+          if (entityType === 'view' && entityName) {
+            const mainSquad = getMainSquadData(data);
+            return _.get(mainSquad, ['视野', entityName]);
+          }
           if (entityType === 'other' && entityName) return _.get(data, ['异地', entityName]);
           return null;
         }
@@ -2540,21 +3112,19 @@
           const statData = _.get(raw, 'stat_data', {});
           const roleData = resolveEntityData(statData, entityType, entityName);
 
-          const displayName =
-            _.get(roleData, '名字') ||
-            (entityName && entityName !== '' ? entityName : _.get(statData, '当前角色.名字', '当前角色'));
+          const displayName = _.get(roleData, '名字') || (entityName && entityName !== '' ? entityName : '主控角色');
 
           $('#mood-history-role').text(displayName);
 
-          const descriptions = _.get(roleData, '心情.变化描述', []);
-          const safeDescriptions = Array.isArray(descriptions) ? descriptions.filter(v => `${v}`.trim() !== '') : [];
-          $('#mood-history-count').text(safeDescriptions.length);
+          const descriptions = [];
+          const safeDescriptions = [];
+          $('#mood-history-count').text(0);
 
           const list = $('#mood-history-list').empty();
           if (!roleData || typeof roleData !== 'object' || roleData === '待初始化') {
-            list.html('<div class="mood-history-empty">该角色数据待初始化，暂无心情变化记录。</div>');
+            list.html('<div class="mood-history-empty">该角色数据待初始化，暂无记录。</div>');
           } else if (safeDescriptions.length === 0) {
-            list.html('<div class="mood-history-empty">暂无心情变化原因记录。</div>');
+            list.html('<div class="mood-history-empty">当前结构已移除心情记录。</div>');
           } else {
             safeDescriptions.forEach((line, idx) => {
               list.append(`<li><span style="color:#8ecfff">#${idx + 1}</span> ${_.escape(String(line))}</li>`);
@@ -2604,11 +3174,13 @@
             }
           }
 
+          const statData = _.get(mvuData, 'stat_data', {});
+          const mainSquadName = getMainSquadName(statData);
           const basePath =
             currentModalEntity.entityType === 'other'
-              ? `stat_data.异地.${currentModalEntity.entityName}`
-              : `stat_data.视野.${currentModalEntity.entityName}`;
-          _.set(mvuData, `${basePath}.立场`, stance);
+              ? ['stat_data', '异地', currentModalEntity.entityName]
+              : ['stat_data', '小队成员', mainSquadName, '视野', currentModalEntity.entityName];
+          _.set(mvuData, [...basePath, '立场'], stance);
           await Mvu.replaceMvuData(mvuData, option);
 
           closeStancePopover();
@@ -2616,7 +3188,7 @@
           const sourceData =
             currentModalEntity.entityType === 'other'
               ? _.get(mvuData, 'stat_data.异地', {})
-              : _.get(mvuData, 'stat_data.视野', {});
+              : _.get(mvuData, ['stat_data', '小队成员', mainSquadName, '视野'], {});
           const latest = _.get(sourceData, currentModalEntity.entityName, {});
           $('#modal-content-inner').html(
             buildCharHTML(latest, false, currentModalEntity.entityType, currentModalEntity.entityName),
@@ -2755,6 +3327,50 @@
           </div>
           <div id="pane-squad" class="tab-pane">
             <div class="section-title">小队成员</div>
+            <div
+              style="
+                margin-bottom: 14px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                flex-wrap: wrap;
+              "
+            >
+              <div style="color: var(--text-dim); font-size: 0.92em">
+                点击下方小队卡片可切换主控小队，概览/顶部信息/视野将同步切换
+              </div>
+              <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap">
+                <button
+                  id="no-main-controller-btn"
+                  type="button"
+                  style="
+                    padding: 6px 12px;
+                    border: 1px solid #666;
+                    background: rgba(255, 255, 255, 0.04);
+                    color: #888;
+                    cursor: pointer;
+                    border-radius: 2px;
+                  "
+                >
+                  无主控角色
+                </button>
+                <button
+                  id="main-squad-btn"
+                  type="button"
+                  style="
+                    padding: 6px 12px;
+                    border: 1px solid var(--accent-gold);
+                    background: rgba(193, 163, 95, 0.08);
+                    color: var(--accent-gold);
+                    cursor: default;
+                    border-radius: 2px;
+                  "
+                >
+                  主控设定
+                </button>
+              </div>
+            </div>
             <div id="squad-list"></div>
           </div>
           <div id="pane-view" class="tab-pane">
@@ -2791,9 +3407,8 @@
             <div class="section-title">往事</div>
             <div class="past-controls">
               <select id="past-category-input" class="past-input">
-                <option value="城镇更替">城镇更替</option>
-                <option value="广交良友">广交良友</option>
-                <option value="肃敌战绩">肃敌战绩</option>
+                <option value="城镇记录">城镇记录</option>
+                <option value="击杀记录">击杀记录</option>
                 <option value="关键记忆">关键记忆</option>
               </select>
               <input id="past-date-input" class="past-input" type="number" placeholder="天数(默认当前天数)" />
@@ -2843,6 +3458,8 @@
       <div class="confirm-modal">
         <div class="confirm-title">确认删除</div>
         <div>是否删除该往事记录？</div>
+        <input id="confirm-input" class="confirm-input" type="text" style="display: none" />
+        <select id="confirm-select" class="confirm-select" style="display: none"></select>
         <div class="confirm-actions">
           <button id="confirm-cancel" class="confirm-btn">取消</button>
           <button id="confirm-ok" class="confirm-btn danger">删除</button>
