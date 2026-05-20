@@ -1,0 +1,2870 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>kenshi新状态栏</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --bg-deep: rgba(12, 12, 15, 0.95);
+        --bg-panel: rgba(35, 33, 30, 0.6);
+        --accent-gold: #c1a35f;
+        --accent-bronze: #8b6d4d;
+        --accent-rust: #8b3a3a;
+        --accent-green: #2b8a3e;
+        --text-main: #e0dacc;
+        --text-dim: #9e968b;
+        --font-header: 'Cinzel', 'KaiTi', '楷体', serif;
+        --font-body: 'Georgia', 'serif', 'KaiTi';
+        --border-style: 1px solid rgba(193, 163, 95, 0.3);
+        --accent-danger: #e74c3c;
+        --accent-positive: #2ecc71;
+        --accent-yellow: #f1c40f;
+      }
+
+      body {
+        font-family: var(--font-body);
+        background: transparent;
+        margin: 0;
+        padding: 10px;
+        color: var(--text-main);
+        user-select: none;
+        overflow-x: hidden;
+        font-size: 16px;
+      }
+
+      .main-container {
+        width: 100%;
+        max-width: 1200px;
+        background: var(--bg-deep);
+        border: 1px solid var(--accent-bronze);
+        backdrop-filter: blur(8px);
+        box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
+        margin: 0 auto;
+        border-radius: 3px;
+        transition: all 0.4s ease;
+      }
+
+      .top-bar {
+        background: linear-gradient(180deg, rgba(30, 25, 20, 1), rgba(30, 25, 20, 0.5));
+        border-bottom: var(--border-style);
+        padding: 12px 25px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-family: var(--font-header);
+        position: relative;
+        z-index: 10;
+      }
+
+      .top-left {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+      }
+      .top-right {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        color: var(--accent-gold);
+        font-weight: bold;
+      }
+
+      .day-badge {
+        font-size: 1.2em;
+        color: var(--accent-gold);
+        border-right: 1px solid #555;
+        padding-right: 20px;
+      }
+      .location-info {
+        font-size: 1.1em;
+        color: var(--text-main);
+        letter-spacing: 0.5px;
+      }
+
+      .toggle-btn {
+        background: transparent;
+        border: 1px solid var(--accent-bronze);
+        color: var(--accent-gold);
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition:
+          transform 0.4s ease,
+          background 0.3s;
+        font-size: 0.8em;
+      }
+
+      .main-container.collapsed .toggle-btn {
+        transform: rotate(-90deg);
+      }
+      .collapsible-content {
+        max-height: 2000px;
+        overflow: hidden;
+        opacity: 1;
+        transition:
+          max-height 0.5s ease-in-out,
+          opacity 0.4s ease-in-out;
+      }
+      .main-container.collapsed .collapsible-content {
+        max-height: 0;
+        opacity: 0;
+      }
+
+      .nav-tabs {
+        display: flex;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0.4);
+        border-bottom: var(--border-style);
+        margin-bottom: 5px;
+      }
+      .tab-btn {
+        padding: 12px 30px;
+        cursor: pointer;
+        font-family: var(--font-header);
+        color: var(--text-dim);
+        transition: 0.3s;
+        border-bottom: 3px solid transparent;
+      }
+      .tab-btn.active {
+        color: var(--accent-gold);
+        border-bottom: 3px solid var(--accent-gold);
+        background: linear-gradient(to top, rgba(193, 163, 95, 0.1), transparent);
+      }
+
+      .content-area {
+        padding: 25px;
+        min-height: min(85vw, 820px);
+        max-height: min(85vw, 820px);
+        overflow-y: auto;
+      }
+      .content-area::-webkit-scrollbar {
+        width: 6px;
+      }
+      .content-area::-webkit-scrollbar-thumb {
+        background: var(--accent-bronze);
+        border-radius: 3px;
+      }
+
+      .tab-pane {
+        display: none;
+      }
+      .tab-pane.active {
+        display: block;
+        animation: fadeIn 0.3s;
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      .section-box {
+        background: var(--bg-panel);
+        border: 1px solid rgba(193, 163, 95, 0.2);
+        padding: 20px;
+        margin-bottom: 20px;
+      }
+      .section-title {
+        font-family: var(--font-header);
+        color: var(--accent-gold);
+        font-size: 1.1em;
+        border-bottom: 1px solid rgba(193, 163, 95, 0.3);
+        margin-bottom: 15px;
+        padding-bottom: 5px;
+      }
+
+      .event-text {
+        font-style: italic;
+        line-height: 1.6;
+        color: var(--text-main);
+        padding: 10px;
+        border-left: 3px solid var(--accent-gold);
+        background: rgba(193, 163, 95, 0.05);
+      }
+
+      .desc-text {
+        color: #888;
+        font-size: 0.95em;
+        font-style: italic;
+        margin-bottom: 20px;
+        padding: 0 5px;
+        border-left: 2px solid #444;
+        line-height: 1.5;
+      }
+
+      .detail-grid {
+        display: grid;
+        grid-template-columns: 1.2fr 1fr;
+        gap: 20px;
+      }
+      .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+        gap: 10px;
+      }
+
+      .stat-item {
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid #444;
+        padding: 8px 4px;
+        text-align: center;
+        cursor: help;
+      }
+      .stat-item:hover {
+        border-color: var(--accent-gold);
+        background: rgba(193, 163, 95, 0.1);
+      }
+      .stat-item.stat-clickable {
+        cursor: pointer;
+        border-color: rgba(193, 163, 95, 0.6);
+      }
+      .stat-item b {
+        display: block;
+        color: var(--accent-bronze);
+        font-size: 0.85em;
+        margin-bottom: 4px;
+      }
+
+      .points-summary {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 15px;
+        flex-wrap: wrap;
+        padding-bottom: 10px;
+        border-bottom: 1px dashed rgba(193, 163, 95, 0.2);
+      }
+      .point-tag {
+        background: rgba(193, 163, 95, 0.1);
+        border: 1px solid var(--accent-gold);
+        padding: 2px 10px;
+        font-size: 0.85em;
+        color: var(--accent-gold);
+        border-radius: 2px;
+      }
+
+      .status-badge {
+        font-size: 0.8em;
+        padding: 1px 6px;
+        border-radius: 2px;
+        margin-left: 8px;
+        vertical-align: middle;
+        border: 1px solid #555;
+        color: #aaa;
+      }
+      .status-badge.danger {
+        border-color: var(--accent-danger);
+        color: var(--accent-danger);
+      }
+      .status-badge.warn {
+        border-color: #f39c12;
+        color: #f39c12;
+      }
+
+      .status-row {
+        margin-bottom: 15px;
+      }
+      .status-header {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.9em;
+        margin-bottom: 5px;
+      }
+      .relation-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 8px;
+        font-size: 0.85em;
+        color: var(--text-dim);
+      }
+      .relation-pills {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .relation-pill {
+        border: 1px solid rgba(193, 163, 95, 0.35);
+        background: rgba(193, 163, 95, 0.08);
+        color: var(--accent-gold);
+        border-radius: 2px;
+        padding: 1px 8px;
+        font-size: 0.85em;
+        line-height: 1.4;
+        white-space: nowrap;
+      }
+      .relation-pill.attitude {
+        border-color: rgba(139, 109, 77, 0.6);
+        background: rgba(139, 109, 77, 0.14);
+        color: var(--text-main);
+      }
+      .bar-container {
+        height: 8px;
+        background: #222;
+        border: 1px solid #444;
+      }
+      .bar-fill {
+        height: 100%;
+        box-shadow: 0 0 8px currentColor;
+        transition: width 0.4s;
+      }
+      .bar-hp {
+        background: #8b3a3a;
+        color: #8b3a3a;
+      }
+      .bar-exp {
+        background: #c1a35f;
+        color: #c1a35f;
+      }
+      .bar-morale {
+        background: #3498db;
+        color: #3498db;
+      }
+      .mood-history-trigger {
+        border: none;
+        background: transparent;
+        color: inherit;
+        padding: 0;
+        margin: 0;
+        font: inherit;
+        cursor: pointer;
+      }
+      .mood-history-trigger:hover {
+        color: #6fc3ff;
+      }
+      .mood-history-modal {
+        background: var(--bg-deep);
+        width: 92%;
+        max-width: 720px;
+        border: 1px solid #3498db;
+        padding: 24px;
+        box-shadow: 0 10px 50px rgba(0, 0, 0, 0.8);
+        max-height: min(88vw, 780px);
+        overflow-y: auto;
+        position: relative;
+      }
+      .mood-history-title {
+        font-family: var(--font-header);
+        color: #6fc3ff;
+        font-size: 1.1em;
+        margin-bottom: 10px;
+      }
+      .mood-history-subtitle {
+        color: var(--text-dim);
+        margin-bottom: 14px;
+        font-size: 0.9em;
+      }
+      .mood-history-list {
+        margin: 0;
+        padding-left: 24px;
+      }
+      .mood-history-list li {
+        margin-bottom: 8px;
+        line-height: 1.55;
+      }
+      .mood-history-empty {
+        color: #888;
+        font-style: italic;
+      }
+      .mood-history-close {
+        position: absolute;
+        right: 12px;
+        top: 8px;
+        background: none;
+        border: none;
+        color: #6fc3ff;
+        font-size: 1.8em;
+        cursor: pointer;
+      }
+
+      .char-card {
+        background: linear-gradient(90deg, rgba(40, 40, 45, 0.9), rgba(30, 30, 35, 0.6));
+        border: 1px solid rgba(193, 163, 95, 0.2);
+        padding: 12px 20px;
+        margin-bottom: 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+      .char-card:hover {
+        border-color: var(--accent-gold);
+        transform: translateX(5px);
+      }
+      .squad-card-btn,
+      .view-card-btn,
+      .other-card-btn {
+        position: absolute;
+        top: 4px;
+        width: 32px;
+        height: 16px;
+        border-radius: 3px;
+        border: 1px solid var(--accent-positive);
+        background: rgba(46, 204, 113, 0.12);
+        color: var(--accent-positive);
+        font-family: var(--font-header);
+        font-size: 0.6em;
+        font-weight: bold;
+        letter-spacing: 0.5px;
+        line-height: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+      }
+      .squad-card-btn,
+      .other-card-btn {
+        right: 6px;
+      }
+      .view-card-btn {
+        right: 36px;
+      }
+      .squad-card-btn:hover,
+      .view-card-btn:hover,
+      .other-card-btn:hover {
+        background: rgba(46, 204, 113, 0.25);
+        box-shadow: 0 0 8px rgba(46, 204, 113, 0.4);
+        transform: scale(1.05);
+      }
+
+      .view-char-card {
+        position: relative;
+        padding-right: 86px;
+      }
+      .view-remove-btn {
+        position: absolute;
+        top: 6px;
+        right: 8px;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        border: 1px solid rgba(231, 76, 60, 0.65);
+        background: rgba(0, 0, 0, 0.28);
+        color: var(--accent-danger);
+        font-family: var(--font-header);
+        font-size: 0.75em;
+        line-height: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+      .view-remove-btn:hover {
+        border-color: var(--accent-danger);
+        background: rgba(231, 76, 60, 0.15);
+      }
+
+      .other-remove-btn {
+        position: absolute;
+        top: 6px;
+        right: 8px;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        border: 1px solid rgba(231, 76, 60, 0.65);
+        background: rgba(0, 0, 0, 0.28);
+        color: var(--accent-danger);
+        font-family: var(--font-header);
+        font-size: 0.75em;
+        line-height: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+      .other-remove-btn:hover {
+        border-color: var(--accent-danger);
+        background: rgba(231, 76, 60, 0.15);
+      }
+
+      .identity-tag {
+        margin-left: 8px;
+        padding: 1px 7px;
+        border: 1px solid rgba(193, 163, 95, 0.5);
+        border-radius: 999px;
+        font-size: 0.74em;
+        color: var(--accent-gold);
+        background: rgba(193, 163, 95, 0.08);
+        vertical-align: middle;
+      }
+      .identity-edit-btn {
+        margin-left: 6px;
+        border: 1px solid rgba(193, 163, 95, 0.5);
+        background: rgba(193, 163, 95, 0.08);
+        color: var(--accent-gold);
+        border-radius: 999px;
+        padding: 0 6px;
+        height: 20px;
+        line-height: 18px;
+        cursor: pointer;
+        font-size: 0.78em;
+      }
+      .identity-edit-wrap {
+        margin-top: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .identity-edit-input {
+        min-width: 160px;
+        max-width: 280px;
+        padding: 4px 8px;
+        border: 1px solid #555;
+        border-radius: 4px;
+        background: #111;
+        color: #eee;
+      }
+      .enslave-btn {
+        height: 28px;
+        border-radius: 4px;
+        border: 1px solid rgba(231, 76, 60, 0.65);
+        background: rgba(231, 76, 60, 0.12);
+        color: #ffb3a8;
+        font-family: var(--font-header);
+        font-size: 0.72em;
+        font-weight: bold;
+        letter-spacing: 0.5px;
+        line-height: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        padding: 0 10px;
+        margin-right: 8px;
+      }
+      .enslave-btn:hover {
+        background: rgba(231, 76, 60, 0.24);
+        box-shadow: 0 0 8px rgba(231, 76, 60, 0.35);
+      }
+
+      .settings-btn {
+        margin-left: 12px;
+        border: 1px solid rgba(193, 163, 95, 0.5);
+        background: rgba(193, 163, 95, 0.08);
+        color: var(--accent-gold);
+        border-radius: 4px;
+        padding: 2px 10px;
+        height: 24px;
+        line-height: 20px;
+        cursor: pointer;
+        font-size: 0.85em;
+        transition: all 0.2s ease;
+      }
+      .settings-btn:hover {
+        background: rgba(193, 163, 95, 0.18);
+        box-shadow: 0 0 6px rgba(193, 163, 95, 0.35);
+      }
+
+      .tag-box {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        width: 100%;
+        min-width: 0;
+        overflow: hidden;
+      }
+      .item-tag {
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid #555;
+        padding: 3px 8px;
+        font-size: 0.9em;
+        cursor: help;
+        max-width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+      }
+      .item-tag:hover {
+        border-color: var(--accent-gold);
+        background: rgba(193, 163, 95, 0.1);
+      }
+
+      .faction-pill {
+        padding: 2px 8px;
+        border: 1px solid #555;
+        margin-right: 8px;
+        font-size: 0.8em;
+        cursor: help;
+      }
+
+      #tooltip {
+        position: fixed;
+        background: rgba(15, 15, 20, 0.98);
+        border: 1px solid var(--accent-gold);
+        color: #fff;
+        padding: 12px;
+        z-index: 99999;
+        display: none;
+        pointer-events: none;
+        font-size: 0.9em;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.8);
+        max-width: min(300px, calc(100vw - 24px));
+        word-break: break-word;
+        overflow-wrap: anywhere;
+        box-sizing: border-box;
+      }
+
+      .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.85);
+        z-index: 1000;
+        display: none;
+        justify-content: center;
+        align-items: center;
+        animation: fadeIn 0.2s;
+      }
+
+      .confirm-modal {
+        background: var(--bg-deep);
+        width: 90%;
+        max-width: 420px;
+        border: 1px solid var(--accent-gold);
+        padding: 24px;
+        box-shadow: 0 10px 50px rgba(0, 0, 0, 0.8);
+        text-align: center;
+      }
+      .confirm-title {
+        font-family: var(--font-header);
+        color: var(--accent-gold);
+        font-size: 1.1em;
+        margin-bottom: 12px;
+      }
+      .confirm-actions {
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        margin-top: 18px;
+      }
+      .confirm-btn {
+        background: transparent;
+        border: 1px solid var(--accent-bronze);
+        color: var(--accent-gold);
+        padding: 6px 16px;
+        cursor: pointer;
+        font-family: var(--font-header);
+        transition: 0.2s;
+      }
+      .confirm-btn:hover {
+        border-color: var(--accent-gold);
+        background: rgba(193, 163, 95, 0.1);
+      }
+      .confirm-btn.danger {
+        border-color: var(--accent-danger);
+        color: var(--accent-danger);
+      }
+      .confirm-btn.danger:hover {
+        background: rgba(231, 76, 60, 0.12);
+      }
+      .setting-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+        font-size: 0.95em;
+      }
+      .setting-item label {
+        color: var(--text-main);
+      }
+      .setting-item input[type='checkbox'] {
+        width: 18px;
+        height: 18px;
+        accent-color: var(--accent-gold);
+        cursor: pointer;
+      }
+      #save-settings-btn {
+        width: 100%;
+        margin-top: 8px;
+      }
+      .modal-content {
+        background: var(--bg-deep);
+        width: 90%;
+        max-width: 1200px;
+        border: 1px solid var(--accent-gold);
+        padding: 40px;
+        max-height: min(90vw, 820px);
+        overflow-y: auto;
+        position: relative;
+        box-shadow: 0 10px 50px rgba(0, 0, 0, 0.8);
+      }
+      .settings-content {
+        max-width: 400px;
+        padding: 24px;
+      }
+      .close-btn {
+        position: absolute;
+        right: 20px;
+        top: 20px;
+        background: none;
+        border: none;
+        color: var(--accent-gold);
+        font-size: 2em;
+        cursor: pointer;
+      }
+      .stance-gear-btn {
+        position: absolute;
+        right: 62px;
+        top: 22px;
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        border: 1px solid var(--accent-bronze);
+        background: rgba(0, 0, 0, 0.2);
+        color: var(--accent-gold);
+        font-size: 1.1em;
+        cursor: pointer;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        transition: 0.2s;
+      }
+      .stance-gear-btn:hover {
+        border-color: var(--accent-gold);
+        background: rgba(193, 163, 95, 0.12);
+        transform: rotate(18deg);
+      }
+      .modal-move-btn {
+        position: absolute;
+        right: 104px;
+        top: 22px;
+        width: 44px;
+        height: 34px;
+        border-radius: 3px;
+        border: 1px solid var(--accent-positive);
+        background: rgba(46, 204, 113, 0.12);
+        color: var(--accent-positive);
+        font-family: var(--font-header);
+        font-size: 0.8em;
+        font-weight: bold;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+      }
+      .modal-move-btn:hover {
+        background: rgba(46, 204, 113, 0.25);
+        box-shadow: 0 0 8px rgba(46, 204, 113, 0.4);
+      }
+      .modal-view-btn {
+        position: absolute;
+        right: 156px;
+        top: 22px;
+        min-width: 76px;
+        height: 34px;
+        padding: 0 10px;
+        border-radius: 3px;
+        border: 1px solid var(--accent-yellow);
+        background: rgba(241, 196, 15, 0.12);
+        color: var(--accent-yellow);
+        font-family: var(--font-header);
+        font-size: 0.8em;
+        font-weight: bold;
+        cursor: pointer;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+      }
+      .modal-view-btn:hover {
+        background: rgba(241, 196, 15, 0.25);
+        box-shadow: 0 0 8px rgba(241, 196, 15, 0.35);
+      }
+      .stance-popover {
+        position: absolute;
+        right: 20px;
+        top: 64px;
+        background: rgba(15, 15, 20, 0.98);
+        border: 1px solid var(--accent-gold);
+        padding: 12px;
+        min-width: 160px;
+        display: none;
+        z-index: 5;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+      }
+      .stance-popover.show {
+        display: block;
+      }
+      .stance-popover-title {
+        font-family: var(--font-header);
+        color: var(--accent-gold);
+        margin-bottom: 8px;
+        font-size: 0.95em;
+      }
+      .stance-option {
+        width: 100%;
+        text-align: left;
+        background: transparent;
+        border: 1px solid rgba(193, 163, 95, 0.2);
+        color: var(--text-main);
+        padding: 6px 8px;
+        margin-bottom: 6px;
+        cursor: pointer;
+        font-family: var(--font-header);
+        transition: 0.2s;
+      }
+      .stance-option:last-child {
+        margin-bottom: 0;
+      }
+      .stance-option:hover {
+        border-color: var(--accent-gold);
+        background: rgba(193, 163, 95, 0.12);
+      }
+      .stance-option.enemy {
+        color: var(--accent-danger);
+      }
+      .stance-option.neutral {
+        color: var(--accent-yellow);
+      }
+      .stance-option.friendly {
+        color: var(--accent-positive);
+      }
+
+      .mission-item {
+        border: 1px solid #444;
+        background: rgba(0, 0, 0, 0.2);
+        margin-bottom: 8px;
+      }
+      .mission-header {
+        padding: 12px;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: rgba(255, 255, 255, 0.03);
+      }
+      .mission-header-right {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .mission-delete-btn {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        border: 1px solid rgba(231, 76, 60, 0.65);
+        background: rgba(0, 0, 0, 0.28);
+        color: var(--accent-danger);
+        font-family: var(--font-header);
+        font-size: 0.75em;
+        line-height: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+      .mission-delete-btn:hover {
+        border-color: var(--accent-danger);
+        background: rgba(231, 76, 60, 0.15);
+      }
+      .mission-body {
+        display: none;
+        padding: 15px;
+        border-top: 1px solid #444;
+        font-size: 0.95em;
+        color: #ccc;
+      }
+      .mission-item.open .mission-body {
+        display: block;
+      }
+      .mission-description {
+        font-style: italic;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 1px dashed #444;
+      }
+      .subtask-desc {
+        font-size: 0.85em;
+        color: #aaa;
+        margin: 4px 0 6px;
+        line-height: 1.4;
+      }
+      .mission-reward {
+        font-weight: bold;
+        color: var(--accent-gold);
+        margin-bottom: 15px;
+      }
+      .subtask-list {
+        list-style: none;
+        padding-left: 10px;
+        margin: 0;
+      }
+      .subtask-item {
+        margin-bottom: 12px;
+        padding-left: 15px;
+        border-left: 2px solid #555;
+      }
+      .subtask-item.completed {
+        border-left-color: var(--accent-green);
+      }
+      .subtask-item.completed .subtask-name {
+        color: #888;
+        text-decoration: line-through;
+      }
+      .subtask-name {
+        font-size: 0.9em;
+        margin-bottom: 4px;
+      }
+      .subtask-progress-container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .subtask-progress-bar-container {
+        flex-grow: 1;
+        height: 6px;
+        background: #222;
+        border: 1px solid #555;
+      }
+      .subtask-progress-bar {
+        height: 100%;
+        background: var(--accent-bronze);
+        transition: width 0.4s;
+      }
+      .subtask-progress-text {
+        font-size: 0.85em;
+        color: #888;
+        min-width: 50px;
+        text-align: right;
+      }
+
+      .past-item {
+        border: 1px solid #444;
+        background: rgba(0, 0, 0, 0.2);
+        margin-bottom: 10px;
+        padding: 12px 14px;
+      }
+      .past-date {
+        font-family: var(--font-header);
+        color: var(--accent-gold);
+        font-size: 0.95em;
+        margin-bottom: 6px;
+      }
+      .past-desc {
+        color: #ccc;
+        line-height: 1.5;
+      }
+      .past-controls {
+        display: grid;
+        grid-template-columns: 140px 1fr auto;
+        gap: 10px;
+        margin-bottom: 16px;
+      }
+      .past-input,
+      .past-textarea {
+        width: 100%;
+        background: rgba(0, 0, 0, 0.35);
+        border: 1px solid #444;
+        color: var(--text-main);
+        padding: 8px 10px;
+        font-family: var(--font-body);
+      }
+      .past-textarea {
+        min-height: 60px;
+        resize: vertical;
+      }
+      .past-add-btn,
+      .past-delete-btn {
+        background: transparent;
+        border: 1px solid var(--accent-bronze);
+        color: var(--accent-gold);
+        padding: 6px 12px;
+        cursor: pointer;
+        font-family: var(--font-header);
+        transition: 0.2s;
+      }
+      .past-add-btn:hover {
+        border-color: var(--accent-gold);
+        background: rgba(193, 163, 95, 0.1);
+      }
+      .past-delete-btn {
+        border-color: var(--accent-danger);
+        color: var(--accent-danger);
+        margin-top: 10px;
+      }
+      .past-delete-btn:hover {
+        background: rgba(231, 76, 60, 0.12);
+      }
+
+      .map-frame-wrap {
+        border: 1px solid rgba(193, 163, 95, 0.25);
+        background: rgba(0, 0, 0, 0.35);
+        padding: 10px;
+        position: relative;
+      }
+      #map-root {
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        max-height: min(70vw, 720px);
+        border: 1px solid #444;
+        background: #0c0c0f;
+        touch-action: manipulation;
+        overscroll-behavior: contain;
+      }
+      #map-root .h-screen {
+        height: 100%;
+      }
+      #map-root .leaflet-container {
+        touch-action: manipulation;
+      }
+      .map-frame-wrap {
+        touch-action: manipulation;
+      }
+
+      /* 响应式布局：手机 / 平板 / 桌面 */
+      @media (max-width: 480px) {
+        body {
+          padding: 6px;
+          font-size: 14px;
+        }
+        .top-bar {
+          padding: 10px 12px;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+        .top-left,
+        .top-right {
+          gap: 10px;
+          flex-wrap: wrap;
+          width: 100%;
+          justify-content: space-between;
+        }
+        .day-badge {
+          padding-right: 10px;
+          border-right: none;
+        }
+        .location-info {
+          width: 100%;
+        }
+        .nav-tabs {
+          flex-wrap: wrap;
+        }
+        .tab-btn {
+          padding: 8px 10px;
+          flex: 1 1 44%;
+          text-align: center;
+        }
+        .content-area {
+          padding: 12px;
+          min-height: min(120vw, 640px);
+          max-height: min(120vw, 640px);
+        }
+        .section-box {
+          padding: 14px;
+          min-width: 0;
+          overflow: hidden;
+        }
+        .detail-grid {
+          grid-template-columns: 1fr;
+        }
+        .stat-grid {
+          grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
+        }
+        .tag-box {
+          gap: 5px;
+        }
+        .item-tag {
+          font-size: 0.82em;
+          padding: 3px 6px;
+        }
+        .char-card {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 8px;
+        }
+        .status-header {
+          font-size: 0.82em;
+        }
+        .past-controls {
+          grid-template-columns: 1fr;
+        }
+        .modal-content {
+          padding: 20px;
+          width: 94%;
+        }
+        .map-frame-wrap {
+          padding: 6px;
+        }
+        #map-root {
+          aspect-ratio: 4 / 3;
+          max-height: min(100vw, 520px);
+        }
+      }
+
+      @media (min-width: 481px) and (max-width: 1024px) {
+        body {
+          font-size: 15px;
+        }
+        .content-area {
+          padding: 18px;
+          min-height: min(95vw, 760px);
+          max-height: min(95vw, 760px);
+        }
+        .detail-grid {
+          grid-template-columns: 1fr;
+        }
+        .stat-grid {
+          grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+        }
+        #map-root {
+          max-height: min(75vw, 680px);
+        }
+      }
+
+      @media (min-width: 1025px) {
+        .content-area {
+          min-height: min(70vw, 820px);
+          max-height: min(70vw, 820px);
+        }
+        #map-root {
+          max-height: min(70vw, 720px);
+        }
+      }
+    </style>
+
+    <script type="module">
+      function switchTab(tabName) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelector(`.tab-btn[data-tab="${tabName}"]`).classList.add('active');
+        document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+        document.getElementById(`pane-${tabName}`).classList.add('active');
+
+        if (tabName === 'map') {
+          window.dispatchEvent(new Event('kenshi-map-mount'));
+          window.dispatchEvent(new Event('kenshi-map-visible'));
+        }
+      }
+
+      // 状态栏设置管理
+      const SETTINGS_KEYS = {
+        IDENTITY_EDIT: 'kenshi_statusbar_show_identity_edit',
+        STANCE_GEAR: 'kenshi_statusbar_show_stance_gear',
+      };
+      const DEFAULT_SETTINGS = {
+        [SETTINGS_KEYS.IDENTITY_EDIT]: false,
+        [SETTINGS_KEYS.STANCE_GEAR]: true,
+      };
+
+      function loadSettings() {
+        try {
+          const raw = localStorage.getItem('kenshi_statusbar_settings');
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            return { ...DEFAULT_SETTINGS, ...parsed };
+          }
+        } catch (e) {}
+        return { ...DEFAULT_SETTINGS };
+      }
+
+      function saveSettings(settings) {
+        try {
+          localStorage.setItem('kenshi_statusbar_settings', JSON.stringify(settings));
+        } catch (e) {}
+      }
+
+      function getSetting(key) {
+        const settings = loadSettings();
+        return settings[key] ?? DEFAULT_SETTINGS[key];
+      }
+
+      function openSettingsModal() {
+        const settings = loadSettings();
+        $('#setting-identity-edit').prop('checked', getSetting(SETTINGS_KEYS.IDENTITY_EDIT));
+        $('#setting-stance-gear').prop('checked', getSetting(SETTINGS_KEYS.STANCE_GEAR));
+        $('#settings-modal').css('display', 'flex');
+      }
+
+      function closeSettingsModal() {
+        $('#settings-modal').hide();
+      }
+
+      let currentModalEntity = null;
+
+      function setModalEntity(entityType, entityName) {
+        currentModalEntity = { entityType, entityName };
+        const gearBtn = document.getElementById('stance-gear');
+        const moveBtn = document.getElementById('move-squad-btn');
+        const moveToViewBtn = document.getElementById('move-to-view-btn');
+        const enslaveBtn = document.getElementById('enslave-btn');
+        const popover = document.getElementById('stance-popover');
+        if (gearBtn) {
+          const showGear = getSetting(SETTINGS_KEYS.STANCE_GEAR);
+          if (showGear && (entityType === 'view' || entityType === 'other') && entityName) {
+            gearBtn.style.display = 'flex';
+          } else {
+            gearBtn.style.display = 'none';
+          }
+        }
+        if (moveBtn) {
+          if ((entityType === 'squad' || entityType === 'view' || entityType === 'other') && entityName) {
+            let showMoveBtn = false;
+            let moveText = '';
+            if (entityType === 'squad') {
+              showMoveBtn = true;
+              moveText = '离队';
+            } else if (entityType === 'view') {
+              const option = { type: 'message', message_id: getCurrentMessageId() };
+              const mvuData = Mvu.getMvuData(option) || {};
+              const viewData = _.get(mvuData, 'stat_data.视野', {});
+              const charData = viewData[entityName];
+              const stance = _.get(charData, '立场', '');
+              showMoveBtn = stance === '友方';
+              moveText = '进队';
+            } else if (entityType === 'other') {
+              const option = { type: 'message', message_id: getCurrentMessageId() };
+              const mvuData = Mvu.getMvuData(option) || {};
+              const otherData = _.get(mvuData, 'stat_data.异地', {});
+              const charData = otherData[entityName];
+              const stance = _.get(charData, '立场', '');
+              showMoveBtn = stance === '友方';
+              moveText = '入队';
+            }
+            if (showMoveBtn) {
+              moveBtn.style.display = 'flex';
+              moveBtn.textContent = moveText;
+            } else {
+              moveBtn.style.display = 'none';
+            }
+          } else {
+            moveBtn.style.display = 'none';
+          }
+        }
+        if (moveToViewBtn) {
+          if (entityType === 'other' && entityName) {
+            moveToViewBtn.style.display = 'flex';
+            moveToViewBtn.textContent = '进入视野';
+          } else {
+            moveToViewBtn.style.display = 'none';
+          }
+        }
+        if (enslaveBtn) {
+          if (entityType === 'squad' && entityName) {
+            enslaveBtn.style.display = 'inline-flex';
+          } else {
+            enslaveBtn.style.display = 'none';
+          }
+        }
+        if (popover) popover.classList.remove('show');
+      }
+
+      function handleModalMoveBtn() {
+        if (!currentModalEntity || !currentModalEntity.entityName) return;
+        const { entityType, entityName } = currentModalEntity;
+
+        if (entityType === 'squad') {
+          // 小队成员离队时弹出选择
+          openSquadMoveChoice(entityName);
+        } else if (entityType === 'view') {
+          // 视野成员进队
+          openMoveConfirm(entityName, 'squad');
+        } else if (entityType === 'other') {
+          // 异地成员入队
+          openMoveConfirm(entityName, 'squad');
+        }
+      }
+
+      function handleModalMoveToViewBtn() {
+        if (!currentModalEntity || !currentModalEntity.entityName) return;
+        const { entityType, entityName } = currentModalEntity;
+        if (entityType === 'other') {
+          openMoveConfirm(entityName, 'view');
+        }
+      }
+
+      function openSquadMoveChoice(name) {
+        // 显示三个选项：赶出小队、暂时分别、取消
+        window.pendingMoveName = name;
+        window.pendingMoveTarget = '';
+        $('#confirm-modal .confirm-title').text('赶出小队还是暂时分别');
+        $('#confirm-modal .confirm-title').next('div').text('请选择成员去向');
+        $('#confirm-cancel').text('取消');
+        $('#confirm-ok').text('赶出小队').removeClass('danger');
+        $('#confirm-third').text('暂时分别').css('display', 'inline-block');
+        $('#confirm-modal').css('display', 'flex');
+      }
+      window.openSquadMoveChoice = openSquadMoveChoice;
+
+      window.handleModalMoveBtn = handleModalMoveBtn;
+
+      function closeModal() {
+        const modalContent = document.getElementById('modal-content-inner');
+        if (modalContent) modalContent.scrollTop = 0;
+        document.getElementById('char-modal').style.display = 'none';
+        const enslaveBtn = document.getElementById('enslave-btn');
+        if (enslaveBtn) enslaveBtn.style.display = 'none';
+        const popover = document.getElementById('stance-popover');
+        if (popover) popover.classList.remove('show');
+      }
+      function openModal() {
+        const modalContent = document.getElementById('modal-content-inner');
+        if (modalContent) modalContent.scrollTop = 0;
+        document.getElementById('char-modal').style.display = 'flex';
+      }
+
+      function toggleMission(ele) {
+        ele.parentElement.classList.toggle('open');
+      }
+      function toggleCollapse() {
+        $('.main-container').toggleClass('collapsed');
+      }
+
+      function toggleStancePopover() {
+        const popover = document.getElementById('stance-popover');
+        if (!popover) return;
+        popover.classList.toggle('show');
+      }
+
+      function closeStancePopover() {
+        const popover = document.getElementById('stance-popover');
+        if (!popover) return;
+        popover.classList.remove('show');
+      }
+
+      window.switchTab = switchTab;
+      window.closeModal = closeModal;
+      window.toggleMission = toggleMission;
+      window.toggleCollapse = toggleCollapse;
+      window.toggleStancePopover = toggleStancePopover;
+      window.closeStancePopover = closeStancePopover;
+      window.setModalEntity = setModalEntity;
+      window.openSettingsModal = openSettingsModal;
+      window.closeSettingsModal = closeSettingsModal;
+
+      const attrTooltips = {
+        STR: '力量 (STR)\n影响近战伤害、重武器使用能力以及负重上限。',
+        DEX: '敏捷 (DEX)\n影响攻击速度、闪避率、潜行效果及格挡效率。',
+        PER: '感知 (PER)\n影响远程射击精度、侦测潜行敌人的能力。',
+        TGH: '体质 (TGH)\n决定生命值上限、伤害减免及对环境的抵抗力。',
+        WIL: '意志 (WIL)\n影响士气、抵抗精神攻击及昏迷后的苏醒速度。',
+        INT: '智力 (INT)\n决定学习技能的速度，影响工程与医疗效果。',
+        CHA: '魅力 (CHA)\n影响交易价格及说服他人的成功率。',
+      };
+      const attrLabels = {
+        STR: '力量',
+        DEX: '敏捷',
+        PER: '感知',
+        TGH: '体质',
+        WIL: '意志',
+        INT: '智力',
+        CHA: '魅力',
+      };
+
+      const ITEM_SUBCATEGORY_MAP = {
+        装备: '护甲',
+        武器材料: '矿石',
+        护甲材料: '布料',
+      };
+
+      const normalizeItemSubCategory = value => {
+        const text = String(value ?? '').trim();
+        if (!text) return '';
+        return ITEM_SUBCATEGORY_MAP[text] || text;
+      };
+
+      function buildCharHTML(data, isMain = false, entityType = 'current', entityName = '') {
+        if (!data || typeof data !== 'object') {
+          return "<div style='padding:20px; text-align:center; color:#666;'>角色数据待初始化</div>";
+        }
+
+        const toSafeNumber = (value, fallback = 0) => {
+          const num = Number(value);
+          return Number.isFinite(num) ? num : fallback;
+        };
+        const toPercent = (cur, max) => {
+          const safeMax = Math.max(1, toSafeNumber(max, 1));
+          const safeCur = Math.max(0, toSafeNumber(cur, 0));
+          return Math.min((safeCur / safeMax) * 100, 100);
+        };
+
+        const hpCur = toSafeNumber(_.get(data, '血量.当前', 0), 0);
+        const hpMax = Math.max(1, toSafeNumber(_.get(data, '血量.最大', 100), 100));
+        const expCur = toSafeNumber(_.get(data, '经验值.当前', 0), 0);
+        const expMax = Math.max(1, toSafeNumber(_.get(data, '经验值.升级所需', 100), 100));
+        const moodCur = toSafeNumber(_.get(data, '心情.当前', 100), 100);
+        const moodMax = Math.max(1, toSafeNumber(_.get(data, '心情.最大', 100), 100));
+        const favorability = toSafeNumber(_.get(data, '好感度', 0), 0);
+        const attitude = String(_.get(data, '态度', '陌生') ?? '陌生').trim() || '陌生';
+        const showRelation = !isMain;
+        const wCur = toSafeNumber(_.get(data, '背包.负重.当前', 0), 0);
+        const wMax = Math.max(1, toSafeNumber(_.get(data, '背包.负重.最大', 100), 100));
+        const bodySize = _.get(data, '体型', '1.75m');
+        const status = _.get(data, '状态', '正常');
+        const trauma = _.get(data, '创伤', {});
+        const atkCount = toSafeNumber(_.get(data, '攻击次数', 1), 1);
+        const appearance = _.get(data, '外貌', '暂无外貌描述');
+        const attrPt = toSafeNumber(_.get(data, '属性点', 0), 0);
+        const traitPt = toSafeNumber(_.get(data, '特质点', 0), 0);
+        const formatAttr = value => {
+          if (value && typeof value === 'object') {
+            const base = Number(value.基础 ?? 0) || 0;
+            const bonus = Number(value.加成 ?? 0) || 0;
+            return { base, bonus };
+          }
+          const base = Number(value ?? 0) || 0;
+          return { base, bonus: 0 };
+        };
+        const stance = _.get(data, '立场', '中立');
+        const faction = _.get(data, '派系', '无派系');
+        const identity = _.get(data, '身份', '自由人');
+        const factionDisplay = `${stance} - ${faction}`;
+        let factionColor = 'var(--accent-yellow)';
+        if (stance === '敌方') factionColor = 'var(--accent-danger)';
+        if (stance === '友方') factionColor = 'var(--accent-positive)';
+
+        const canAddAttr = (entityType === 'current' || entityType === 'squad') && attrPt > 0;
+        let attrHTML = Object.entries(_.get(data, '属性', {}))
+          .map(([k, v]) => {
+            const label = attrLabels[k] || k;
+            const tip = attrTooltips[k] || `${label}: 核心属性`;
+            const { base, bonus } = formatAttr(v);
+            const bonusText = bonus !== 0 ? `(${bonus > 0 ? '+' : ''}${bonus})` : '';
+            const clickableClass = canAddAttr ? 'stat-clickable' : '';
+            return `<div class="stat-item ${clickableClass} has-tooltip" data-attr="${k}" data-entity="${entityType}" data-name="${entityName}" data-tooltip="${tip}"><b>${label}</b>${base}${bonusText}</div>`;
+          })
+          .join('');
+
+        let itemHTML = Object.entries(_.get(data, '背包.物品', {}))
+          .map(([name, d]) => {
+            const desc = _.get(d, '介绍', '无描述');
+            const w = _.get(d, '重量', 0);
+            const val = _.get(d, '价值', 0);
+            const rawSubCategory = _.get(d, '子分类', '');
+            const subCategory = normalizeItemSubCategory(rawSubCategory) || '其他';
+            const tip = `${name}\n分类: ${subCategory}\n重量: ${w}kg\n价值: ${val} c.cat\n\n${desc}`;
+            return `<div class="item-tag has-tooltip" data-tooltip="${tip}">${name} x${_.get(d, '数量', 1)}</div>`;
+          })
+          .join('');
+
+        /* 修改点：整合特质、临时特质、正面效果和负面效果，并用不同颜色显示 */
+        const traits = _.get(data, '特质', {});
+        const temporaryTraits = _.get(data, '临时特质', {});
+        const positiveEffects = _.get(data, '正面效果', {});
+        const negativeEffects = _.get(data, '负面效果', {});
+        let allTraitsHTML = [];
+        /* 添加正面效果 (绿色) */
+        Object.entries(positiveEffects).forEach(([name, desc]) => {
+          allTraitsHTML.push(
+            `<span class="item-tag has-tooltip" style="border-color:var(--accent-positive); color:var(--accent-positive); background-color: rgba(46, 204, 113, 0.1);" data-tooltip="${name}\n\n${desc}">${name}</span>`,
+          );
+        });
+        /* 添加负面效果 (红色) */
+        Object.entries(negativeEffects).forEach(([name, desc]) => {
+          allTraitsHTML.push(
+            `<span class="item-tag has-tooltip" style="border-color:var(--accent-danger); color:var(--accent-danger); background-color: rgba(231, 76, 60, 0.1);" data-tooltip="${name}\n\n${desc}">${name}</span>`,
+          );
+        });
+        /* 添加临时特质 (黄色) */
+        Object.entries(temporaryTraits).forEach(([name, data]) => {
+          const tempDesc = _.get(data, '描述', '');
+          const tempRemove = _.get(data, '消除', '');
+          const tempTooltip = `${name}\n\n${tempDesc}${tempRemove ? `\n\n消除: ${tempRemove}` : ''}`;
+          allTraitsHTML.push(
+            `<span class="item-tag has-tooltip" style="border-color:var(--accent-yellow); color:var(--accent-yellow); background-color: rgba(241, 196, 15, 0.12);" data-tooltip="${tempTooltip}">${name}</span>`,
+          );
+        });
+        /* 添加普通特质 (默认色) */
+        Object.entries(traits).forEach(([name, desc]) => {
+          allTraitsHTML.push(`<span class="item-tag has-tooltip" data-tooltip="${name}\n\n${desc}">${name}</span>`);
+        });
+        let traitHTML = allTraitsHTML.join('');
+
+        const traumaEntries = Object.entries(trauma)
+          .filter(([, value]) => {
+            if (!value || typeof value !== 'object') return false;
+            const level = toSafeNumber(_.get(value, '等级', 0), 0);
+            const desc = _.get(value, '描述', '');
+            return level > 0 || !!desc;
+          })
+          .map(([part, value]) => {
+            const level = toSafeNumber(_.get(value, '等级', 0), 0);
+            const desc = _.get(value, '描述', '');
+            const detail = desc || `创伤等级${level}`;
+            const levelTag = level > 0 ? ` [${level}级]` : '';
+            return `<span class="item-tag">${part}${levelTag}: ${detail}</span>`;
+          });
+        let traumaDetailHTML = traumaEntries.length ? traumaEntries.join('') : `<span style="color:#666">无伤</span>`;
+
+        const mainWep = _.get(data, '主武器', {});
+        const subWep = _.get(data, '副武器', {});
+        const arm = _.get(data, '护甲', {});
+        const mainName = _.get(mainWep, '名字') || _.get(mainWep, '介绍') || '空手';
+        const hasSubWeapon = !!(_.get(subWep, '名字') && _.get(subWep, '名字') !== '无');
+        const formatEffects = obj => {
+          if (!obj || Object.keys(obj).length === 0) return '无';
+          return Object.entries(obj)
+            .map(([key, value]) => {
+              if (Array.isArray(value)) {
+                const list = value
+                  .map(item => (typeof item === 'object' ? JSON.stringify(item) : String(item)))
+                  .join(', ');
+                return `${key}: ${list}`;
+              }
+              if (typeof value === 'object') return `${key}: ${JSON.stringify(value)}`;
+              return `${key}: ${value}`;
+            })
+            .join('；');
+        };
+        const subWeaponBlock = hasSubWeapon
+          ? `\n\n[副手] ${_.get(subWep, '品质', '普通')} ${_.get(subWep, '种类', '无')}\n伤害: ${_.get(subWep, '伤害骰', '0')}\n伤害类型: ${_.get(subWep, '伤害类型', '无')}\n价值: ${_.get(subWep, '价值', 0)} c.cat\n介绍: ${_.get(subWep, '介绍', '无')}`
+          : '';
+        const wepTooltip = `[主手] ${_.get(mainWep, '品质', '普通')} ${_.get(mainWep, '种类', '无')}\n伤害: ${_.get(mainWep, '伤害骰', '1d4')}\n伤害类型: ${_.get(mainWep, '伤害类型', '无')}\n价值: ${_.get(mainWep, '价值', 0)} c.cat\n介绍: ${_.get(mainWep, '介绍', '无')}${subWeaponBlock}`;
+        const armorDR = _.get(arm, '防护能力(DR)', '0');
+
+        let statusClass = '';
+        if (status === '战斗中' || status === '休克') statusClass = 'danger';
+        else if (status === '警戒' || status === '逃跑中') statusClass = 'warn';
+        const currentAddress = _.get(data, '所处地址', '');
+        const escapedAddress = _.escape(String(currentAddress ?? ''));
+        const otherAddressEditor =
+          entityType === 'other'
+            ? `<div style="margin-top:8px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;"><span style="color:#888; font-size:0.9em;">地址:</span><input type="text" class="other-address-input" data-name="${entityName}" value="${escapedAddress}" placeholder="输入异地地址" style="min-width:220px; flex:1; max-width:420px; padding:4px 8px; border:1px solid #555; border-radius:4px; background:#111; color:#eee;" /><button type="button" class="other-address-save" data-name="${entityName}" style="padding:4px 10px; border:1px solid #777; border-radius:4px; background:#1f1f1f; color:#ddd; cursor:pointer;">修改地址</button></div>`
+            : '';
+        const identityEditor = `<div class="identity-edit-wrap" style="display:none;" data-identity-wrap="${entityType}:${entityName}"><span style="color:#888; font-size:0.9em;">身份:</span><input type="text" class="identity-edit-input" value="${_.escape(String(identity ?? ''))}" data-entity="${entityType}" data-name="${entityName}" /><button type="button" class="other-address-save identity-save-btn" data-entity="${entityType}" data-name="${entityName}">保存身份</button></div>`;
+
+        const showIdentityEdit = getSetting(SETTINGS_KEYS.IDENTITY_EDIT);
+        return `
+                <div style="display:flex; justify-content:space-between; align-items:end; margin-bottom:15px; border-bottom:1px solid #444; padding-bottom:15px;">
+                    <div style="width:100%"><div style="font-family:var(--font-header); font-size:2.2em; color:var(--accent-gold);">${_.get(data, '名字') || _.get(data, 'id', '未知')}<span class="identity-tag">${_.escape(String(identity || '自由人'))}</span>${showIdentityEdit ? `<button type="button" class="identity-edit-btn" data-entity="${entityType}" data-name="${entityName}" title="修改身份">✎</button>` : ''}</div><div style="color:var(--text-dim); margin-top:5px;">${_.get(data, '种族.名称', '人类')} | Lv.${_.get(data, '等级', 1)} | ${bodySize}<span class="has-tooltip" data-tooltip="立场 - 派系" style="margin-left:10px; background:${factionColor}; padding:2px 8px; font-size:0.8em; color:#fff; border-radius:2px;">${factionDisplay}</span></div>${identityEditor}${otherAddressEditor}</div></div>
+                <div class="desc-text">"${appearance}"</div>
+                <div class="detail-grid">
+                    <div>
+                        <div class="section-box">
+                            <div class="section-title">状态监测</div>
+                            <div class="status-row">
+                                <div class="status-header"><span>生命值 (HP)<span class="status-badge ${statusClass}">${status}</span></span><span>${hpCur} / ${hpMax}</span></div>
+                                <div class="bar-container"><div class="bar-fill bar-hp" style="width:${toPercent(hpCur, hpMax)}%"></div></div>
+                            </div>
+                            <div class="status-row">
+                                <div class="status-header"><span>经验值 (EXP)</span><span>${expCur} / ${expMax}</span></div>
+                                <div class="bar-container"><div class="bar-fill bar-exp" style="width:${toPercent(expCur, expMax)}%"></div></div>
+                            </div>
+                            <div class="status-row">
+                                <div class="status-header"><span><button type="button" class="mood-history-trigger" data-entity="${entityType}" data-name="${entityName}" title="点击查看心情变化原因">心情值(点击查看)</button></span><span>${moodCur} / ${moodMax}</span></div>
+                                <div class="bar-container"><div class="bar-fill bar-morale" style="width:${toPercent(moodCur, moodMax)}%"></div></div>
+                                ${
+                                  showRelation
+                                    ? `<div class="relation-row"><span>关系信息</span><span class="relation-pills"><span class="relation-pill">好感度 ${favorability}</span><span class="relation-pill attitude">${_.escape(attitude)}</span></span></div>`
+                                    : ''
+                                }
+                            </div>
+                        </div>
+                        <div class="section-box">
+                            <div class="section-title">身体属性</div>
+                            <div class="points-summary"><span class="point-tag">属性点: ${attrPt}</span><span class="point-tag">特质点: ${traitPt}</span><span class="point-tag" style="border-color:var(--accent-danger); color:var(--accent-danger)">攻击次数: ${atkCount}</span></div>
+                            <div class="stat-grid">${attrHTML}</div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="section-box">
+                            <div class="section-title">装备与特质</div>
+                            <div style="margin-bottom:10px;" class="has-tooltip" data-tooltip="${wepTooltip}"><span style="color:#888">武器:</span> <span style="color:var(--text-main); border-bottom:1px dashed #666;">${mainName}</span>${hasSubWeapon ? `<span style="color:#666; margin-left:8px;">/ ${_.get(subWep, '名字')}</span>` : ''}</div>
+                            <div style="margin-bottom:15px;" class="has-tooltip" data-tooltip="防护等级(DR): ${armorDR}\n\n${_.get(arm, '介绍', '无')}"><span style="color:#888">护甲:</span> <span style="color:var(--text-main); border-bottom:1px dashed #666;">${_.get(arm, '种类', '无')}</span></div>
+                            <div class="tag-box">${traitHTML || '<span style="color:#666">无特质</span>'}</div>
+                        </div>
+                        <div class="section-box">
+                            <div class="section-title">背包物品 (负重: ${wCur}/${wMax} kg)</div>
+                            <div class="tag-box">${itemHTML || '<span style="color:#666">背包为空</span>'}</div>
+                        </div>
+                        <div class="section-box">
+                            <div class="section-title">创伤状态</div>
+                            <div class="tag-box">${traumaDetailHTML}</div>
+                        </div>
+                    </div>
+                </div>`;
+      }
+
+      function renderFactionList(container, factions, isHostile) {
+        container.empty();
+        if (!factions || Object.keys(factions).length === 0) {
+          container.html('<span style="color:#666">无记录</span>');
+          return;
+        }
+        const color = isHostile ? 'var(--accent-danger)' : 'var(--accent-positive)';
+        const entries = Array.isArray(factions) ? factions.map(name => [name, '']) : Object.entries(factions);
+        const html = entries
+          .map(([name, data]) => {
+            // 处理派系数据可能是对象格式（包含好感度等信息）
+            let tip = '暂无描述';
+            if (typeof data === 'object' && data !== null) {
+              const parts = [];
+              if (data.好感度 !== undefined) parts.push(`好感度: ${data.好感度}`);
+              if (data.态度 !== undefined) parts.push(`态度: ${data.态度}`);
+              if (data.敌对原因) parts.push(`敌对原因: ${data.敌对原因}`);
+              if (data.结盟原因) parts.push(`结盟原因: ${data.结盟原因}`);
+              if (data.描述) parts.push(data.描述);
+              tip = parts.length > 0 ? parts.join('\n') : '暂无描述';
+            } else if (data) {
+              tip = String(data);
+            }
+            return `<span class="faction-pill has-tooltip" data-tooltip="${tip}" style="border-color:${color}; color:${color}">${name}</span>`;
+          })
+          .join('');
+        container.html(html);
+      }
+
+      function normalizePastEntries(pastRaw) {
+        if (Array.isArray(pastRaw)) {
+          return pastRaw.map(item => ({
+            分类: _.get(item, '分类', '往事'),
+            日期: _.get(item, '日期', ''),
+            描述: _.get(item, '描述', ''),
+          }));
+        }
+        if (!pastRaw || typeof pastRaw !== 'object') return [];
+        const map = [
+          { key: '城镇更替', label: '城镇更替' },
+          { key: '广交良友', label: '广交良友' },
+          { key: '击杀记录', label: '肃敌战绩' },
+          { key: '肃敌战绩', label: '肃敌战绩' },
+          { key: '关键记忆', label: '关键记忆' },
+        ];
+        const out = [];
+        map.forEach(({ key, label }) => {
+          const list = _.get(pastRaw, key, []);
+          if (!Array.isArray(list)) return;
+          list.forEach(item => {
+            if (typeof item === 'string') {
+              out.push({ 分类: label, 日期: '', 描述: item });
+              return;
+            }
+            out.push({
+              分类: label,
+              日期: _.get(item, '日期', ''),
+              描述: _.get(item, '描述', ''),
+            });
+          });
+        });
+        return out;
+      }
+
+      async function init() {
+        await waitGlobalInitialized('Mvu');
+        const update = () => {
+          const raw = getAllVariables();
+          const data = _.get(raw, 'stat_data', {});
+          const world = _.get(data, '世界', {});
+          const worldDay = _.get(world, '天数', 1);
+          $('#top-day').text(`第 ${worldDay} 天`);
+          const locationStr = `${_.get(world, '区域', '未知区域')} - ${_.get(world, '城镇', '荒野')} - ${_.get(world, '时间', '--:--')}`;
+          $('#top-loc').text(locationStr);
+          $('#top-money').text(_.get(world, '金钱', 0) + ' c.cat');
+          $('#my-faction').text(_.get(data, '我方派系名称', '无派系'));
+          const eventText = _.get(world, '当前事件', '');
+          $('#world-event').text(eventText && eventText !== '' ? eventText : '当前无特殊事件');
+          $('#world-player').html(
+            buildCharHTML(_.get(data, '当前角色'), true, 'current', _.get(data, '当前角色.id', '')),
+          );
+
+          const squadList = $('#squad-list').empty();
+          const squadData = _.get(data, '小队成员', {});
+          if (Object.keys(squadData).length === 0) {
+            squadList.html('<div style="text-align:center; padding:40px; color:#666;">当前没有小队成员</div>');
+          } else {
+            Object.entries(squadData).forEach(([k, v]) => {
+              const isPending = v === '待初始化';
+              const hpLabel = isPending ? '待初始化' : _.get(v, '血量.当前', '--');
+              const card = $(
+                `<div class="char-card"><div><span style="font-weight:bold">${_.get(v, '名字') || k}</span></div><div>HP: ${hpLabel}</div></div>`,
+              );
+              card.on('click', () => {
+                $('#modal-content-inner').html(buildCharHTML(v, false, 'squad', k));
+                setModalEntity('squad', k);
+                openModal();
+              });
+              squadList.append(card);
+            });
+          }
+
+          const viewList = $('#view-list').empty();
+          const viewData = _.get(data, '视野', {});
+          if (Object.keys(viewData).length === 0)
+            viewList.html('<div style="text-align:center; padding:30px; color:#555;">视野内无其他成员</div>');
+          else {
+            Object.entries(viewData).forEach(([k, v]) => {
+              const isPending = v === '待初始化';
+              const stance = isPending ? '待定' : _.get(v, '立场', '中立');
+              const faction = isPending ? '未初始化' : _.get(v, '派系', '无派系');
+              const identity = isPending ? '待定' : _.get(v, '身份', '自由人');
+              const displayString = `[${stance} - ${faction}]`;
+
+              let color = 'var(--accent-yellow)';
+              if (stance === '敌方') color = 'var(--accent-danger)';
+              if (stance === '友方') color = 'var(--accent-positive)';
+
+              const card = $(
+                `<div class="char-card view-char-card" style="border-left:3px solid ${color}"><button class="view-remove-btn" data-name="${k}" title="移除视野角色">X</button><div><span style="font-size:0.8em; color:${color}; margin-right:8px;">${displayString}</span><span>${_.get(v, '名字') || k}</span><span class="identity-tag">${identity}</span></div><div style="font-size:0.9em; color:#888;">${isPending ? '待初始化' : _.get(v, '种族.名称', '')}</div></div>`,
+              );
+              card.on('click', () => {
+                $('#modal-content-inner').html(buildCharHTML(v, false, 'view', k));
+                setModalEntity('view', k);
+                openModal();
+              });
+              viewList.append(card);
+            });
+          }
+
+          const otherList = $('#other-list').empty();
+          const otherData = _.get(data, '异地', {});
+          const currentRegion = _.get(data, '世界.区域', '未知区域');
+          if (Object.keys(otherData).length === 0) {
+            otherList.html('<div style="text-align:center; padding:30px; color:#555;">无异地成员</div>');
+          } else {
+            Object.entries(otherData).forEach(([k, v]) => {
+              const location = v === '待初始化' ? '待初始化' : _.get(v, '所处地址', currentRegion);
+              const isPending = v === '待初始化';
+              const stance = isPending ? '待定' : _.get(v, '立场', '中立');
+              const faction = isPending ? '未初始化' : _.get(v, '派系', '无派系');
+              const identity = isPending ? '待定' : _.get(v, '身份', '自由人');
+              const displayString = `[${stance} - ${faction}]`;
+              let color = 'var(--accent-yellow)';
+              if (stance === '敌方') color = 'var(--accent-danger)';
+              if (stance === '友方') color = 'var(--accent-positive)';
+              const card = $(
+                `<div class="char-card view-char-card" style="border-left:3px solid ${color}"><button class="other-remove-btn" data-name="${k}" title="移除异地角色">X</button><div><span style="font-size:0.8em; color:${color}; margin-right:8px;">${displayString}</span><span>${k}</span><span class="identity-tag">${identity}</span></div><div style="font-size:0.9em; color:#888;">地址: ${location}</div></div>`,
+              );
+              card.on('click', () => {
+                $('#modal-content-inner').html(buildCharHTML(v, false, 'other', k));
+                setModalEntity('other', k);
+                openModal();
+              });
+              otherList.append(card);
+            });
+          }
+
+          $('#intel-rumors').text(_.get(data, '闲言.当前内容', '暂无传闻'));
+          const knownFaction = _.get(data, '局势.已知派系', _.get(data, '局势.已知势力', {}));
+          const hostileFaction = _.get(data, '局势.敌方派系', _.get(data, '局势.敌对派系', {}));
+          const allyFaction = _.get(data, '局势.友方派系', {});
+          renderFactionList($('#intel-known'), knownFaction, false);
+          renderFactionList($('#intel-hostile'), hostileFaction, true);
+          renderFactionList($('#intel-ally'), allyFaction, false);
+          $('#intel-world-situation').text(_.get(data, '局势.世界局势', '') || '暂无世界局势');
+
+          const mList = $('#mission-list').empty();
+          const missions = _.get(data, '任务系统', {});
+          if (Object.keys(missions).length === 0) {
+            mList.html('<div style="text-align:center; padding:40px; color:#666;">当前无任务日志</div>');
+          } else {
+            Object.entries(missions).forEach(([mainMissionName, mainMissionData]) => {
+              const missionStatus = _.get(mainMissionData, '主任务状态', '状态未知');
+              let subtasksHTML = '';
+              const subtasks = _.get(mainMissionData, '子任务', {});
+              if (Object.keys(subtasks).length > 0) {
+                subtasksHTML = '<ul class="subtask-list">';
+                Object.entries(subtasks).forEach(([subtaskName, subtaskData]) => {
+                  const current = _.get(subtaskData, '进度.当前', 0);
+                  const target = _.get(subtaskData, '进度.目标', 1);
+                  const status = _.get(subtaskData, '状态', '进行中');
+                  const desc = _.get(subtaskData, '描述', '');
+                  const progressPercent = target > 0 ? Math.min((current / target) * 100, 100) : 0;
+                  const statusClass = status === '已完成' ? 'completed' : '';
+                  const descHtml = desc ? `<div class="subtask-desc">${desc}</div>` : '';
+                  subtasksHTML += `<li class="subtask-item ${statusClass}"><div class="subtask-name">${subtaskName}</div>${descHtml}<div class="subtask-progress-container"><div class="subtask-progress-bar-container"><div class="subtask-progress-bar" style="width: ${progressPercent}%"></div></div><div class="subtask-progress-text">${current} / ${target}</div></div></li>`;
+                });
+                subtasksHTML += '</ul>';
+              }
+              const missionBody = `<div class="mission-description">${_.get(mainMissionData, '描述', '暂无描述。')}</div><div class="mission-reward">奖励: ${_.get(mainMissionData, '奖励', '无')}</div>${subtasksHTML}`;
+              mList.append(
+                `<div class="mission-item"><div class="mission-header" onclick="toggleMission(this)"><span>${mainMissionName}</span><div class="mission-header-right"><span style="color:var(--accent-gold)">${missionStatus}</span><button class="mission-delete-btn" data-name="${mainMissionName}" title="删除任务">X</button></div></div><div class="mission-body">${missionBody}</div></div>`,
+              );
+            });
+          }
+
+          const pastList = $('#past-list').empty();
+          if (!$('#past-date-input').val()) {
+            $('#past-date-input').val(worldDay);
+          }
+          const pastData = normalizePastEntries(_.get(data, '往事', []));
+          if (!Array.isArray(pastData) || pastData.length === 0) {
+            pastList.html('<div style="text-align:center; padding:30px; color:#666;">暂无往事记录</div>');
+          } else {
+            const pastHTML = pastData
+              .map((item, index) => {
+                const rawDate = _.get(item, '日期', '');
+                const dateNumber = Number(rawDate);
+                const dateLabel =
+                  Number.isFinite(dateNumber) && rawDate !== '' ? `第 ${dateNumber} 天` : rawDate || '未标记天数';
+                const descText = _.get(item, '描述', '');
+                const cat = _.get(item, '分类', '往事');
+                return `<div class="past-item"><div class="past-date">${dateLabel} · ${cat}</div><div class="past-desc">${descText}</div><button class="past-delete-btn" data-index="${index}">删除</button></div>`;
+              })
+              .join('');
+            pastList.html(pastHTML);
+          }
+        };
+        update();
+        eventOn(Mvu.events.VARIABLE_UPDATE_ENDED, update);
+
+        async function addPastEntry() {
+          const dateValue = $('#past-date-input').val();
+          const descValue = $('#past-desc-input').val();
+          const categoryValue = String($('#past-category-input').val() || '城镇更替');
+
+          const option = { type: 'message', message_id: getCurrentMessageId() };
+          const mvuData = Mvu.getMvuData(option);
+          const worldDay = _.get(mvuData, 'stat_data.世界.天数', 1);
+          const dateNumber = dateValue ? Number(dateValue) : worldDay;
+          if (!descValue || Number.isNaN(dateNumber)) return;
+
+          const keyMap = {
+            城镇更替: '城镇更替',
+            广交良友: '广交良友',
+            肃敌战绩: '击杀记录',
+            关键记忆: '关键记忆',
+          };
+          const targetKey = keyMap[categoryValue] || '城镇更替';
+          const existing = _.get(mvuData, `stat_data.往事.${targetKey}`, []);
+          const nextList = Array.isArray(existing) ? [...existing] : [];
+          nextList.push({ 日期: dateNumber, 描述: String(descValue) });
+          _.set(mvuData, `stat_data.往事.${targetKey}`, nextList);
+          await Mvu.replaceMvuData(mvuData, option);
+          $('#past-date-input').val('');
+          $('#past-desc-input').val('');
+          update();
+        }
+
+        let pendingPastDeleteIndex = null;
+        let pendingViewDeleteName = '';
+        let pendingOtherDeleteName = '';
+        let pendingMissionDeleteName = '';
+        window.pendingMoveName = '';
+        window.pendingMoveTarget = '';
+
+        function openPastDeleteConfirm(index) {
+          pendingPastDeleteIndex = index;
+          pendingViewDeleteName = '';
+          pendingOtherDeleteName = '';
+          pendingMissionDeleteName = '';
+          $('#confirm-modal .confirm-title').text('确认删除');
+          $('#confirm-modal .confirm-title').next('div').text('是否删除该往事记录？');
+          $('#confirm-ok').text('删除').addClass('danger');
+          $('#confirm-cancel').text('取消');
+          $('#confirm-third').css('display', 'none');
+          $('#confirm-modal').css('display', 'flex');
+        }
+
+        function openViewDeleteConfirm(name) {
+          pendingPastDeleteIndex = null;
+          pendingViewDeleteName = name || '';
+          pendingOtherDeleteName = '';
+          pendingMissionDeleteName = '';
+          $('#confirm-modal .confirm-title').text('确认移除视野');
+          $('#confirm-modal .confirm-title').next('div').text(`是否确认移除"视野"，如果角色已离开但仍然存在视野请使用`);
+          $('#confirm-ok').text('删除').addClass('danger');
+          $('#confirm-cancel').text('取消');
+          $('#confirm-third').text('我想记住他').css('display', 'inline-block');
+          $('#confirm-modal').css('display', 'flex');
+        }
+
+        function openOtherDeleteConfirm(name) {
+          pendingPastDeleteIndex = null;
+          pendingViewDeleteName = '';
+          pendingOtherDeleteName = name || '';
+          pendingMissionDeleteName = '';
+          $('#confirm-modal .confirm-title').text('确认移除异地');
+          $('#confirm-modal .confirm-title').next('div').text('是否确认遗忘该异地成员？');
+          $('#confirm-ok').text('遗忘').addClass('danger');
+          $('#confirm-cancel').text('取消');
+          $('#confirm-third').css('display', 'none');
+          $('#confirm-modal').css('display', 'flex');
+        }
+
+        function openMissionDeleteConfirm(name) {
+          pendingPastDeleteIndex = null;
+          pendingViewDeleteName = '';
+          pendingOtherDeleteName = '';
+          pendingMissionDeleteName = name || '';
+          $('#confirm-modal .confirm-title').text('确认删除任务');
+          $('#confirm-modal .confirm-title').next('div').text('是否确定删除此任务');
+          $('#confirm-ok').text('删除').addClass('danger');
+          $('#confirm-cancel').text('取消');
+          $('#confirm-third').css('display', 'none');
+          $('#confirm-modal').css('display', 'flex');
+        }
+
+        function openMoveConfirm(name, target) {
+          window.pendingMoveName = name || '';
+          window.pendingMoveTarget = target || '';
+          let title = '';
+          let desc = '';
+          if (target === 'view') {
+            title = '确认移至视野';
+            desc = `是否将"${name}"移至视野？`;
+          } else if (target === 'other') {
+            title = '确认移至异地';
+            desc = `是否将"${name}"移至异地？`;
+          } else if (target === 'squad') {
+            title = '确认移至小队';
+            desc = `是否将"${name}"移至小队？`;
+          }
+          $('#confirm-modal .confirm-title').text(title);
+          $('#confirm-modal .confirm-title').next('div').text(desc);
+          $('#confirm-ok').text('确认').removeClass('danger');
+          $('#confirm-cancel').text('取消');
+          $('#confirm-modal').css('display', 'flex');
+        }
+        window.openMoveConfirm = openMoveConfirm;
+
+        function closeConfirmModal() {
+          pendingPastDeleteIndex = null;
+          pendingViewDeleteName = '';
+          pendingOtherDeleteName = '';
+          pendingMissionDeleteName = '';
+          window.pendingMoveName = '';
+          window.pendingMoveTarget = '';
+          $('#confirm-cancel').text('取消');
+          $('#confirm-ok').text('删除').addClass('danger');
+          $('#confirm-third').css('display', 'none');
+          $('#confirm-modal').hide();
+        }
+
+        async function deletePastEntry(index) {
+          const option = { type: 'message', message_id: getCurrentMessageId() };
+          const mvuData = Mvu.getMvuData(option);
+          const pastObj = _.get(mvuData, 'stat_data.往事', {});
+          const categories = ['城镇更替', '广交良友', '击杀记录', '肃敌战绩', '关键记忆'];
+          let hit = -1;
+          for (const cat of categories) {
+            const list = _.get(pastObj, cat, []);
+            if (!Array.isArray(list)) continue;
+            if (index < hit + list.length + 1) {
+              const localIndex = index - (hit + 1);
+              const nextList = list.filter((_, i) => i !== localIndex);
+              _.set(mvuData, `stat_data.往事.${cat}`, nextList);
+              await Mvu.replaceMvuData(mvuData, option);
+              update();
+              return;
+            }
+            hit += list.length;
+          }
+
+          const list = _.get(mvuData, 'stat_data.往事', []);
+          if (!Array.isArray(list)) return;
+          const nextList = list.filter((_, i) => i !== index);
+          _.set(mvuData, 'stat_data.往事', nextList);
+          await Mvu.replaceMvuData(mvuData, option);
+          update();
+        }
+
+        async function demoteToSlave(name) {
+          if (!name) return;
+          const option = { type: 'message', message_id: getCurrentMessageId() };
+          const mvuData = Mvu.getMvuData(option) || {};
+          const member = _.get(mvuData, ['stat_data', '小队成员', name]);
+          if (!member || member === '待初始化' || typeof member !== 'object') return;
+          _.set(mvuData, ['stat_data', '小队成员', name, '身份'], '奴隶');
+          await Mvu.replaceMvuData(mvuData, option);
+          update();
+
+          // 刷新弹窗内容
+          if (
+            currentModalEntity &&
+            currentModalEntity.entityType === 'squad' &&
+            currentModalEntity.entityName === name
+          ) {
+            const updated = _.get(mvuData, ['stat_data', '小队成员', name]);
+            if (updated && typeof updated === 'object') {
+              $('#modal-content-inner').html(buildCharHTML(updated, false, 'squad', name));
+            }
+          }
+        }
+
+        async function saveIdentity(entityType, entityName, identityValue) {
+          const option = { type: 'message', message_id: getCurrentMessageId() };
+          const mvuData = Mvu.getMvuData(option) || {};
+          const value = String(identityValue ?? '').trim();
+          if (!value) return;
+          let basePath = null;
+          if (entityType === 'current') basePath = ['stat_data', '当前角色'];
+          if (entityType === 'squad') basePath = ['stat_data', '小队成员', entityName];
+          if (entityType === 'view') basePath = ['stat_data', '视野', entityName];
+          if (entityType === 'other') basePath = ['stat_data', '异地', entityName];
+          if (!basePath) return;
+          const target = _.get(mvuData, basePath);
+          if (!target || typeof target !== 'object') return;
+          _.set(mvuData, [...basePath, '身份'], value);
+          await Mvu.replaceMvuData(mvuData, option);
+          update();
+
+          if (
+            currentModalEntity &&
+            currentModalEntity.entityType === entityType &&
+            currentModalEntity.entityName === entityName
+          ) {
+            const updated = _.get(mvuData, basePath);
+            if (updated && typeof updated === 'object') {
+              $('#modal-content-inner').html(buildCharHTML(updated, entityType === 'current', entityType, entityName));
+            }
+          }
+        }
+
+        async function deleteViewEntry(name) {
+          if (!name) return;
+          const option = { type: 'message', message_id: getCurrentMessageId() };
+          const mvuData = Mvu.getMvuData(option) || {};
+          const viewData = _.get(mvuData, 'stat_data.视野', {});
+          if (!viewData || typeof viewData !== 'object') return;
+
+          const nextViewData = _.omit(viewData, [name]);
+          _.set(mvuData, 'stat_data.视野', nextViewData);
+          await Mvu.replaceMvuData(mvuData, option);
+          if (
+            currentModalEntity &&
+            currentModalEntity.entityType === 'view' &&
+            currentModalEntity.entityName === name
+          ) {
+            closeModal();
+          }
+          update();
+        }
+
+        async function deleteOtherEntry(name) {
+          if (!name) return;
+          const option = { type: 'message', message_id: getCurrentMessageId() };
+          const mvuData = Mvu.getMvuData(option) || {};
+          const otherData = _.get(mvuData, 'stat_data.异地', {});
+          if (!otherData || typeof otherData !== 'object') return;
+
+          const nextOtherData = _.omit(otherData, [name]);
+          _.set(mvuData, 'stat_data.异地', nextOtherData);
+          await Mvu.replaceMvuData(mvuData, option);
+          if (
+            currentModalEntity &&
+            currentModalEntity.entityType === 'other' &&
+            currentModalEntity.entityName === name
+          ) {
+            closeModal();
+          }
+          update();
+        }
+
+        async function moveSquadToView(name) {
+          if (!name) return;
+          const option = { type: 'message', message_id: getCurrentMessageId() };
+          const mvuData = Mvu.getMvuData(option) || {};
+          const squadData = _.get(mvuData, 'stat_data.小队成员', {});
+          if (!squadData || typeof squadData !== 'object') return;
+
+          const member = squadData[name];
+          if (!member) return;
+
+          const nextSquadData = _.omit(squadData, [name]);
+          _.set(mvuData, 'stat_data.小队成员', nextSquadData);
+          _.set(mvuData, `stat_data.视野.${name}`, member);
+          await Mvu.replaceMvuData(mvuData, option);
+          if (
+            currentModalEntity &&
+            currentModalEntity.entityType === 'squad' &&
+            currentModalEntity.entityName === name
+          ) {
+            closeModal();
+          }
+          update();
+        }
+        window.moveSquadToView = moveSquadToView;
+
+        async function moveSquadToOther(name) {
+          if (!name) return;
+          const option = { type: 'message', message_id: getCurrentMessageId() };
+          const mvuData = Mvu.getMvuData(option) || {};
+          const squadData = _.get(mvuData, 'stat_data.小队成员', {});
+          if (!squadData || typeof squadData !== 'object') return;
+
+          const member = squadData[name];
+          if (!member) return;
+
+          const region = _.get(mvuData, 'stat_data.世界.区域', '未知区域');
+          const town = _.get(mvuData, 'stat_data.世界.城镇', '荒野');
+          const defaultAddress = `${region}+${town}`;
+          const nextMember = _.cloneDeep(member);
+          if (nextMember && typeof nextMember === 'object') {
+            _.set(nextMember, '所处地址', _.get(nextMember, '所处地址', '') || defaultAddress);
+          }
+
+          const nextSquadData = _.omit(squadData, [name]);
+          _.set(mvuData, 'stat_data.小队成员', nextSquadData);
+          _.set(mvuData, `stat_data.异地.${name}`, nextMember);
+          await Mvu.replaceMvuData(mvuData, option);
+          if (
+            currentModalEntity &&
+            currentModalEntity.entityType === 'squad' &&
+            currentModalEntity.entityName === name
+          ) {
+            closeModal();
+          }
+          update();
+        }
+        window.moveSquadToOther = moveSquadToOther;
+
+        async function moveViewToOther(name) {
+          if (!name) return;
+          const option = { type: 'message', message_id: getCurrentMessageId() };
+          const mvuData = Mvu.getMvuData(option) || {};
+          const viewData = _.get(mvuData, 'stat_data.视野', {});
+          if (!viewData || typeof viewData !== 'object') return;
+
+          const char = viewData[name];
+          if (!char) return;
+
+          const region = _.get(mvuData, 'stat_data.世界.区域', '未知区域');
+          const town = _.get(mvuData, 'stat_data.世界.城镇', '荒野');
+          const nextChar = _.cloneDeep(char);
+          if (nextChar && typeof nextChar === 'object') {
+            _.set(nextChar, '所处地址', `${region}+${town}`);
+          }
+
+          const nextViewData = _.omit(viewData, [name]);
+          _.set(mvuData, 'stat_data.视野', nextViewData);
+          _.set(mvuData, `stat_data.异地.${name}`, nextChar);
+          await Mvu.replaceMvuData(mvuData, option);
+          if (
+            currentModalEntity &&
+            currentModalEntity.entityType === 'view' &&
+            currentModalEntity.entityName === name
+          ) {
+            closeModal();
+          }
+          update();
+        }
+        window.moveViewToOther = moveViewToOther;
+
+        async function moveViewToSquad(name) {
+          if (!name) return;
+          const option = { type: 'message', message_id: getCurrentMessageId() };
+          const mvuData = Mvu.getMvuData(option) || {};
+          const viewData = _.get(mvuData, 'stat_data.视野', {});
+          if (!viewData || typeof viewData !== 'object') return;
+
+          const char = viewData[name];
+          if (!char) return;
+
+          const nextViewData = _.omit(viewData, [name]);
+          _.set(mvuData, 'stat_data.视野', nextViewData);
+          _.set(mvuData, `stat_data.小队成员.${name}`, char);
+          await Mvu.replaceMvuData(mvuData, option);
+          if (
+            currentModalEntity &&
+            currentModalEntity.entityType === 'view' &&
+            currentModalEntity.entityName === name
+          ) {
+            closeModal();
+          }
+          update();
+        }
+        async function moveOtherToSquad(name) {
+          if (!name) return;
+          const option = { type: 'message', message_id: getCurrentMessageId() };
+          const mvuData = Mvu.getMvuData(option) || {};
+          const otherData = _.get(mvuData, 'stat_data.异地', {});
+          if (!otherData || typeof otherData !== 'object') return;
+
+          const char = otherData[name];
+          if (!char) return;
+
+          const nextOtherData = _.omit(otherData, [name]);
+          _.set(mvuData, 'stat_data.异地', nextOtherData);
+          _.set(mvuData, `stat_data.小队成员.${name}`, char);
+          await Mvu.replaceMvuData(mvuData, option);
+          if (
+            currentModalEntity &&
+            currentModalEntity.entityType === 'other' &&
+            currentModalEntity.entityName === name
+          ) {
+            closeModal();
+          }
+          update();
+        }
+        window.moveOtherToSquad = moveOtherToSquad;
+
+        async function moveOtherToView(name) {
+          if (!name) return;
+          const option = { type: 'message', message_id: getCurrentMessageId() };
+          const mvuData = Mvu.getMvuData(option) || {};
+          const otherData = _.get(mvuData, 'stat_data.异地', {});
+          if (!otherData || typeof otherData !== 'object') return;
+
+          const char = otherData[name];
+          if (!char) return;
+
+          const nextOtherData = _.omit(otherData, [name]);
+          _.set(mvuData, 'stat_data.异地', nextOtherData);
+          _.set(mvuData, `stat_data.视野.${name}`, char);
+          await Mvu.replaceMvuData(mvuData, option);
+          if (
+            currentModalEntity &&
+            currentModalEntity.entityType === 'other' &&
+            currentModalEntity.entityName === name
+          ) {
+            closeModal();
+          }
+          update();
+        }
+        window.moveOtherToView = moveOtherToView;
+
+        async function saveOtherAddress(name, address) {
+          if (!name) return;
+          const option = { type: 'message', message_id: getCurrentMessageId() };
+          const mvuData = Mvu.getMvuData(option) || {};
+          if (!_.get(mvuData, 'stat_data')) {
+            const rawVars = getAllVariables();
+            const fallbackData = _.get(rawVars, 'stat_data', {});
+            if (!_.isEmpty(fallbackData)) {
+              _.set(mvuData, 'stat_data', fallbackData);
+            }
+          }
+
+          const otherBasePath = `stat_data.异地.${name}`;
+          const roleData = _.get(mvuData, otherBasePath);
+          if (!roleData || typeof roleData !== 'object') return;
+
+          _.set(mvuData, `${otherBasePath}.所处地址`, String(address ?? '').trim());
+          await Mvu.replaceMvuData(mvuData, option);
+          update();
+
+          if (
+            currentModalEntity &&
+            currentModalEntity.entityType === 'other' &&
+            currentModalEntity.entityName === name
+          ) {
+            const rawLatest = getAllVariables();
+            const latestData = _.get(rawLatest, ['stat_data', '异地', name], _.get(mvuData, otherBasePath, roleData));
+            $('#modal-content-inner').html(buildCharHTML(latestData, false, 'other', name));
+          }
+        }
+
+        async function deleteMissionEntry(name) {
+          if (!name) return;
+          const option = { type: 'message', message_id: getCurrentMessageId() };
+          const mvuData = Mvu.getMvuData(option) || {};
+          const missionData = _.get(mvuData, 'stat_data.任务系统', {});
+          if (!missionData || typeof missionData !== 'object') return;
+          const nextMissionData = _.omit(missionData, [name]);
+          _.set(mvuData, 'stat_data.任务系统', nextMissionData);
+          await Mvu.replaceMvuData(mvuData, option);
+          update();
+        }
+
+        $('#past-add-btn').on('click', () => {
+          addPastEntry();
+        });
+        $('#past-list').on('click', '.past-delete-btn', function () {
+          const index = Number($(this).attr('data-index'));
+          if (!Number.isNaN(index)) {
+            openPastDeleteConfirm(index);
+          }
+        });
+        $('#view-list').on('click', '.view-remove-btn', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          const name = $(this).attr('data-name');
+          if (name) {
+            openViewDeleteConfirm(name);
+          }
+        });
+        $('#other-list').on('click', '.other-remove-btn', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          const name = $(this).attr('data-name');
+          if (name) {
+            openOtherDeleteConfirm(name);
+          }
+        });
+        $('#view-list').on('click', '.view-card-btn', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          const name = $(this).attr('data-name');
+          if (name) {
+            moveViewToSquad(name);
+          }
+        });
+        $('#squad-list').on('click', '.squad-card-btn', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          const name = $(this).attr('data-name');
+          if (name) {
+            moveSquadToView(name);
+          }
+        });
+        $('#enslave-btn').on('click', async function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          const name = currentModalEntity?.entityName;
+          const type = currentModalEntity?.entityType;
+          if (name && type === 'squad') {
+            await demoteToSlave(name);
+          }
+        });
+        $(document).on('click', '.identity-edit-btn', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          const entityType = $(this).attr('data-entity') || '';
+          const entityName = $(this).attr('data-name') || '';
+          const key = `${entityType}:${entityName}`;
+          const wrap = $('.identity-edit-wrap').filter(function () {
+            return $(this).attr('data-identity-wrap') === key;
+          });
+          if (wrap.length) {
+            wrap.toggle();
+          }
+        });
+        $(document).on('click', '.identity-save-btn', async function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          const $wrap = $(this).closest('.identity-edit-wrap');
+          const entityType = $wrap.data('identity-wrap')?.split(':')[0] || $(this).attr('data-entity') || '';
+          const entityName = $wrap.data('identity-wrap')?.split(':')[1] || $(this).attr('data-name') || '';
+          const input = $wrap.find('.identity-edit-input').first();
+          if (!input.length) return;
+          const value = input.val();
+          await saveIdentity(entityType, entityName, value);
+        });
+        $('#other-list').on('click', '.other-card-btn', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          const name = $(this).attr('data-name');
+          if (name) {
+            openMoveConfirm(name, 'squad');
+          }
+        });
+        $(document).on('click', '.other-address-save', async function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          const name = $(this).attr('data-name') || '';
+          if (!name) return;
+          const input = $(`.other-address-input[data-name="${name}"]`).first();
+          const value = input.val();
+          await saveOtherAddress(name, value);
+        });
+        $(document).on('keydown', '.other-address-input', async function (e) {
+          if (e.key !== 'Enter') return;
+          e.preventDefault();
+          e.stopPropagation();
+          const name = $(this).attr('data-name') || '';
+          if (!name) return;
+          const value = $(this).val();
+          await saveOtherAddress(name, value);
+        });
+        $('#mission-list').on('click', '.mission-delete-btn', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          const name = $(this).attr('data-name');
+          if (name) {
+            openMissionDeleteConfirm(name);
+          }
+        });
+
+        $('#confirm-cancel').on('click', async () => {
+          closeConfirmModal();
+        });
+        $('#confirm-third').on('click', async () => {
+          if (pendingViewDeleteName) {
+            await moveViewToOther(pendingViewDeleteName);
+          } else if (window.pendingMoveName && !window.pendingMoveTarget) {
+            await moveSquadToOther(window.pendingMoveName);
+          }
+          closeConfirmModal();
+        });
+        $('#confirm-ok').on('click', async () => {
+          if (window.pendingMoveName && !window.pendingMoveTarget) {
+            // 赶出小队（移至视野）
+            await moveSquadToView(window.pendingMoveName);
+          } else if (pendingPastDeleteIndex !== null) {
+            await deletePastEntry(pendingPastDeleteIndex);
+          } else if (pendingViewDeleteName) {
+            await deleteViewEntry(pendingViewDeleteName);
+          } else if (pendingOtherDeleteName) {
+            await deleteOtherEntry(pendingOtherDeleteName);
+          } else if (pendingMissionDeleteName) {
+            await deleteMissionEntry(pendingMissionDeleteName);
+          } else if (window.pendingMoveName) {
+            // 处理移动操作
+            if (window.pendingMoveTarget === 'view') {
+              const option = { type: 'message', message_id: getCurrentMessageId() };
+              const mvuData = Mvu.getMvuData(option) || {};
+              const otherData = _.get(mvuData, 'stat_data.异地', {});
+              if (otherData && otherData[window.pendingMoveName]) {
+                await moveOtherToView(window.pendingMoveName);
+              } else {
+                await moveSquadToView(window.pendingMoveName);
+              }
+            } else if (window.pendingMoveTarget === 'other') {
+              const option = { type: 'message', message_id: getCurrentMessageId() };
+              const mvuData = Mvu.getMvuData(option) || {};
+              const viewData = _.get(mvuData, 'stat_data.视野', {});
+              if (viewData && viewData[window.pendingMoveName]) {
+                await moveViewToOther(window.pendingMoveName);
+              } else {
+                await moveSquadToOther(window.pendingMoveName);
+              }
+            } else if (window.pendingMoveTarget === 'squad') {
+              // 需要判断是来自视野还是异地
+              const option = { type: 'message', message_id: getCurrentMessageId() };
+              const mvuData = Mvu.getMvuData(option) || {};
+              const viewData = _.get(mvuData, 'stat_data.视野', {});
+              if (viewData && viewData[window.pendingMoveName]) {
+                await moveViewToSquad(window.pendingMoveName);
+              } else {
+                await moveOtherToSquad(window.pendingMoveName);
+              }
+            }
+          }
+          closeConfirmModal();
+        });
+        $('#move-squad-btn').on('click', function () {
+          handleModalMoveBtn();
+        });
+        $('#move-to-view-btn').on('click', function () {
+          handleModalMoveToViewBtn();
+        });
+        // 设置相关事件
+        $('#settings-tab-btn').on('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          openSettingsModal();
+        });
+        $('#save-settings-btn').on('click', function () {
+          const identityEdit = $('#setting-identity-edit').prop('checked');
+          const stanceGear = $('#setting-stance-gear').prop('checked');
+          saveSettings({
+            [SETTINGS_KEYS.IDENTITY_EDIT]: identityEdit,
+            [SETTINGS_KEYS.STANCE_GEAR]: stanceGear,
+          });
+          closeSettingsModal();
+          update(); // 重新渲染以应用身份编辑按钮的显示/隐藏
+        });
+        $('#settings-modal').on('click', function (e) {
+          if (e.target === this) {
+            closeSettingsModal();
+          }
+        });
+        $('#confirm-modal').on('click', function (e) {
+          if (e.target === this) {
+            closeConfirmModal();
+          }
+        });
+
+        $(document).on('click', '.stat-item.stat-clickable', async function () {
+          const attrKey = $(this).attr('data-attr');
+          const entityType = $(this).attr('data-entity');
+          const entityName = $(this).attr('data-name');
+          if (!attrKey || !entityType) return;
+
+          const option = { type: 'message', message_id: getCurrentMessageId() };
+          const mvuData = Mvu.getMvuData(option) || {};
+          if (!_.get(mvuData, 'stat_data')) {
+            const rawVars = getAllVariables();
+            const fallbackData = _.get(rawVars, 'stat_data', {});
+            if (!_.isEmpty(fallbackData)) {
+              _.set(mvuData, 'stat_data', fallbackData);
+            }
+          }
+
+          let basePath = [];
+          if (entityType === 'current') {
+            basePath = ['stat_data', '当前角色'];
+          } else if (entityType === 'squad' && entityName) {
+            // 使用数组路径避免成员名中包含 "."、"["、"]" 等字符时被 lodash 误解析
+            basePath = ['stat_data', '小队成员', entityName];
+          } else {
+            return;
+          }
+
+          const attrPointPath = [...basePath, '属性点'];
+          const attrPath = [...basePath, '属性', attrKey];
+          const attrPoint = Number(_.get(mvuData, attrPointPath, 0));
+          if (attrPoint <= 0) return;
+
+          const currentValue = _.get(mvuData, attrPath);
+          let nextValue = currentValue;
+          if (typeof currentValue === 'object' && currentValue !== null) {
+            const base = Number(_.get(currentValue, '基础', 0));
+            const bonus = Number(_.get(currentValue, '加成', 0));
+            nextValue = { ...currentValue, 基础: base + 1, 加成: bonus };
+          } else {
+            const base = Number(currentValue ?? 0) || 0;
+            nextValue = { 基础: base + 1, 加成: 0 };
+          }
+
+          _.set(mvuData, attrPath, nextValue);
+          _.set(mvuData, attrPointPath, attrPoint - 1);
+          await Mvu.replaceMvuData(mvuData, option);
+          update();
+
+          if (entityType === 'squad' && entityName) {
+            const latestRaw = getAllVariables();
+            const latestMember = _.get(latestRaw, ['stat_data', '小队成员', entityName], _.get(mvuData, basePath));
+            $('#modal-content-inner').html(buildCharHTML(latestMember, false, 'squad', entityName));
+          }
+        });
+
+        function closeMoodHistoryModal() {
+          $('#mood-history-modal').hide();
+          $('#mood-history-list').empty();
+        }
+        window.closeMoodHistoryModal = closeMoodHistoryModal;
+
+        function resolveEntityData(data, entityType, entityName) {
+          if (entityType === 'current') return _.get(data, '当前角色');
+          if (entityType === 'squad' && entityName) return _.get(data, ['小队成员', entityName]);
+          if (entityType === 'view' && entityName) return _.get(data, ['视野', entityName]);
+          if (entityType === 'other' && entityName) return _.get(data, ['异地', entityName]);
+          return null;
+        }
+
+        $(document).on('click', '.mood-history-trigger', function () {
+          const entityType = $(this).attr('data-entity') || 'current';
+          const entityName = $(this).attr('data-name') || '';
+          const raw = getAllVariables();
+          const statData = _.get(raw, 'stat_data', {});
+          const roleData = resolveEntityData(statData, entityType, entityName);
+
+          const displayName =
+            _.get(roleData, '名字') ||
+            (entityName && entityName !== '' ? entityName : _.get(statData, '当前角色.名字', '当前角色'));
+
+          $('#mood-history-role').text(displayName);
+
+          const descriptions = _.get(roleData, '心情.变化描述', []);
+          const safeDescriptions = Array.isArray(descriptions) ? descriptions.filter(v => `${v}`.trim() !== '') : [];
+          $('#mood-history-count').text(safeDescriptions.length);
+
+          const list = $('#mood-history-list').empty();
+          if (!roleData || typeof roleData !== 'object' || roleData === '待初始化') {
+            list.html('<div class="mood-history-empty">该角色数据待初始化，暂无心情变化记录。</div>');
+          } else if (safeDescriptions.length === 0) {
+            list.html('<div class="mood-history-empty">暂无心情变化原因记录。</div>');
+          } else {
+            safeDescriptions.forEach((line, idx) => {
+              list.append(`<li><span style="color:#8ecfff">#${idx + 1}</span> ${_.escape(String(line))}</li>`);
+            });
+          }
+
+          $('#mood-history-modal').css('display', 'flex');
+        });
+
+        $('#char-modal').on('click', function (e) {
+          if (e.target === this) {
+            closeModal();
+          }
+        });
+        $('#mood-history-modal').on('click', function (e) {
+          if (e.target === this) {
+            closeMoodHistoryModal();
+          }
+        });
+        $(document).on('keydown', function (e) {
+          if (e.key === 'Escape') {
+            if ($('#mood-history-modal').is(':visible')) {
+              closeMoodHistoryModal();
+            } else {
+              closeModal();
+            }
+          }
+        });
+
+        $(document).on('click', '.stance-option', async function (e) {
+          e.preventDefault();
+          const stance = $(this).attr('data-stance');
+          if (!stance || !currentModalEntity) return;
+          if (
+            (currentModalEntity.entityType !== 'view' && currentModalEntity.entityType !== 'other') ||
+            !currentModalEntity.entityName
+          )
+            return;
+
+          const option = { type: 'message', message_id: getCurrentMessageId() };
+          const mvuData = Mvu.getMvuData(option) || {};
+          if (!_.get(mvuData, 'stat_data')) {
+            const rawVars = getAllVariables();
+            const fallbackData = _.get(rawVars, 'stat_data', {});
+            if (!_.isEmpty(fallbackData)) {
+              _.set(mvuData, 'stat_data', fallbackData);
+            }
+          }
+
+          const basePath =
+            currentModalEntity.entityType === 'other'
+              ? `stat_data.异地.${currentModalEntity.entityName}`
+              : `stat_data.视野.${currentModalEntity.entityName}`;
+          _.set(mvuData, `${basePath}.立场`, stance);
+          await Mvu.replaceMvuData(mvuData, option);
+
+          closeStancePopover();
+          update();
+          const sourceData =
+            currentModalEntity.entityType === 'other'
+              ? _.get(mvuData, 'stat_data.异地', {})
+              : _.get(mvuData, 'stat_data.视野', {});
+          const latest = _.get(sourceData, currentModalEntity.entityName, {});
+          $('#modal-content-inner').html(
+            buildCharHTML(latest, false, currentModalEntity.entityType, currentModalEntity.entityName),
+          );
+          // 实时更新move按钮显示
+          const moveBtn = document.getElementById('move-squad-btn');
+          const moveToViewBtn = document.getElementById('move-to-view-btn');
+          if (
+            moveBtn &&
+            currentModalEntity &&
+            (currentModalEntity.entityType === 'view' || currentModalEntity.entityType === 'other')
+          ) {
+            const newStance = _.get(latest, '立场', '');
+            if (newStance === '友方') {
+              moveBtn.style.display = 'flex';
+              moveBtn.textContent = currentModalEntity.entityType === 'other' ? '入队' : '进队';
+            } else {
+              moveBtn.style.display = 'none';
+            }
+          }
+          if (moveToViewBtn) {
+            moveToViewBtn.style.display = currentModalEntity?.entityType === 'other' ? 'flex' : 'none';
+          }
+        });
+
+        $(document).on('click', function (e) {
+          if ($(e.target).closest('#stance-popover').length === 0 && $(e.target).closest('#stance-gear').length === 0) {
+            closeStancePopover();
+          }
+        });
+
+        const tip = $('#tooltip');
+        let tipPinned = false;
+        let tipOwner = null;
+
+        function showTip(text, x, y) {
+          if (!text) return;
+          tip.text(text).show();
+          const gap = 12;
+          const tipWidth = tip.outerWidth();
+          const tipHeight = tip.outerHeight();
+          const viewportWidth = window.innerWidth;
+          const viewportHeight = window.innerHeight;
+
+          let t = y + 15;
+          let l = x + 15;
+
+          if (l + tipWidth > viewportWidth - gap) l = viewportWidth - tipWidth - gap;
+          if (t + tipHeight > viewportHeight - gap) t = y - tipHeight - 10;
+          if (l < gap) l = gap;
+          if (t < gap) t = gap;
+
+          tip.css({ top: t, left: l });
+        }
+
+        function hideTip() {
+          tip.hide();
+        }
+
+        $(document)
+          .on('mouseenter', '.has-tooltip', function (e) {
+            if (tipPinned) return;
+            const text = $(this).attr('data-tooltip');
+            showTip(text, e.clientX, e.clientY);
+          })
+          .on('mouseleave', '.has-tooltip', function () {
+            if (tipPinned) return;
+            hideTip();
+          })
+          .on('mousemove', function (e) {
+            if (tip.css('display') !== 'none' && !tipPinned) {
+              showTip(tip.text(), e.clientX, e.clientY);
+            }
+          })
+          .on('click', '.has-tooltip', function (e) {
+            const text = $(this).attr('data-tooltip');
+            if (!text) return;
+
+            if (tipPinned && tipOwner === this) {
+              tipPinned = false;
+              tipOwner = null;
+              hideTip();
+              return;
+            }
+
+            tipPinned = true;
+            tipOwner = this;
+            showTip(text, e.clientX, e.clientY);
+          })
+          .on('click', function (e) {
+            if ($(e.target).closest('.has-tooltip').length === 0) {
+              tipPinned = false;
+              tipOwner = null;
+              hideTip();
+            }
+          });
+      }
+      $(errorCatched(init));
+    </script>
+  </head>
+  <body>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <div class="main-container collapsed">
+      <div class="top-bar">
+        <div class="top-left">
+          <span class="day-badge" id="top-day">第 1 天</span>
+          <span class="location-info" id="top-loc">边境地带 - 枢纽城 - 下午</span>
+        </div>
+        <div class="top-right">
+          <span id="my-faction" style="margin-right: 15px; font-weight: normal; color: var(--text-dim)"></span>
+          <span id="top-money">0 c.cat</span>
+          <button class="toggle-btn" onclick="toggleCollapse()">▼</button>
+        </div>
+      </div>
+      <div class="collapsible-content">
+        <div class="nav-tabs">
+          <div class="tab-btn active" onclick="switchTab('world')" data-tab="world">概览</div>
+          <div class="tab-btn" onclick="switchTab('squad')" data-tab="squad">小队</div>
+          <div class="tab-btn" onclick="switchTab('view')" data-tab="view">视野</div>
+          <div class="tab-btn" onclick="switchTab('other')" data-tab="other">异地</div>
+          <div class="tab-btn" onclick="switchTab('intel')" data-tab="intel">情报</div>
+          <div class="tab-btn" onclick="switchTab('mission')" data-tab="mission">日志</div>
+          <div class="tab-btn" onclick="switchTab('past')" data-tab="past">往事</div>
+          <div class="tab-btn" onclick="switchTab('map')" data-tab="map">地图</div>
+          <div class="tab-btn" id="settings-tab-btn" style="margin-left: 8px; cursor: pointer" title="状态栏设置">
+            ⚙ 设置
+          </div>
+        </div>
+        <div class="content-area">
+          <div id="pane-world" class="tab-pane active">
+            <div class="section-box">
+              <div class="section-title">当前事件</div>
+              <div id="world-event" class="event-text"></div>
+            </div>
+            <div id="world-player"></div>
+          </div>
+          <div id="pane-squad" class="tab-pane">
+            <div class="section-title">小队成员</div>
+            <div id="squad-list"></div>
+          </div>
+          <div id="pane-view" class="tab-pane">
+            <div class="section-title">周边环境</div>
+            <div id="view-list"></div>
+          </div>
+          <div id="pane-other" class="tab-pane">
+            <div class="section-title">异地成员</div>
+            <div id="other-list"></div>
+          </div>
+          <div id="pane-intel" class="tab-pane">
+            <div class="section-box">
+              <div class="section-title">世界局势</div>
+              <div style="margin-bottom: 10px">
+                <span style="color: #888; margin-right: 10px">已知:</span><span id="intel-known"></span>
+              </div>
+              <div style="margin-bottom: 10px">
+                <span style="color: #888; margin-right: 10px">敌对:</span><span id="intel-hostile"></span>
+              </div>
+              <div style="margin-bottom: 10px">
+                <span style="color: #888; margin-right: 10px">友方:</span><span id="intel-ally"></span>
+              </div>
+              <div>
+                <span style="color: #888; margin-right: 10px">局势:</span><span id="intel-world-situation"></span>
+              </div>
+            </div>
+            <div class="section-box">
+              <div class="section-title">街谈巷议</div>
+              <div id="intel-rumors" style="font-style: italic; color: #ccc"></div>
+            </div>
+          </div>
+          <div id="pane-mission" class="tab-pane"><div id="mission-list"></div></div>
+          <div id="pane-past" class="tab-pane">
+            <div class="section-title">往事</div>
+            <div class="past-controls">
+              <select id="past-category-input" class="past-input">
+                <option value="城镇更替">城镇更替</option>
+                <option value="广交良友">广交良友</option>
+                <option value="肃敌战绩">肃敌战绩</option>
+                <option value="关键记忆">关键记忆</option>
+              </select>
+              <input id="past-date-input" class="past-input" type="number" placeholder="天数(默认当前天数)" />
+              <textarea id="past-desc-input" class="past-textarea" placeholder="描述"></textarea>
+              <button id="past-add-btn" class="past-add-btn">添加</button>
+            </div>
+            <div id="past-list"></div>
+          </div>
+          <div id="pane-map" class="tab-pane">
+            <div class="section-title">
+              地图 <button id="settings-btn" class="settings-btn" title="状态栏设置">⚙ 设置</button>
+            </div>
+            <div class="map-frame-wrap">
+              <div id="map-root"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="char-modal" class="modal-overlay">
+      <div class="modal-content">
+        <button class="close-btn" onclick="closeModal()">×</button>
+        <button id="enslave-btn" class="enslave-btn" style="display: none">贬为奴隶</button>
+        <button id="move-to-view-btn" class="modal-view-btn" onclick="handleModalMoveToViewBtn()">进入视野</button>
+        <button id="move-squad-btn" class="modal-move-btn" onclick="handleModalMoveBtn()">离队</button>
+        <button id="stance-gear" class="stance-gear-btn" onclick="toggleStancePopover()">⚙</button>
+        <div id="stance-popover" class="stance-popover">
+          <div class="stance-popover-title">修改立场</div>
+          <button class="stance-option enemy" data-stance="敌方">敌方</button>
+          <button class="stance-option neutral" data-stance="中立">中立</button>
+          <button class="stance-option friendly" data-stance="友方">友方</button>
+        </div>
+        <div id="modal-content-inner"></div>
+      </div>
+    </div>
+    <div id="mood-history-modal" class="modal-overlay">
+      <div class="mood-history-modal">
+        <button class="mood-history-close" onclick="closeMoodHistoryModal()">×</button>
+        <div class="mood-history-title">心情变化记录</div>
+        <div class="mood-history-subtitle">
+          <span id="mood-history-role">当前角色</span> · 共 <span id="mood-history-count">0</span> 条
+        </div>
+        <ol id="mood-history-list" class="mood-history-list"></ol>
+      </div>
+    </div>
+    <div id="confirm-modal" class="modal-overlay">
+      <div class="confirm-modal">
+        <div class="confirm-title">确认删除</div>
+        <div>是否删除该往事记录？</div>
+        <div class="confirm-actions">
+          <button id="confirm-cancel" class="confirm-btn">取消</button>
+          <button id="confirm-ok" class="confirm-btn danger">删除</button>
+          <button id="confirm-third" class="confirm-btn" style="display: none"></button>
+        </div>
+      </div>
+    </div>
+    <div id="settings-modal" class="modal-overlay">
+      <div class="modal-content settings-content">
+        <button class="close-btn" onclick="closeSettingsModal()">×</button>
+        <div class="section-title">状态栏设置</div>
+        <div class="setting-item">
+          <label for="setting-identity-edit">显示身份编辑按钮（小铅笔）</label>
+          <input type="checkbox" id="setting-identity-edit" />
+        </div>
+        <div class="setting-item">
+          <label for="setting-stance-gear">显示立场修改按钮（齿轮）</label>
+          <input type="checkbox" id="setting-stance-gear" />
+        </div>
+        <button id="save-settings-btn" class="past-add-btn">保存</button>
+      </div>
+    </div>
+    <div id="tooltip"></div>
+  </body>
+</html>
