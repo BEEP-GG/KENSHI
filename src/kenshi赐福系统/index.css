@@ -1,0 +1,120 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Noto Serif SC', serif;
+}
+
+@layer base {
+  :root {
+    --kenshi-bg: #0d0d0d;
+    --kenshi-border: #3d3522;
+    --kenshi-gold: #c4a484;
+    --kenshi-rust: #8b4513;
+    --kenshi-text: #d4cfbd;
+    --hades-glow: rgba(255, 140, 0, 0.15);
+  }
+
+  body {
+    background-color: var(--kenshi-bg);
+    color: var(--kenshi-text);
+  }
+}
+
+.kenshi-frame {
+  position: relative;
+  border: 12px solid #1a1a1a;
+  box-sizing: border-box;
+  background-image: radial-gradient(circle at center, rgba(61, 53, 34, 0.2) 0%, rgba(0, 0, 0, 0) 70%);
+}
+
+.ornament {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0.3;
+}
+
+.ornament-tl {
+  top: 20px;
+  left: 20px;
+  border-top: 2px solid var(--kenshi-gold);
+  border-left: 2px solid var(--kenshi-gold);
+  width: 100px;
+  height: 100px;
+}
+
+.ornament-br {
+  bottom: 20px;
+  right: 20px;
+  border-bottom: 2px solid var(--kenshi-gold);
+  border-right: 2px solid var(--kenshi-gold);
+  width: 100px;
+  height: 100px;
+}
+
+.god-item {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%);
+  border-left: 4px solid transparent;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.god-item[data-alignment="right"] {
+  background: linear-gradient(-90deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%);
+  border-left: none;
+  border-right: 4px solid transparent;
+}
+
+.god-item:hover,
+.god-item[data-active="true"] {
+  background: linear-gradient(90deg, rgba(196, 164, 132, 0.1) 0%, rgba(196, 164, 132, 0) 100%);
+  border-left-color: var(--kenshi-gold);
+  transform: translateX(5px);
+  box-shadow: -10px 0 20px var(--hades-glow);
+}
+
+.god-item[data-alignment="right"]:hover,
+.god-item[data-alignment="right"][data-active="true"] {
+  background: linear-gradient(-90deg, rgba(196, 164, 132, 0.1) 0%, rgba(196, 164, 132, 0) 100%);
+  border-left-color: transparent;
+  border-right-color: var(--kenshi-gold);
+  transform: translateX(-5px);
+  box-shadow: 10px 0 20px var(--hades-glow);
+}
+
+.reward-card {
+  background: rgba(20, 20, 20, 0.8);
+  border: 1px solid var(--kenshi-border);
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.reward-card:hover {
+  border-color: var(--kenshi-gold);
+  transform: translateY(-5px);
+  box-shadow: 0 0 30px rgba(196, 164, 132, 0.2);
+}
+
+.reward-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(196, 164, 132, 0.05) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.blessing-icon {
+  width: 48px;
+  height: 48px;
+  background: var(--kenshi-border);
+  border: 1px solid var(--kenshi-gold);
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+  font-family: 'Zhi Mang Xing', cursive;
+  color: var(--kenshi-gold);
+}
