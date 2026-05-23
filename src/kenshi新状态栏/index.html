@@ -1197,11 +1197,11 @@
           世界: { 天数: 1, 时间: '下午', 当前事件: '' },
           我方派系名称: '无派系',
           小队成员: {},
-          资产: {},
+          据点: {},
           异地: {},
           局势: { 已知派系: {}, 敌对派系: {}, 友方派系: {} },
           任务系统: {},
-          往事: { 城镇记录: [], 击杀记录: [], 关键记忆: [] },
+          往事: { 交友记录: [], 城镇纪略: {}, 击杀名单: {}, 关键记忆: [] },
           闲言: { 当前内容: '' },
         },
       };
@@ -1322,20 +1322,57 @@
         const nextText = String(text ?? '').trim();
         if (!nextText) return;
         const selectors = ['#send_textarea', '#send_text', 'textarea[name="send_textarea"]', '#chat-input textarea'];
-        const input = selectors
-          .map(selector => document.querySelector(selector))
+        const parentDoc = (() => {
+          try {
+            return window.parent?.document || null;
+          } catch {
+            return null;
+          }
+        })();
+        const docs = [document, parentDoc].filter(Boolean);
+        const input = docs
+          .flatMap(doc => selectors.map(selector => doc.querySelector(selector)))
           .find(element => element && typeof element.value === 'string' && !element.disabled);
-        if (!input) return;
-        const prevText = String(input.value || '');
-        input.value = prevText ? `${prevText}\n${nextText}` : nextText;
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-        input.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: nextText }));
-        input.dispatchEvent(new Event('change', { bubbles: true }));
-        input.focus();
-        if (typeof input.setSelectionRange === 'function') {
-          const cursor = input.value.length;
-          input.setSelectionRange(cursor, cursor);
+        if (input) {
+          const nativeSetter = Object.getOwnPropertyDescriptor(
+            window.HTMLTextAreaElement?.prototype || {},
+            'value',
+          )?.set;
+          const prevText = String(input.value || '');
+          const finalText = prevText ? `${prevText}\n${nextText}` : nextText;
+          if (typeof nativeSetter === 'function') nativeSetter.call(input, finalText);
+          else input.value = finalText;
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+          if (typeof window.InputEvent === 'function') {
+            input.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: nextText }));
+          }
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+          if (typeof window.parent?.$ === 'function') {
+            window.parent.$(input).trigger('input').trigger('focus');
+          } else if (typeof $ === 'function') {
+            $(input).trigger('input').trigger('focus');
+          }
+          input.focus();
+          if (typeof input.setSelectionRange === 'function') {
+            const cursor = input.value.length;
+            input.setSelectionRange(cursor, cursor);
+          }
+          return;
         }
+        const fallbackTargets = [window.parent, window.opener]
+          .filter(target => target && target !== window)
+          .filter(target => {
+            try {
+              return typeof target.postMessage === 'function';
+            } catch {
+              return false;
+            }
+          });
+        fallbackTargets.forEach(target => {
+          try {
+            target.postMessage({ type: 'KENSHI_APPEND_TEXT_TO_PLAYER_INPUT', text: nextText }, '*');
+          } catch {}
+        });
       }
 
       function getSquadCollapsedMap() {
@@ -1378,8 +1415,8 @@
 
       let currentModalEntity = null;
 
-      function setModalEntity(entityType, entityName) {
-        currentModalEntity = { entityType, entityName };
+      function setModalEntity(entityType, entityName, squadName = '') {
+        currentModalEntity = { entityType, entityName, squadName };
         const gearBtn = document.getElementById('stance-gear');
         const moveBtn = document.getElementById('move-squad-btn');
         const moveToViewBtn = document.getElementById('move-to-view-btn');
@@ -1590,7 +1627,8 @@
 
       function buildCharHTML(data, isMain = false, entityType = 'current', entityName = '') {
         if (!data || typeof data !== 'object') {
-          return "<div style='padding:20px; text-align:center; color:#666;'>角色数据待初始化</div>";
+          const emptyText = entityType === 'current' ? '暂无主控' : '角色数据待初始化';
+          return `<div style='padding:20px; text-align:center; color:#666;'>${emptyText}</div>`;
         }
 
         const toSafeNumber = (value, fallback = 0) => {
@@ -1645,15 +1683,34 @@
           })
           .join('');
 
+        const mainWepForSlot = _.get(data, '主武器', {});
+        const mainWeaponNameForSlot = String(_.get(mainWepForSlot, '名字', '') || '').trim();
+        const mainWeaponTypeForSlot = String(_.get(mainWepForSlot, '种类', '') || '').trim();
+        const mainHandIsEmpty =
+          !mainWeaponNameForSlot ||
+          ['武术', '无'].includes(mainWeaponNameForSlot) ||
+          ['空手', '无'].includes(mainWeaponTypeForSlot);
+        const canEquipSubSlot = !mainHandIsEmpty;
+        const canManageWeapon = entityType === 'current' || entityType === 'squad';
         let itemHTML = Object.entries(_.get(data, '背包.物品', {}))
           .map(([name, d]) => {
+            const rawName = String(name || '').trim();
             const desc = _.get(d, '介绍', '无描述');
             const w = _.get(d, '重量', 0);
             const val = _.get(d, '价值', 0);
             const rawCategory = _.get(d, '分类', '');
+            const rawType = String(_.get(d, '种类', '') || '').trim();
+            const isVirtualWeaponItem =
+              String(rawCategory) === '武器' && (['武术', '无'].includes(rawName) || ['空手', '无'].includes(rawType));
+            if (isVirtualWeaponItem) return '';
             const itemCategory = normalizeItemSubCategory(rawCategory) || '其他';
-            const tip = `${name}\n分类: ${itemCategory}\n重量: ${w}kg\n价值: ${val} c.cat\n\n${desc}`;
-            return `<div class="item-tag has-tooltip" data-tooltip="${tip}">${name} x${_.get(d, '数量', 1)}</div>`;
+            const tip = `${rawName}\n分类: ${itemCategory}\n重量: ${w}kg\n价值: ${val} c.cat\n\n${desc}`;
+            const encodedItemName = encodeURIComponent(rawName);
+            const equipActions =
+              canManageWeapon && String(rawCategory) === '武器'
+                ? `<span style="display:inline-flex; gap:6px; margin-left:8px;"><button type="button" class="weapon-equip-btn" data-item-encoded="${encodedItemName}" data-slot="main" style="padding:2px 6px; border:1px solid rgba(193,163,95,0.45); background:rgba(193,163,95,0.08); color:var(--accent-gold); border-radius:2px; cursor:pointer;">主手</button>${canEquipSubSlot ? `<button type="button" class="weapon-equip-btn" data-item-encoded="${encodedItemName}" data-slot="sub" style="padding:2px 6px; border:1px solid rgba(193,163,95,0.35); background:rgba(193,163,95,0.04); color:var(--text-main); border-radius:2px; cursor:pointer;">副手</button>` : ''}</span>`
+                : '';
+            return `<div class="item-tag has-tooltip" data-tooltip="${tip}">${rawName} x${_.get(d, '数量', 1)}${equipActions}</div>`;
           })
           .join('');
 
@@ -1667,11 +1724,18 @@
           .filter(([name]) => String(name || '').trim() !== '')
           .map(([name, value]) => {
             if (value && typeof value === 'object') {
-              const attitude = _.get(value, '态度', _.get(value, '关系', _.get(value, '评价', '')));
-              const desc = _.get(value, '描述', _.get(value, '备注', ''));
-              const detail = [attitude, desc].filter(Boolean).join(' · ');
-              const tooltip = detail ? `${name}\n\n${detail}` : String(name);
-              return `<span class="item-tag has-tooltip" data-tooltip="${_.escape(tooltip)}">${_.escape(String(name))}${detail ? `：${_.escape(String(attitude || desc || ''))}` : ''}</span>`;
+              const detailLines = Object.entries(value)
+                .filter(
+                  ([key, item]) =>
+                    String(key || '').trim() !== '' &&
+                    item !== undefined &&
+                    item !== null &&
+                    String(item).trim() !== '',
+                )
+                .map(([key, item]) => `${key}：${item}`);
+              const summary = detailLines[0] || '';
+              const tooltip = detailLines.length ? `${name}\n\n${detailLines.join('\n')}` : String(name);
+              return `<span class="item-tag has-tooltip" data-tooltip="${_.escape(tooltip)}">${_.escape(String(name))}${summary ? `：${_.escape(summary)}` : ''}</span>`;
             }
             const text = String(value ?? '').trim();
             const tooltip = text ? `${name}\n\n${text}` : String(name);
@@ -1680,6 +1744,20 @@
         const relationHTML = relationEntries.length
           ? relationEntries.join('')
           : '<span style="color:#666">暂无人际关系</span>';
+        const thoughtRaw = _.get(data, '心理想法', '');
+        let thoughtText = '';
+        if (Array.isArray(thoughtRaw)) {
+          thoughtText = thoughtRaw
+            .map(item => String(item ?? '').trim())
+            .filter(Boolean)
+            .join('；');
+        } else if (thoughtRaw && typeof thoughtRaw === 'object') {
+          thoughtText = Object.entries(thoughtRaw)
+            .map(([key, value]) => `${key}：${value}`)
+            .join('；');
+        } else {
+          thoughtText = String(thoughtRaw ?? '').trim();
+        }
         let allTraitsHTML = [];
         /* 添加正面效果 (绿色) */
         Object.entries(positiveEffects).forEach(([name, desc]) => {
@@ -1748,6 +1826,12 @@
           ? `\n\n[副手] ${_.get(subWep, '品质', '普通')} ${_.get(subWep, '种类', '无')}\n伤害: ${_.get(subWep, '伤害骰', '0')}\n伤害类型: ${_.get(subWep, '伤害类型', '无')}\n价值: ${_.get(subWep, '价值', 0)} c.cat\n介绍: ${_.get(subWep, '介绍', '无')}`
           : '';
         const wepTooltip = `[主手] ${_.get(mainWep, '品质', '普通')} ${_.get(mainWep, '种类', '无')}\n伤害: ${_.get(mainWep, '伤害骰', '1d4')}\n伤害类型: ${_.get(mainWep, '伤害类型', '无')}\n价值: ${_.get(mainWep, '价值', 0)} c.cat\n介绍: ${_.get(mainWep, '介绍', '无')}${subWeaponBlock}`;
+        const showUnequipMain = !mainHandIsEmpty;
+        const showUnequipSub = hasSubWeapon;
+        const weaponManageActions =
+          canManageWeapon && (showUnequipMain || showUnequipSub)
+            ? `<span style="display:inline-flex; gap:6px; margin-left:8px;">${showUnequipMain ? `<button type="button" class="weapon-unequip-btn" data-slot="main" style="padding:2px 6px; border:1px solid rgba(193,163,95,0.45); background:rgba(193,163,95,0.08); color:var(--accent-gold); border-radius:2px; cursor:pointer;">脱下主手</button>` : ''}${showUnequipSub ? `<button type="button" class="weapon-unequip-btn" data-slot="sub" style="padding:2px 6px; border:1px solid rgba(193,163,95,0.35); background:rgba(193,163,95,0.04); color:var(--text-main); border-radius:2px; cursor:pointer;">脱下副手</button>` : ''}</span>`
+            : '';
         const armorDR = _.get(arm, '防护能力(DR)', '0');
 
         let statusClass = '';
@@ -1782,6 +1866,7 @@
                         <div class="section-box">
                             <div class="section-title">人际关系</div>
                             <div class="tag-box">${relationHTML}</div>
+                            <div style="margin-top:8px; color:var(--text-dim); font-size:0.9em; line-height:1.45;"><span style="color:#888;">心理想法：</span>${_.escape(thoughtText || '暂无')}</div>
                         </div>
                         <div class="section-box">
                             <div class="section-title">身体属性</div>
@@ -1792,7 +1877,7 @@
                     <div>
                         <div class="section-box">
                             <div class="section-title">装备与特质</div>
-                            <div style="margin-bottom:10px;" class="has-tooltip" data-tooltip="${wepTooltip}"><span style="color:#888">武器:</span> <span style="color:var(--text-main); border-bottom:1px dashed #666;">${mainName}</span>${hasSubWeapon ? `<span style="color:#666; margin-left:8px;">/ ${_.get(subWep, '名字')}</span>` : ''}</div>
+                            <div style="margin-bottom:10px;" class="has-tooltip" data-tooltip="${wepTooltip}"><span style="color:#888">武器:</span> <span style="color:var(--text-main); border-bottom:1px dashed #666;">${mainName}</span>${hasSubWeapon ? `<span style="color:#666; margin-left:8px;">/ ${_.get(subWep, '名字')}</span>` : ''}${weaponManageActions}</div>
                             <div style="margin-bottom:15px;" class="has-tooltip" data-tooltip="防护等级(DR): ${armorDR}\n重量: ${_.get(arm, '重量', 0)}kg\n\n${_.get(arm, '介绍', '无')}"><span style="color:#888">护甲:</span> <span style="color:var(--text-main); border-bottom:1px dashed #666;">${_.get(arm, '种类', '无')}</span></div>
                             <div class="tag-box">${traitHTML || '<span style="color:#666">无特质</span>'}</div>
                         </div>
@@ -1847,14 +1932,32 @@
         }
         if (!pastRaw || typeof pastRaw !== 'object') return [];
         const map = [
+          { key: '交友记录', label: '交友记录' },
           { key: '城镇记录', label: '城镇记录' },
-          { key: '击杀记录', label: '击杀记录' },
+          { key: '城镇纪略', label: '城镇纪略' },
           { key: '关键记忆', label: '关键记忆' },
         ];
         const out = [];
         map.forEach(({ key, label }) => {
-          const list = _.get(pastRaw, key, []);
-          if (!Array.isArray(list)) return;
+          const value = _.get(pastRaw, key, []);
+          if (key === '城镇纪略' && value && typeof value === 'object' && !Array.isArray(value)) {
+            Object.entries(value).forEach(([town, state]) => {
+              out.push({ 分类: label, 日期: '', 描述: `${town}：${state}` });
+            });
+            return;
+          }
+          if (
+            (key === '死亡名单' || key === '击杀名单') &&
+            value &&
+            typeof value === 'object' &&
+            !Array.isArray(value)
+          ) {
+            Object.entries(value).forEach(([name, status]) => {
+              out.push({ 分类: label, 日期: '', 描述: `${name}：${status}` });
+            });
+            return;
+          }
+          const list = Array.isArray(value) ? value : [];
           list.forEach(item => {
             if (typeof item === 'string') {
               out.push({ 分类: label, 日期: '', 描述: item });
@@ -1872,6 +1975,210 @@
 
       async function init() {
         await waitGlobalInitialized('Mvu');
+        let squadMemberEditMode = false;
+        let squadMemberDraftAssignments = {};
+        let strongholdMemberEditMode = false;
+        let strongholdMemberDraftAssignments = {};
+
+        function rebuildSquadMemberDraft(squadData) {
+          const draft = {};
+          Object.entries(squadData || {}).forEach(([squadName, squadValue]) => {
+            const members = _.get(squadValue, '成员', {});
+            Object.keys(members || {}).forEach(memberName => {
+              draft[memberName] = squadName;
+            });
+          });
+          squadMemberDraftAssignments = draft;
+        }
+
+        async function submitSquadMemberAdjustments() {
+          const option = { type: 'message', message_id: getCurrentMessageId() };
+          const mvuData = Mvu.getMvuData(option) || {};
+          const squadData = _.get(mvuData, 'stat_data.小队成员', {});
+          if (!squadData || typeof squadData !== 'object') return;
+
+          const sourceAssignment = {};
+          const sourceMembers = [];
+          Object.entries(squadData).forEach(([squadName, squadValue]) => {
+            const members = _.get(squadValue, '成员', {});
+            Object.entries(members).forEach(([memberName, memberData]) => {
+              sourceAssignment[memberName] = squadName;
+              sourceMembers.push({ memberName, memberData, sourceSquad: squadName });
+            });
+          });
+
+          const nextSquadData = _.cloneDeep(squadData);
+          Object.keys(nextSquadData).forEach(squadName => {
+            _.set(nextSquadData, [squadName, '成员'], {});
+          });
+
+          const changedSquadNames = new Set();
+          const movedByRoute = {};
+          sourceMembers.forEach(({ memberName, memberData, sourceSquad }) => {
+            const requestedSquad = String(squadMemberDraftAssignments[memberName] || '').trim();
+            const targetSquad = requestedSquad && nextSquadData[requestedSquad] ? requestedSquad : sourceSquad;
+            _.set(nextSquadData, [targetSquad, '成员', memberName], memberData);
+            if (targetSquad !== sourceSquad) {
+              changedSquadNames.add(sourceSquad);
+              changedSquadNames.add(targetSquad);
+              const routeKey = `${sourceSquad}=>${targetSquad}`;
+              movedByRoute[routeKey] = movedByRoute[routeKey] || [];
+              movedByRoute[routeKey].push(memberName);
+            }
+          });
+
+          if (changedSquadNames.size === 0) {
+            squadMemberEditMode = false;
+            update();
+            return;
+          }
+
+          _.set(mvuData, 'stat_data.小队成员', nextSquadData);
+          await Mvu.replaceMvuData(mvuData, option);
+
+          const moveSummaryLines = Object.entries(movedByRoute).map(([routeKey, names]) => {
+            const [fromSquad, toSquad] = routeKey.split('=>');
+            return `经过调整，将【${fromSquad}】的成员${names.join('，')}移入【${toSquad}】`;
+          });
+          const changedLines = Array.from(changedSquadNames)
+            .map(squadName => {
+              const names = Object.keys(_.get(nextSquadData, [squadName, '成员'], {}));
+              const memberText = names.length ? names.join('，') : '暂无成员';
+              return `现在小队【${squadName}】现在的成员是${memberText}`;
+            })
+            .join('\n');
+          appendTextToPlayerInput(`${moveSummaryLines.join('\n')}\n\n${changedLines}`);
+
+          squadMemberEditMode = false;
+          rebuildSquadMemberDraft(nextSquadData);
+          update();
+        }
+
+        function rebuildStrongholdMemberDraft(squadData, strongholdData) {
+          const draft = {};
+          Object.entries(squadData || {}).forEach(([squadName, squadValue]) => {
+            const members = _.get(squadValue, '成员', {});
+            Object.keys(members || {}).forEach(memberName => {
+              draft[memberName] = squadName;
+            });
+          });
+          Object.entries(strongholdData || {}).forEach(([strongholdName, strongholdValue]) => {
+            const members = _.get(strongholdValue, '成员', {});
+            Object.keys(members || {}).forEach(memberName => {
+              draft[memberName] = `据点:${strongholdName}`;
+            });
+          });
+          strongholdMemberDraftAssignments = draft;
+        }
+
+        async function submitStrongholdMemberAdjustments() {
+          const option = { type: 'message', message_id: getCurrentMessageId() };
+          const mvuData = Mvu.getMvuData(option) || {};
+          const squadData = _.get(mvuData, 'stat_data.小队成员', {});
+          const strongholdData = _.get(mvuData, 'stat_data.据点', {});
+          if (!squadData || typeof squadData !== 'object' || !strongholdData || typeof strongholdData !== 'object')
+            return;
+
+          const sourceMembers = [];
+          Object.entries(squadData).forEach(([squadName, squadValue]) => {
+            const members = _.get(squadValue, '成员', {});
+            Object.entries(members).forEach(([memberName, memberData]) => {
+              sourceMembers.push({ memberName, memberData, sourceType: 'squad', sourceName: squadName });
+            });
+          });
+          Object.entries(strongholdData).forEach(([strongholdName, strongholdValue]) => {
+            const members = _.get(strongholdValue, '成员', {});
+            Object.entries(members).forEach(([memberName, memberData]) => {
+              if (memberData !== '待初始化') {
+                sourceMembers.push({ memberName, memberData, sourceType: 'stronghold', sourceName: strongholdName });
+              }
+            });
+          });
+
+          const nextSquadData = _.cloneDeep(squadData);
+          const nextStrongholdData = _.cloneDeep(strongholdData);
+          Object.keys(nextSquadData).forEach(squadName => {
+            _.set(nextSquadData, [squadName, '成员'], {});
+          });
+          Object.keys(nextStrongholdData).forEach(strongholdName => {
+            _.set(nextStrongholdData, [strongholdName, '成员'], {});
+          });
+
+          const changedContainers = new Set();
+          const movedByRoute = {};
+          sourceMembers.forEach(({ memberName, memberData, sourceType, sourceName }) => {
+            const requestedTarget = String(strongholdMemberDraftAssignments[memberName] || '').trim();
+            if (requestedTarget.startsWith('据点:')) {
+              const strongholdName = requestedTarget.slice(3);
+              if (strongholdName && nextStrongholdData[strongholdName]) {
+                _.set(nextStrongholdData, [strongholdName, '成员', memberName], memberData);
+                if (!(sourceType === 'stronghold' && sourceName === strongholdName)) {
+                  changedContainers.add(`${sourceType}:${sourceName}`);
+                  changedContainers.add(`stronghold:${strongholdName}`);
+                  const fromLabel = sourceType === 'stronghold' ? `据点:${sourceName}` : `小队:${sourceName}`;
+                  const toLabel = `据点:${strongholdName}`;
+                  const routeKey = `${fromLabel}=>${toLabel}`;
+                  movedByRoute[routeKey] = movedByRoute[routeKey] || [];
+                  movedByRoute[routeKey].push(memberName);
+                }
+                return;
+              }
+            }
+            const targetSquad =
+              requestedTarget && nextSquadData[requestedTarget]
+                ? requestedTarget
+                : sourceType === 'squad'
+                  ? sourceName
+                  : Object.keys(nextSquadData)[0] || '';
+            if (targetSquad && nextSquadData[targetSquad]) {
+              _.set(nextSquadData, [targetSquad, '成员', memberName], memberData);
+              if (!(sourceType === 'squad' && sourceName === targetSquad)) {
+                changedContainers.add(`${sourceType}:${sourceName}`);
+                changedContainers.add(`squad:${targetSquad}`);
+                const fromLabel = sourceType === 'stronghold' ? `据点:${sourceName}` : `小队:${sourceName}`;
+                const toLabel = `小队:${targetSquad}`;
+                const routeKey = `${fromLabel}=>${toLabel}`;
+                movedByRoute[routeKey] = movedByRoute[routeKey] || [];
+                movedByRoute[routeKey].push(memberName);
+              }
+            }
+          });
+
+          if (changedContainers.size === 0) {
+            strongholdMemberEditMode = false;
+            update();
+            return;
+          }
+
+          _.set(mvuData, 'stat_data.小队成员', nextSquadData);
+          _.set(mvuData, 'stat_data.据点', nextStrongholdData);
+          await Mvu.replaceMvuData(mvuData, option);
+
+          const moveSummaryLines = Object.entries(movedByRoute).map(([routeKey, names]) => {
+            const [fromLabel, toLabel] = routeKey.split('=>');
+            const [fromType, fromName] = fromLabel.split(':');
+            const [, toName] = toLabel.split(':');
+            return `经过据点调整，将【${fromName}】的成员${names.join('，')}移入【${toName}】`;
+          });
+          const changedLines = Array.from(changedContainers)
+            .map(containerKey => {
+              const [containerType, containerName] = containerKey.split(':');
+              const names = Object.keys(
+                containerType === 'stronghold'
+                  ? _.get(nextStrongholdData, [containerName, '成员'], {})
+                  : _.get(nextSquadData, [containerName, '成员'], {}),
+              );
+              const memberText = names.length ? names.join('，') : '暂无成员';
+              return `现在${containerType === 'stronghold' ? '据点' : '小队'}【${containerName}】现在的成员是${memberText}`;
+            })
+            .join('\n');
+          appendTextToPlayerInput(`${moveSummaryLines.join('\n')}\n\n${changedLines}`);
+
+          strongholdMemberEditMode = false;
+          rebuildStrongholdMemberDraft(nextSquadData, nextStrongholdData);
+          update();
+        }
+
         const update = () => {
           const raw = getAllVariables();
           const data = _.get(raw, 'stat_data', {});
@@ -1884,7 +2191,9 @@
           const squadData = _.get(data, '小队成员', {});
           const mainMembers = _.get(mainSquad, '成员', {});
           $('#top-day').text(`第 ${worldDay} 天`);
-          const locationStr = `${_.get(mainSquad, '区域', '未知区域')} - ${_.get(mainSquad, '城镇', '荒野')} - ${_.get(world, '时间', '--:--')}`;
+          const locationRegion = _.get(mainSquad, '区域', _.get(mainSquad, '所处位置.区域', '未知区域'));
+          const locationTown = _.get(mainSquad, '城镇', _.get(mainSquad, '所处位置.城镇', '荒野'));
+          const locationStr = `${locationRegion} - ${locationTown} - ${_.get(world, '时间', '--:--')}`;
           $('#top-loc').text(locationStr);
           $('#top-money').text(_.get(mainSquad, '金钱', 0) + ' c.cat');
           $('#my-faction').text(_.get(data, '我方派系名称', '无派系'));
@@ -1894,6 +2203,8 @@
           $('#main-squad-btn').text(
             mainSquadName ? `主控设定：${mainSquadName} / ${mainControllerName || '未设主控'}` : '主控设定',
           );
+          $('#squad-member-edit-toggle-btn').text(squadMemberEditMode ? '退出编辑模式' : '成员编辑模式');
+          $('#squad-member-edit-submit-btn').css('display', squadMemberEditMode ? 'inline-block' : 'none');
           $('#no-main-controller-btn').attr(
             'style',
             mainControllerName
@@ -1903,13 +2214,24 @@
 
           const squadList = $('#squad-list').empty();
           const showSquadActions = getSetting(SETTINGS_KEYS.SQUAD_ACTIONS_VISIBLE);
+          if (squadMemberEditMode) {
+            if (!Object.keys(squadMemberDraftAssignments || {}).length) {
+              rebuildSquadMemberDraft(squadData);
+            }
+          }
+          const strongholdData = _.get(data, '据点', {});
+          if (strongholdMemberEditMode) {
+            if (!Object.keys(strongholdMemberDraftAssignments || {}).length) {
+              rebuildStrongholdMemberDraft(squadData, strongholdData);
+            }
+          }
           if (Object.keys(squadData).length === 0) {
             squadList.html('<div style="text-align:center; padding:40px; color:#666;">当前没有小队</div>');
           } else {
             Object.entries(squadData).forEach(([squadName, squadValue]) => {
               const squadMembers = _.get(squadValue, '成员', {});
-              const squadRegion = _.get(squadValue, '区域', '未知区域');
-              const squadTown = _.get(squadValue, '城镇', '荒野');
+              const squadRegion = _.get(squadValue, '区域', _.get(squadValue, '所处位置.区域', '未知区域'));
+              const squadTown = _.get(squadValue, '城镇', _.get(squadValue, '所处位置.城镇', '荒野'));
               const squadMoney = _.get(squadValue, '金钱', 0);
               const squadViewCount = Object.keys(_.get(squadValue, '视野', {})).length;
               const isMainSquad = squadName === mainSquadName;
@@ -1978,6 +2300,7 @@
                 if (Object.keys(squadMembers).length === 0) {
                   membersBox.append('<div style="color:#666; padding:8px 2px;">该小队暂无成员</div>');
                 } else {
+                  const squadNames = Object.keys(squadData);
                   Object.entries(squadMembers).forEach(([k, v]) => {
                     const isPending = v === '待初始化';
                     const hpLabel = isPending ? '待初始化' : _.get(v, '血量.当前', '--');
@@ -1985,8 +2308,18 @@
                     const mainTag = isMainController
                       ? '<span style="color:var(--accent-positive); margin-left:8px; font-size:0.85em;">[主角]</span>'
                       : '';
+                    const assignedSquad = String(squadMemberDraftAssignments[k] || squadName);
+                    const assignOptions = squadNames
+                      .map(
+                        name =>
+                          `<option value="${_.escape(String(name))}" ${name === assignedSquad ? 'selected' : ''}>${_.escape(String(name))}</option>`,
+                      )
+                      .join('');
+                    const assignmentEditor = squadMemberEditMode
+                      ? `<div style="display:flex; align-items:center; gap:8px; margin-top:6px; color:#aaa; font-size:0.9em;"><span>所在小队</span><select class="member-squad-select" data-member="${_.escape(String(k))}" style="background:#121212; color:#ddd; border:1px solid #555; padding:2px 6px; border-radius:2px;">${assignOptions}</select></div>`
+                      : '';
                     const card = $(
-                      `<div class="char-card" style="margin-bottom:8px;"><div style="display:flex; justify-content:space-between; gap:12px; align-items:center;"><div><span style="font-weight:bold">${_.get(v, '名字') || k}</span>${mainTag}</div><button type="button" class="set-main-controller-btn" onclick="event.stopPropagation()" data-name="${k}" data-squad="${_.escape(String(squadName))}" style="padding:4px 8px; border:1px solid var(--accent-gold); background:rgba(193,163,95,0.08); color:var(--accent-gold); cursor:pointer; border-radius:2px;">主控设定</button></div><div>HP: ${hpLabel}</div></div>`,
+                      `<div class="char-card" style="margin-bottom:8px;"><div style="display:flex; justify-content:space-between; gap:12px; align-items:center;"><div><span style="font-weight:bold">${_.get(v, '名字') || k}</span>${mainTag}${assignmentEditor}</div><button type="button" class="set-main-controller-btn" onclick="event.stopPropagation()" data-name="${k}" data-squad="${_.escape(String(squadName))}" style="padding:4px 8px; border:1px solid var(--accent-gold); background:rgba(193,163,95,0.08); color:var(--accent-gold); cursor:pointer; border-radius:2px; ${squadMemberEditMode || !showSquadActions ? 'display:none;' : ''}">主控设定</button></div><div>HP: ${hpLabel}</div></div>`,
                     );
                     card.find('.set-main-controller-btn').on('click', async function (e) {
                       e.preventDefault();
@@ -1994,8 +2327,9 @@
                       await setMainController(squadName, k);
                     });
                     card.on('click', () => {
+                      if (squadMemberEditMode) return;
                       $('#modal-content-inner').html(buildCharHTML(v, false, 'squad', k));
-                      setModalEntity('squad', k);
+                      setModalEntity('squad', k, squadName);
                       openModal();
                     });
                     membersBox.append(card);
@@ -2006,9 +2340,7 @@
               squadList.append(squadCard);
             });
 
-            squadList.append(
-              `<div style="display:flex; justify-content:center; margin-top:12px;"><button type="button" id="add-squad-btn" style="padding:8px 18px; border:1px solid var(--accent-gold); background:linear-gradient(180deg, rgba(193,163,95,0.12), rgba(193,163,95,0.04)); color:var(--accent-gold); font-family:var(--font-header); letter-spacing:1px; border-radius:2px; cursor:pointer;">新建小队</button></div>`,
-            );
+            // 顶部已有“新建小队”按钮，这里不再重复渲染
           }
 
           const viewList = $('#view-list').empty();
@@ -2075,6 +2407,81 @@
           renderFactionList($('#intel-hostile'), hostileFaction, true);
           renderFactionList($('#intel-ally'), allyFaction, false);
           $('#intel-world-situation').text(_.get(data, '局势.世界局势', '') || '暂无世界局势');
+          const killList = _.get(data, '往事.死亡名单', _.get(data, '往事.击杀名单', {}));
+          const killListContainer = $('#intel-kill-list').empty();
+          if (!killList || typeof killList !== 'object' || Object.keys(killList).length === 0) {
+            killListContainer.html('<span style="color:#666;">暂无记录</span>');
+          } else {
+            Object.entries(killList).forEach(([name, status]) => {
+              const isDead = String(status) === '死亡';
+              const color = isDead ? 'var(--accent-danger)' : 'var(--accent-positive)';
+              killListContainer.append(
+                `<span class="faction-pill" style="border-color:${color}; color:${color}; margin-right:6px; margin-bottom:6px; display:inline-flex;">${_.escape(String(name))}：${_.escape(String(status))}</span>`,
+              );
+            });
+          }
+
+          const strongholdList = $('#stronghold-list').empty();
+          const strongholds = _.get(data, '据点', {});
+          strongholdList.append(`
+            <div style="display:flex; justify-content:flex-end; margin-bottom:12px;">
+              <button id="add-stronghold-btn" style="padding:6px 14px; border:1px solid var(--accent-gold); background:rgba(193,163,95,0.08); color:var(--accent-gold); border-radius:3px; cursor:pointer;">
+                新建据点
+              </button>
+            </div>
+          `);
+          if (!strongholds || Object.keys(strongholds).length === 0) {
+            strongholdList.append('<div style="text-align:center; padding:30px; color:#666;">暂无据点</div>');
+          } else {
+            Object.entries(strongholds).forEach(([name, s]) => {
+              const level = _.get(s, '等级', 1);
+              const region = _.get(s, '所处区域', '未知区域');
+              const fund = _.get(s, '资金', 0);
+              const incomeDays = _.get(s, '收益天数', 0);
+              const membersObj = _.get(s, '成员', {});
+              const members = Object.keys(membersObj).length;
+              const facilities = Object.keys(_.get(s, '设施', {})).length;
+              const desc = _.get(s, '描述', '');
+              const squadOptions = Object.keys(squadData || {})
+                .map(
+                  squadName => `<option value="${_.escape(String(squadName))}">${_.escape(String(squadName))}</option>`,
+                )
+                .join('');
+              const memberList = Object.entries(membersObj)
+                .map(([memberName, memberValue]) => {
+                  const assigned = String(strongholdMemberDraftAssignments[memberName] || `据点:${name}`);
+                  const assignOptions = [
+                    `<option value="据点:${_.escape(String(name))}" ${assigned === `据点:${name}` ? 'selected' : ''}>留在据点</option>`,
+                  ]
+                    .concat(
+                      Object.keys(squadData || {}).map(
+                        squadName =>
+                          `<option value="${_.escape(String(squadName))}" ${assigned === squadName ? 'selected' : ''}>移至${_.escape(String(squadName))}</option>`,
+                      ),
+                    )
+                    .join('');
+                  return `<div class="char-card" style="margin-top:8px;"><div style="display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap;"><div><span style="font-weight:bold">${_.escape(String(_.get(memberValue, '名字', memberName) || memberName))}</span></div>${strongholdMemberEditMode ? `<div style="display:flex; align-items:center; gap:8px; color:#aaa; font-size:0.9em;"><span>去向</span><select class="stronghold-member-target-select" data-member="${_.escape(String(memberName))}" style="background:#121212; color:#ddd; border:1px solid #555; padding:2px 6px; border-radius:2px;">${assignOptions}</select></div>` : ''}</div></div>`;
+                })
+                .join('');
+              const recruitBox = strongholdMemberEditMode
+                ? `<div style="margin-top:10px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;"><span style="color:#aaa; font-size:0.9em;">从小队移入</span><select class="stronghold-add-member-select" data-stronghold="${_.escape(String(name))}" style="background:#121212; color:#ddd; border:1px solid #555; padding:4px 6px; border-radius:2px; min-width:160px;"><option value="">选择小队成员</option>${Object.entries(
+                    squadData || {},
+                  )
+                    .flatMap(([squadName, squadValue]) =>
+                      Object.keys(_.get(squadValue, '成员', {})).map(
+                        memberName =>
+                          `<option value="${_.escape(String(memberName))}">${_.escape(String(memberName))}（${_.escape(String(squadName))}）</option>`,
+                      ),
+                    )
+                    .join(
+                      '',
+                    )}</select><button type="button" class="stronghold-add-member-btn" data-stronghold="${_.escape(String(name))}" style="padding:4px 10px; border:1px solid rgba(193,163,95,0.45); background:rgba(193,163,95,0.05); color:var(--text-main); cursor:pointer; border-radius:2px;">移入据点</button></div>`
+                : '';
+              strongholdList.append(
+                `<div class="section-box" style="margin-bottom:12px;"><div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap;"><div><div class="section-title">${_.escape(String(name))} · Lv.${level}</div><div style="color:var(--text-dim); margin-bottom:6px;">${_.escape(String(region))} · 资金 ${fund} · 收益天数 ${incomeDays}</div><div style="color:var(--text-dim); margin-bottom:6px;">成员 ${members} 人 · 设施 ${facilities} 项</div><div style="color:#cfcfcf;">${_.escape(String(desc || '暂无描述'))}</div></div><div style="display:flex; gap:8px; flex-wrap:wrap;"><button type="button" class="toggle-stronghold-member-edit-btn" style="padding:4px 10px; border:1px solid rgba(193,163,95,0.45); background:rgba(193,163,95,0.05); color:var(--text-main); cursor:pointer; border-radius:2px;">${strongholdMemberEditMode ? '取消调整' : '调整成员'}</button>${strongholdMemberEditMode ? '<button type="button" class="submit-stronghold-member-edit-btn" style="padding:4px 10px; border:1px solid var(--accent-positive); background:rgba(46,204,113,0.12); color:var(--accent-positive); cursor:pointer; border-radius:2px;">提交调整</button>' : ''}</div></div>${memberList ? `<div style="margin-top:10px;">${memberList}</div>` : '<div style="margin-top:10px; color:#666;">暂无驻守成员</div>'}${recruitBox}</div>`,
+              );
+            });
+          }
 
           const mList = $('#mission-list').empty();
           const missions = _.get(data, '任务系统', {});
@@ -2143,16 +2550,26 @@
           if (!descValue || Number.isNaN(dateNumber)) return;
 
           const keyMap = {
-            城镇更替: '城镇更替',
-            广交良友: '广交良友',
-            肃敌战绩: '击杀记录',
+            城镇更替: '城镇记录',
+            广交良友: '交友记录',
             关键记忆: '关键记忆',
+            城镇纪略: '城镇纪略',
+            城镇记录: '城镇记录',
+            交友记录: '交友记录',
           };
-          const targetKey = keyMap[categoryValue] || '城镇更替';
-          const existing = _.get(mvuData, `stat_data.往事.${targetKey}`, []);
-          const nextList = Array.isArray(existing) ? [...existing] : [];
-          nextList.push({ 日期: dateNumber, 描述: String(descValue) });
-          _.set(mvuData, `stat_data.往事.${targetKey}`, nextList);
+          const targetKey = keyMap[categoryValue] || '城镇记录';
+          if (targetKey === '城镇纪略') {
+            const input = String(descValue);
+            const splitIdx = input.indexOf('：') >= 0 ? input.indexOf('：') : input.indexOf(':');
+            const town = splitIdx >= 0 ? input.slice(0, splitIdx).trim() : input.trim();
+            const state = splitIdx >= 0 ? input.slice(splitIdx + 1).trim() : '未知';
+            if (town) _.set(mvuData, ['stat_data', '往事', '城镇纪略', town], state || '未知');
+          } else {
+            const existing = _.get(mvuData, `stat_data.往事.${targetKey}`, []);
+            const nextList = Array.isArray(existing) ? [...existing] : [];
+            nextList.push({ 日期: dateNumber, 描述: String(descValue) });
+            _.set(mvuData, `stat_data.往事.${targetKey}`, nextList);
+          }
           await Mvu.replaceMvuData(mvuData, option);
           $('#past-date-input').val('');
           $('#past-desc-input').val('');
@@ -2268,22 +2685,26 @@
           const squadData = _.get(mvuData, 'stat_data.小队成员', {});
           if (!squadData || !squadData[name] || squadData[nextName]) return;
           const source = _.get(squadData, name);
-          const nextSquadData = _.omit(squadData, [name]);
-          nextSquadData[nextName] = source;
+          const nextSquadData = {};
+          Object.entries(squadData).forEach(([squadKey, squadValue]) => {
+            if (squadKey === name) {
+              nextSquadData[nextName] = squadValue;
+              return;
+            }
+            nextSquadData[squadKey] = squadValue;
+          });
           _.set(mvuData, 'stat_data.小队成员', nextSquadData);
-          const rawVars = getAllVariables();
-          const statData = _.get(rawVars, 'stat_data', {});
-          const mainControllerName = getMainControllerName(statData) || '主控';
           const memberNames = Object.keys(_.get(source, '成员', {}));
           const memberText = memberNames.length ? memberNames.join('，') : '暂无成员';
           await Mvu.replaceMvuData(mvuData, option);
-          appendTextToPlayerInput(
-            `${mainControllerName}决定将我们这个小队(${name})修改为${nextName}，成员是${memberText}`,
-          );
+          appendTextToPlayerInput(`我们将【${name}】改为【${nextName}】，成员是${memberText}`);
+          const rawVars = getAllVariables();
+          const statData = _.get(rawVars, 'stat_data', {});
           const settings = loadSettings();
           if (settings[SETTINGS_KEYS.MAIN_SQUAD] === name) {
             settings[SETTINGS_KEYS.MAIN_SQUAD] = nextName;
             saveSettings(settings);
+            await syncMainPerspectiveWorldBook(getMainControllerName(statData), nextName);
           }
           update();
         }
@@ -2384,7 +2805,7 @@
           const option = { type: 'message', message_id: getCurrentMessageId() };
           const mvuData = Mvu.getMvuData(option);
           const pastObj = _.get(mvuData, 'stat_data.往事', {});
-          const categories = ['城镇更替', '广交良友', '击杀记录', '肃敌战绩', '关键记忆'];
+          const categories = ['城镇更替', '广交良友', '关键记忆', '交友记录', '城镇记录'];
           let hit = -1;
           for (const cat of categories) {
             const list = _.get(pastObj, cat, []);
@@ -2463,6 +2884,154 @@
               $('#modal-content-inner').html(buildCharHTML(updated, entityType === 'current', entityType, entityName));
             }
           }
+        }
+
+        function getCharacterBasePath(mvuData, entityType, entityName, squadName = '') {
+          const statData = _.get(mvuData, 'stat_data', {});
+          const mainSquadName = getMainSquadName(statData);
+          const squads = _.get(statData, '小队成员', {});
+          const findMemberPathInAllSquads = targetName => {
+            const normalizedTarget = String(targetName || '').trim();
+            if (!normalizedTarget) return null;
+            for (const [sqName, sqData] of Object.entries(squads || {})) {
+              const members = _.get(sqData, '成员', {});
+              const hitKey = Object.keys(members || {}).find(k => String(k).trim() === normalizedTarget);
+              if (hitKey) return ['stat_data', '小队成员', sqName, '成员', hitKey];
+            }
+            return null;
+          };
+          if (entityType === 'current') {
+            const mainControllerName = String(getMainControllerName(statData) || '').trim();
+            if (mainControllerName) {
+              return ['stat_data', '小队成员', mainSquadName, '成员', mainControllerName];
+            }
+            const fallbackMemberName = Object.keys(_.get(statData, ['小队成员', mainSquadName, '成员'], {}))[0];
+            if (fallbackMemberName) {
+              return ['stat_data', '小队成员', mainSquadName, '成员', fallbackMemberName];
+            }
+            return findMemberPathInAllSquads(entityName);
+          }
+          if (entityType === 'squad') {
+            const targetSquadName = String(squadName || '').trim() || mainSquadName;
+            const members = _.get(statData, ['小队成员', targetSquadName, '成员'], {});
+            const hitKey = Object.keys(members || {}).find(k => String(k).trim() === String(entityName || '').trim());
+            if (hitKey) {
+              return ['stat_data', '小队成员', targetSquadName, '成员', hitKey];
+            }
+            return findMemberPathInAllSquads(entityName);
+          }
+          return null;
+        }
+
+        async function unequipWeapon(slot) {
+          if (!currentModalEntity) return;
+          const { entityType, entityName, squadName } = currentModalEntity;
+          if (entityType !== 'current' && entityType !== 'squad') return;
+          const option = { type: 'message', message_id: getCurrentMessageId() };
+          const mvuData = Mvu.getMvuData(option) || {};
+          const basePath = getCharacterBasePath(mvuData, entityType, entityName, squadName);
+          if (!basePath) return;
+          const weaponKey = slot === 'sub' ? '副武器' : '主武器';
+          const weapon = _.cloneDeep(_.get(mvuData, [...basePath, weaponKey], {}));
+          const weaponName = String(_.get(weapon, '名字', '')).trim();
+          const weaponType = String(_.get(weapon, '种类', '')).trim();
+          if (!weaponName) return;
+          if (['武术', '无'].includes(weaponName) || ['空手', '无'].includes(weaponType)) return;
+          const bagPath = [...basePath, '背包', '物品'];
+          const bagItems = _.get(mvuData, bagPath, {});
+          const existedKey =
+            Object.keys(bagItems || {}).find(k => String(k).trim() === String(weaponName).trim()) || weaponName;
+          const existed = _.get(bagItems, existedKey, null);
+          if (existed && typeof existed === 'object') {
+            _.set(mvuData, [...bagPath, existedKey, '数量'], Number(_.get(existed, '数量', 1)) + 1);
+          } else {
+            _.set(mvuData, [...bagPath, weaponName], {
+              ...weapon,
+              分类: '武器',
+              数量: 1,
+              重量: Number(_.get(weapon, '重量', 1)) || 1,
+            });
+          }
+          if (weaponKey === '主武器') {
+            _.set(mvuData, [...basePath, weaponKey], {
+              名字: '武术',
+              种类: '空手',
+              品质: '普通',
+              介绍: '',
+              伤害骰: '1d4',
+              伤害类型: '钝伤:1.0',
+              价值: 0,
+              重量: 0,
+            });
+          } else {
+            _.unset(mvuData, [...basePath, weaponKey]);
+          }
+          await Mvu.replaceMvuData(mvuData, option);
+          update();
+          const latest = _.get(mvuData, basePath, {});
+          $('#modal-content-inner').html(buildCharHTML(latest, entityType === 'current', entityType, entityName));
+        }
+
+        async function equipWeaponFromBag(itemName, slot) {
+          if (!currentModalEntity) return;
+          const { entityType, entityName, squadName } = currentModalEntity;
+          if (entityType !== 'current' && entityType !== 'squad') return;
+          const option = { type: 'message', message_id: getCurrentMessageId() };
+          const mvuData = Mvu.getMvuData(option) || {};
+          const basePath = getCharacterBasePath(mvuData, entityType, entityName, squadName);
+          if (!basePath) return;
+          const bagPath = [...basePath, '背包', '物品'];
+          const normalizedItemName = String(itemName || '').trim();
+          if (!normalizedItemName || ['武术', '无'].includes(normalizedItemName)) return;
+          const bagItems = _.get(mvuData, bagPath, {});
+          const fallbackKey =
+            Object.keys(bagItems || {}).find(k => String(k).trim() === normalizedItemName) || normalizedItemName;
+          const bagItem = _.cloneDeep(_.get(mvuData, [...bagPath, fallbackKey], null));
+          if (!bagItem || _.get(bagItem, '分类') !== '武器') return;
+          const bagItemType = String(_.get(bagItem, '种类', '') || '').trim();
+          if (['空手', '无'].includes(bagItemType)) return;
+
+          const weaponKey = slot === 'sub' ? '副武器' : '主武器';
+          const currentEquipped = _.cloneDeep(_.get(mvuData, [...basePath, weaponKey], {}));
+          const currentEquippedName = String(_.get(currentEquipped, '名字', '')).trim();
+          const currentEquippedType = String(_.get(currentEquipped, '种类', '')).trim();
+          const isVirtualEmptyWeapon =
+            !currentEquippedName ||
+            ['无', '武术'].includes(currentEquippedName) ||
+            ['无', '空手'].includes(currentEquippedType);
+          if (!isVirtualEmptyWeapon) {
+            const existed = _.get(mvuData, [...bagPath, currentEquippedName], null);
+            if (existed && typeof existed === 'object') {
+              _.set(mvuData, [...bagPath, currentEquippedName, '数量'], Number(_.get(existed, '数量', 1)) + 1);
+            } else {
+              _.set(mvuData, [...bagPath, currentEquippedName], {
+                ...currentEquipped,
+                分类: '武器',
+                数量: 1,
+                重量: Number(_.get(currentEquipped, '重量', 1)) || 1,
+              });
+            }
+          }
+
+          const nextQty = Number(_.get(bagItem, '数量', 1)) - 1;
+          if (nextQty > 0) _.set(mvuData, [...bagPath, fallbackKey, '数量'], nextQty);
+          else _.unset(mvuData, [...bagPath, fallbackKey]);
+
+          _.set(mvuData, [...basePath, weaponKey], {
+            名字: _.get(bagItem, '名字', normalizedItemName),
+            种类: _.get(bagItem, '种类', '无'),
+            品质: _.get(bagItem, '品质', '普通'),
+            介绍: _.get(bagItem, '介绍', ''),
+            伤害骰: _.get(bagItem, '伤害骰', '1d4'),
+            伤害类型: _.get(bagItem, '伤害类型', '钝伤:1.0'),
+            价值: Number(_.get(bagItem, '价值', 0)) || 0,
+            重量: Number(_.get(bagItem, '重量', 1)) || 1,
+          });
+
+          await Mvu.replaceMvuData(mvuData, option);
+          update();
+          const latest = _.get(mvuData, basePath, {});
+          $('#modal-content-inner').html(buildCharHTML(latest, entityType === 'current', entityType, entityName));
         }
 
         async function deleteViewEntry(name) {
@@ -2682,11 +3251,39 @@
           let index = 1;
           while (squadData[`小队${index}`]) index += 1;
           _.set(mvuData, ['stat_data', '小队成员', `小队${index}`], {
-            区域: '未知区域',
-            城镇: '未知城镇',
             金钱: 0,
+            所处位置: {
+              区域: '未知区域',
+              城镇: '未知城镇',
+            },
             成员: {},
             视野: {},
+          });
+          await Mvu.replaceMvuData(mvuData, option);
+          update();
+        }
+
+        async function createStronghold() {
+          const option = { type: 'message', message_id: getCurrentMessageId() };
+          const mvuData = Mvu.getMvuData(option) || {};
+          const statData = _.get(mvuData, 'stat_data', {});
+          const strongholdData = _.get(statData, '据点', {});
+          const mainSquad = getMainSquadData(statData) || {};
+          const currentRegion = _.get(mainSquad, '区域', _.get(mainSquad, '所处位置.区域', '未知区域'));
+          let index = 1;
+          while (strongholdData[`据点${index}`]) index += 1;
+          _.set(mvuData, ['stat_data', '据点', `据点${index}`], {
+            等级: 1,
+            收益天数: 0,
+            所处区域: currentRegion || '未知区域',
+            描述: '',
+            资金: 0,
+            成员: {},
+            仓库: {
+              物品: {},
+            },
+            设施: {},
+            到来事件: {},
           });
           await Mvu.replaceMvuData(mvuData, option);
           update();
@@ -2760,7 +3357,7 @@
           const mergedMemberText = mergedMemberNames.length ? mergedMemberNames.join('，') : '暂无成员';
           await Mvu.replaceMvuData(mvuData, option);
           appendTextToPlayerInput(
-            `${mainControllerName}决定将小队A(${sourceSquadName})和小队B进行人员合并，成员是${mergedMemberText}`,
+            `${mainControllerName}决定将小队【${sourceSquadName}】并入小队【${targetSquadName}】，成员是${mergedMemberText}`,
           );
           update();
         }
@@ -2821,6 +3418,76 @@
           e.preventDefault();
           e.stopPropagation();
           await createSquad();
+        });
+        $('#add-squad-top-btn').on('click', async function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          await createSquad();
+        });
+        $(document).on('click', '#add-stronghold-btn', async function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          await createStronghold();
+        });
+        $(document).on('change', '.stronghold-member-target-select', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          const memberName = String($(this).attr('data-member') || '').trim();
+          if (!memberName) return;
+          strongholdMemberDraftAssignments[memberName] = String($(this).val() || '').trim();
+        });
+        $(document).on('click', '.toggle-stronghold-member-edit-btn', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (!strongholdMemberEditMode) {
+            const raw = getAllVariables();
+            rebuildStrongholdMemberDraft(_.get(raw, 'stat_data.小队成员', {}), _.get(raw, 'stat_data.据点', {}));
+            strongholdMemberEditMode = true;
+          } else {
+            strongholdMemberEditMode = false;
+          }
+          update();
+        });
+        $(document).on('click', '.submit-stronghold-member-edit-btn', async function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          await submitStrongholdMemberAdjustments();
+        });
+        $(document).on('click', '.stronghold-add-member-btn', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          const strongholdName = String($(this).attr('data-stronghold') || '').trim();
+          const selectedMember = String(
+            $(`.stronghold-add-member-select[data-stronghold="${strongholdName}"]`).val() || '',
+          ).trim();
+          if (!strongholdName || !selectedMember) return;
+          strongholdMemberDraftAssignments[selectedMember] = `据点:${strongholdName}`;
+          strongholdMemberEditMode = true;
+          update();
+        });
+        $(document).on('change', '.member-squad-select', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          const memberName = String($(this).attr('data-member') || '').trim();
+          if (!memberName) return;
+          squadMemberDraftAssignments[memberName] = String($(this).val() || '').trim();
+        });
+        $('#squad-member-edit-toggle-btn').on('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (!squadMemberEditMode) {
+            const raw = getAllVariables();
+            rebuildSquadMemberDraft(_.get(raw, 'stat_data.小队成员', {}));
+            squadMemberEditMode = true;
+          } else {
+            squadMemberEditMode = false;
+          }
+          update();
+        });
+        $('#squad-member-edit-submit-btn').on('click', async function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          await submitSquadMemberAdjustments();
         });
         $('#view-list').on('click', '.view-remove-btn', function (e) {
           e.preventDefault();
@@ -2912,6 +3579,37 @@
           if (!name) return;
           const value = $(this).val();
           await saveOtherAddress(name, value);
+        });
+        $(document).on('click', '.weapon-unequip-btn', async function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (
+            !currentModalEntity ||
+            (currentModalEntity.entityType !== 'current' && currentModalEntity.entityType !== 'squad')
+          ) {
+            const raw = getAllVariables();
+            const statData = _.get(raw, 'stat_data', {});
+            setModalEntity('current', getMainControllerName(statData), getMainSquadName(statData));
+          }
+          const slot = String($(this).attr('data-slot') || 'main');
+          await unequipWeapon(slot);
+        });
+        $(document).on('click', '.weapon-equip-btn', async function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (
+            !currentModalEntity ||
+            (currentModalEntity.entityType !== 'current' && currentModalEntity.entityType !== 'squad')
+          ) {
+            const raw = getAllVariables();
+            const statData = _.get(raw, 'stat_data', {});
+            setModalEntity('current', getMainControllerName(statData), getMainSquadName(statData));
+          }
+          const encoded = String($(this).attr('data-item-encoded') || '').trim();
+          const itemName = encoded ? decodeURIComponent(encoded) : String($(this).attr('data-item') || '').trim();
+          const slot = String($(this).attr('data-slot') || 'main');
+          if (!itemName) return;
+          await equipWeaponFromBag(itemName, slot);
         });
         $('#mission-list').on('click', '.mission-delete-btn', function (e) {
           e.preventDefault();
@@ -3028,9 +3726,9 @@
           }
         });
         $('#confirm-modal').on('click', function (e) {
-          if (e.target === this) {
-            closeConfirmModal();
-          }
+          if (e.target !== this) return;
+          if (pendingSquadRenameSource || pendingSquadMergeSource || pendingSquadMergeTarget) return;
+          closeConfirmModal();
         });
         $(document).on('click', '.stat-item.stat-clickable', async function () {
           const attrKey = $(this).attr('data-attr');
@@ -3312,6 +4010,7 @@
           <div class="tab-btn" onclick="switchTab('intel')" data-tab="intel">情报</div>
           <div class="tab-btn" onclick="switchTab('mission')" data-tab="mission">日志</div>
           <div class="tab-btn" onclick="switchTab('past')" data-tab="past">往事</div>
+          <div class="tab-btn" onclick="switchTab('stronghold')" data-tab="stronghold">据点</div>
           <div class="tab-btn" onclick="switchTab('map')" data-tab="map">地图</div>
           <div class="tab-btn" id="settings-tab-btn" style="margin-left: 8px; cursor: pointer" title="状态栏设置">
             ⚙ 设置
@@ -3341,6 +4040,49 @@
                 点击下方小队卡片可切换主控小队，概览/顶部信息/视野将同步切换
               </div>
               <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap">
+                <button
+                  id="add-squad-top-btn"
+                  type="button"
+                  style="
+                    padding: 6px 12px;
+                    border: 1px solid var(--accent-gold);
+                    background: rgba(193, 163, 95, 0.08);
+                    color: var(--accent-gold);
+                    cursor: pointer;
+                    border-radius: 2px;
+                  "
+                >
+                  新建小队
+                </button>
+                <button
+                  id="squad-member-edit-toggle-btn"
+                  type="button"
+                  style="
+                    padding: 6px 12px;
+                    border: 1px solid rgba(193, 163, 95, 0.55);
+                    background: rgba(193, 163, 95, 0.08);
+                    color: var(--accent-gold);
+                    cursor: pointer;
+                    border-radius: 2px;
+                  "
+                >
+                  成员编辑模式
+                </button>
+                <button
+                  id="squad-member-edit-submit-btn"
+                  type="button"
+                  style="
+                    display: none;
+                    padding: 6px 12px;
+                    border: 1px solid var(--accent-positive);
+                    background: rgba(46, 204, 113, 0.12);
+                    color: var(--accent-positive);
+                    cursor: pointer;
+                    border-radius: 2px;
+                  "
+                >
+                  提交调整
+                </button>
                 <button
                   id="no-main-controller-btn"
                   type="button"
@@ -3401,14 +4143,19 @@
               <div class="section-title">街谈巷议</div>
               <div id="intel-rumors" style="font-style: italic; color: #ccc"></div>
             </div>
+            <div class="section-box">
+              <div class="section-title">死亡名单</div>
+              <div id="intel-kill-list"></div>
+            </div>
           </div>
           <div id="pane-mission" class="tab-pane"><div id="mission-list"></div></div>
           <div id="pane-past" class="tab-pane">
             <div class="section-title">往事</div>
             <div class="past-controls">
               <select id="past-category-input" class="past-input">
+                <option value="交友记录">交友记录</option>
                 <option value="城镇记录">城镇记录</option>
-                <option value="击杀记录">击杀记录</option>
+                <option value="城镇纪略">城镇纪略</option>
                 <option value="关键记忆">关键记忆</option>
               </select>
               <input id="past-date-input" class="past-input" type="number" placeholder="天数(默认当前天数)" />
@@ -3416,6 +4163,10 @@
               <button id="past-add-btn" class="past-add-btn">添加</button>
             </div>
             <div id="past-list"></div>
+          </div>
+          <div id="pane-stronghold" class="tab-pane">
+            <div class="section-title">据点</div>
+            <div id="stronghold-list"></div>
           </div>
           <div id="pane-map" class="tab-pane">
             <div class="section-title">

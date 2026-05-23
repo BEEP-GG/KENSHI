@@ -46,6 +46,7 @@ const WeaponSchema = z.object({
   伤害骰: z.string().prefault('1d4'),
   伤害类型: z.string().transform(parseDamageType).prefault('钝伤:1.0'),
   价值: z.coerce.number().prefault(0),
+  重量: z.coerce.number().prefault(1),
 });
 
 // 定义护甲结构
@@ -54,6 +55,7 @@ const ArmorSchema = z.object({
   '防护能力(DR)': z.coerce.number().prefault(0),
   介绍: z.string().prefault(''),
   价值: z.coerce.number().prefault(0),
+  重量: z.coerce.number().prefault(1),
 });
 
 // ========= 背包物品的特殊结构定义开始 =========
@@ -318,11 +320,9 @@ const characterTransform = data => {
   } else if (['钝器类', '大型类', '弩'].includes(weaponType)) {
     if (dex < 80) baseAttacks = 1;
     else baseAttacks = 2;
-  } else {
-    if (dex < 60) baseAttacks = 1;
-    else if (dex < 80) baseAttacks = 2;
-    else baseAttacks = 3;
-  }
+  } else if (dex < 60) baseAttacks = 1;
+  else if (dex < 80) baseAttacks = 2;
+  else baseAttacks = 3;
 
   if (dex >= 100) {
     baseAttacks += 1;
@@ -368,10 +368,9 @@ const characterTransform = data => {
     return match ? parseInt(match[1].replace(/\s/g, ''), 10) : 0;
   });
   data.背包.负重.最大 = baseMaxWeight + traitWeightModifier;
-  data.背包.负重.当前 = _.round(
-    _.sumBy(_.values(data.背包.物品), item => (item.重量 || 0) * (item.数量 || 0)),
-    2,
-  );
+  const itemsWeight = _.sumBy(_.values(data.背包.物品), item => (item.重量 || 0) * (item.数量 || 0));
+  const equippedWeight = (data.主武器?.重量 || 0) + (data.副武器?.重量 || 0) + (data.护甲?.重量 || 0);
+  data.背包.负重.当前 = _.round(itemsWeight + equippedWeight, 2);
 
   // 最终数值约束
   data.血量.当前 = _.clamp(data.血量.当前, 0, data.血量.最大);
@@ -385,6 +384,39 @@ const TeammateCharacterSchema = CharacterSchema;
 const RemoteCharacterSchema = CharacterSchemaBase.extend({
   所处地址: z.string().prefault('未知'),
 }).transform(characterTransform);
+
+// ========= 据点系统结构定义开始 =========
+const StrongholdFacilitySchema = z
+  .object({
+    等级: z.coerce.number().prefault(1),
+    工作成员: z.array(z.string()).prefault([]),
+  })
+  .prefault({ 等级: 1, 工作成员: [] });
+
+const StrongholdSchema = z
+  .object({
+    等级: z.coerce
+      .number()
+      .transform(v => _.clamp(v, 1, 5))
+      .prefault(1),
+    收益天数: z.coerce.number().prefault(0),
+    所处区域: z.string().prefault('未知区域'),
+    描述: z.string().prefault(''),
+    资金: z.coerce.number().prefault(0),
+    成员: z.record(z.string().describe('成员名字'), TeammateCharacterSchema.or(z.literal('待初始化'))).prefault({}),
+    仓库: z
+      .object({
+        物品: z
+          .record(z.string().describe('物品名'), ItemSchema)
+          .transform(data => _.pickBy(data, ({ 数量 }) => 数量 > 0))
+          .prefault({}),
+      })
+      .prefault({}),
+    设施: z.record(z.string().describe('设施名字'), StrongholdFacilitySchema).prefault({}),
+    到来事件: z.record(z.string().describe('事件标题'), z.string().describe('事件描述')).prefault({}),
+  })
+  .prefault({});
+// ========= 据点系统结构定义结束 =========
 
 // 定义“往事”基础条目的结构
 const PastEventSchema = z.object({
@@ -419,6 +451,7 @@ export const Schema = z.object({
         .prefault({}),
     )
     .prefault({}),
+  据点: z.record(z.string().describe('据点名字'), StrongholdSchema).prefault({}),
   异地: z.record(z.string(), RemoteCharacterSchema.or(z.literal('待初始化'))),
   局势: z.object({
     已知派系: z
@@ -487,11 +520,11 @@ export const Schema = z.object({
   往事: z
     .object({
       交友记录: z.array(PastEventSchema).prefault([]),
-      城镇记录: z.array(PastEventSchema).prefault([]),
-      击杀记录: z.array(PastEventSchema).prefault([]),
+      城镇纪略: z.record(z.string().describe('城镇名字'), z.string().describe('状态')).prefault({}),
+      死亡名单: z.record(z.string().describe('人物名字'), z.enum(['死亡', '存活'])).prefault({}),
       关键记忆: z.array(PastEventSchema).prefault([]),
     })
-    .prefault({ 交友记录: [], 城镇记录: [], 击杀记录: [], 关键记忆: [] }),
+    .prefault({ 交友记录: [], 城镇纪略: {}, 死亡名单: {}, 关键记忆: [] }),
   闲言: z.object({
     当前内容: z.string().prefault(''),
   }),
