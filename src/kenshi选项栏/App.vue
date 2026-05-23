@@ -85,7 +85,7 @@ const isActorMenuOpen = ref(false);
 const selectedActorName = ref('');
 const actorOptions = ref<ActorOption[]>([]);
 const isLegacyMode = ref(false);
-const specialActions = ['战斗', '营地系统'];
+const specialActions = ['战斗', '营地系统', '特质赐福'];
 
 const optionLineRegex = /^[^\S\n]*(?:[（(【]?\s*([A-Za-z])\s*[.、:：]\s*(.*?))\s*$/;
 const optionFallbackLineRegex = /^[^\S\n]*([A-Za-z])\s+[、.．]\s*(.*?)\s*$/;
@@ -433,6 +433,10 @@ async function triggerCampSystem() {
   }
 }
 
+async function triggerBlessingSystem() {
+  await sendUserMessage('<特质赐福>');
+}
+
 async function handleOptionClick(opt: OptionItem, event: MouseEvent) {
   const target = event.currentTarget as HTMLElement;
   createRipple(event, target);
@@ -461,6 +465,11 @@ function handleSpecialAction(action: string) {
   }
   if (action === '营地系统') {
     triggerCampSystem();
+    closeSpecialMenu();
+    return;
+  }
+  if (action === '特质赐福') {
+    triggerBlessingSystem();
     closeSpecialMenu();
     return;
   }

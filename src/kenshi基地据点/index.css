@@ -1,0 +1,62 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Outfit', ui-sans-serif, system-ui, sans-serif;
+}
+
+#app.kenshi-basecamp-root {
+  background-color: #050508;
+  color: #e2e8f0;
+  background-image:
+    radial-gradient(circle at 10% 20%, rgba(20, 25, 35, 0.6) 0%, transparent 40%),
+    radial-gradient(circle at 90% 80%, rgba(45, 25, 5, 0.25) 0%, transparent 50%);
+  background-attachment: fixed;
+  font-family: var(--font-sans);
+  overflow: hidden;
+  min-height: 100dvh;
+}
+
+@layer utilities {
+  #app.kenshi-basecamp-root .glass-panel {
+    background: rgba(12, 14, 18, 0.75);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+  }
+
+  #app.kenshi-basecamp-root .glass-card {
+    background: rgba(20, 24, 30, 0.4);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.03);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  #app.kenshi-basecamp-root .glass-card:hover {
+    background: rgba(30, 35, 45, 0.5);
+    border: 1px solid rgba(217, 119, 6, 0.4);
+    box-shadow: 0 0 24px rgba(217, 119, 6, 0.08);
+    transform: translateY(-2px);
+  }
+
+  #app.kenshi-basecamp-root .text-glow {
+    text-shadow: 0 0 12px rgba(217, 119, 6, 0.7);
+  }
+}
+
+#app.kenshi-basecamp-root ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+#app.kenshi-basecamp-root ::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+#app.kenshi-basecamp-root ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+#app.kenshi-basecamp-root ::-webkit-scrollbar-thumb:hover {
+  background: rgba(217, 119, 6, 0.5);
+}
