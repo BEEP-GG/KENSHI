@@ -2001,24 +2001,45 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
       [subrace?.description ?? '', (subrace as { attributeSummary?: string })?.attributeSummary ?? ''].join(' '),
     );
     const scenarioBonus = getScenarioAttributeBonus();
+    const traitBonus = getSelectedTraitAttributeBonus();
     const finalAttributes = {
-      strength: data.attributes.strength + raceModifiers.strength + subraceModifiers.strength + scenarioBonus.strength,
+      strength:
+        data.attributes.strength +
+        raceModifiers.strength +
+        subraceModifiers.strength +
+        scenarioBonus.strength +
+        traitBonus.strength,
       dexterity:
-        data.attributes.dexterity + raceModifiers.dexterity + subraceModifiers.dexterity + scenarioBonus.dexterity,
+        data.attributes.dexterity +
+        raceModifiers.dexterity +
+        subraceModifiers.dexterity +
+        scenarioBonus.dexterity +
+        traitBonus.dexterity,
       perception:
-        data.attributes.perception + raceModifiers.perception + subraceModifiers.perception + scenarioBonus.perception,
+        data.attributes.perception +
+        raceModifiers.perception +
+        subraceModifiers.perception +
+        scenarioBonus.perception +
+        traitBonus.perception,
       constitution:
         data.attributes.constitution +
         raceModifiers.constitution +
         subraceModifiers.constitution +
-        scenarioBonus.constitution,
-      will: data.attributes.will + raceModifiers.will + subraceModifiers.will + scenarioBonus.will,
+        scenarioBonus.constitution +
+        traitBonus.constitution,
+      will: data.attributes.will + raceModifiers.will + subraceModifiers.will + scenarioBonus.will + traitBonus.will,
       intelligence:
         data.attributes.intelligence +
         raceModifiers.intelligence +
         subraceModifiers.intelligence +
-        scenarioBonus.intelligence,
-      charisma: data.attributes.charisma + raceModifiers.charisma + subraceModifiers.charisma + scenarioBonus.charisma,
+        scenarioBonus.intelligence +
+        traitBonus.intelligence,
+      charisma:
+        data.attributes.charisma +
+        raceModifiers.charisma +
+        subraceModifiers.charisma +
+        scenarioBonus.charisma +
+        traitBonus.charisma,
     };
     const attributeLine = Object.entries(finalAttributes)
       .map(([key, value]) => `${attributeLabels[key as keyof CharacterData['attributes']]}=${value}`)
@@ -2031,7 +2052,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
     const selectedTraitLines = data.traits
       .map(traitId => allTraits.find(t => t.id === traitId))
       .filter(Boolean)
-      .map(trait => ` 【${trait!.title}】：${stripAttributeTextFromDescription(trait!.description)}`);
+      .map(trait => ` 【${trait!.title}】：${trait!.description}`);
     if (
       selectedTraitLines.length > 0 ||
       (data.scenarioTraitName && data.scenarioTraitDescription) ||

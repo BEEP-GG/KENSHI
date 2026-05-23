@@ -45,7 +45,7 @@ const ATTRIBUTE_CONFIG: Record<Attribute, { label: string; icon: any; desc: stri
 const TOTAL_ATTRIBUTE_POINTS = 168;
 const SKELETON_ATTRIBUTE_POINTS = 144;
 const ATTRIBUTE_MIN = 1;
-const ATTRIBUTE_MAX = 50;
+const ATTRIBUTE_MAX = Number.POSITIVE_INFINITY;
 const GOD_MODE_ATTRIBUTE_MAX = 130;
 const GOD_MODE_MIN_LEVEL = 1;
 const GOD_MODE_MAX_LEVEL = 100;
@@ -1156,8 +1156,8 @@ ${names}`;
               </button>
             </div>
             <p className="text-[10px] text-white/40">
-              按游戏加点逻辑：默认 1 点，+1 消耗 1 点，-1 返还 1 点；普通模式单项最高 50 点。上帝模式可设置等级 1-100，
-              每升 1 级额外 +5 属性点，单项上限提升到 130，且可直接输入数值分配。长按 +/- 可连续加点。
+              按游戏加点逻辑：默认 1 点，+1 消耗 1 点，-1 返还 1 点；普通模式无单项上限。上帝模式可设置等级 1-100， 每升
+              1 级额外 +5 属性点，单项上限为 130，且可直接输入数值分配。长按 +/- 可连续加点。
             </p>
             {(isMonsterHunterScenario || isApexHunterScenario) && (
               <p className="text-[10px] text-[#C2B280]">
