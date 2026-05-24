@@ -40,6 +40,7 @@ type BackpackItem = {
 type BattleCharacter = {
   id: string;
   name: string;
+  gender?: string;
   level: number;
   hp: number;
   maxHp: number;
@@ -191,17 +192,19 @@ const BATTLE_RULES = `战斗轮结构:
 
 攻击与对抗流程:
 第一步_闪避:
-  - 防守方闪避值: (敏捷 * 0.5) + (感知 * 0.2)，最高不超过70
+  - 防守方闪避值: (敏捷 * 0.5) + (感知 * 0.2)
+  - 长柄武器溅射: 若为长柄武器攻击造成的溅射伤害，其他受波及目标闪避值 +4
   - 进攻方投掷: D100（01-05为大失败）
   - 判定: 防守方闪避值 ≤ 进攻方投掷结果
   - 结果: 失败则本次攻击落空；成功则进入【对抗防御】阶段。
 
 第二步_属性对抗防御:
   - 防御方基础值:
-      武器格挡: “(敏捷 * 0.5 + 力量 * 0.2)”
-      空手闪避: “(敏捷 * 0.6 + 感知 * 0.2)”
+      武器格挡: “(敏捷 * 0.5 + 力量 * 0.25)”
+      空手闪避: “(敏捷 * 0.6 + 感知 * 0.25)”
   - 对抗修正:
       最终防御成功 = 防御方基础值 + (防御方敏捷 - 攻击方敏捷)
+  - 长柄武器溅射: 若为长柄武器攻击造成的溅射伤害，其他受波及目标防御基础值 +4
   - 防御判定: 防御方投掷 D100 <= 最终防御。
   - 防御结果:
       闪避成功: 免疫全部伤害，攻击结束。
@@ -232,7 +235,11 @@ const BATTLE_RULES = `战斗轮结构:
 
 特殊规则:
 - 连击机制: 若角色拥有多次攻击次数，防御方在同一轮内防御后续攻击时，【最终防御成功率】每下累积 -8。
-- 意志减伤: 仅对【当前角色】与【小队成员】生效；每20点意志提供2.5%伤害减免，无上限。
+- 意志减伤: 对所有成员生效；采用线性减伤，公式为“max(0, 意志 - 20) * 0.15”。
+- 魅力俘虏: 仅AI生效。若攻击者 INT >= 35，且本次攻击本可杀死目标，则掷1D100。
+    - 判定值: “round(目标CHA * 0.5)”；若目标为女性则额外 +20。
+    - 若 D100 <= 判定值，则目标不会被杀死，HP最低保留10，并进入【已被制服】状态。
+    - 【已被制服】状态下目标无法行动，直到战斗结束或制服者死亡。
 - AI紧急手动医治:
     - AI动作池: 攻击 > 紧急手动医治 > 防御 > 逃跑（按权重加权判定）
     - 开启条件: 智力 INT > 50，且医疗冷却为0。
@@ -307,6 +314,7 @@ const WEAPON_CATEGORY_GUIDE = `武器类别详解：
 - 识别种类为“武术”。
 - 速度型（DEX>=STR）：基础攻速3；大成功区间93-100，触发额外攻击1次。
 - 重击型（STR>DEX）：基础攻速2；无视5点DR；大成功区间93-100，伤害x2。
+- 武术伤害骰加成：每20点力量+1伤害骰、每30点敏捷+1伤害骰、每40点意志+1伤害骰，均向下取整。
 - 两种武术的伤害比例均沿用变量中的伤害比例。
 - 大失败与其他武器一致。`;
 
@@ -438,6 +446,14 @@ const rollDice = (dice: string) => {
   const count = Number(match[1]) || 1;
   const sides = Number(match[2]) || 6;
   return _.sum(Array.from({ length: count }, () => _.random(1, sides)));
+};
+
+const getMartialArtsBonusDice = (attributes: Attributes) => {
+  return (
+    Math.floor(attributes.STR / 20) +
+    Math.floor(attributes.DEX / 30) +
+    Math.floor(attributes.WIL / 40)
+  );
 };
 
 const parseDamageTypeRatio = (damageType: string): DamageRatio | null => {
@@ -793,6 +809,7 @@ const normalizeCharacter = (
   return {
     id: String(_.get(raw, ['id'], name) || name),
     name,
+    gender: String(_.get(raw, ['性别'], '')),
     level,
     hp,
     maxHp,
@@ -1341,7 +1358,7 @@ export default function App() {
   const [battleNotice, setBattleNotice] = useState<{ text: string; tone: 'amber' | 'rose' } | null>(null);
 
   const getWillDamageReductionRate = (unit: BattleCharacter) => {
-    return (unit.attributes.WIL / 20) * 0.025;
+    return Math.max(0, unit.attributes.WIL - 20) * 0.15;
   };
 
   const getTacticEffectMultiplier = (unit: BattleCharacter) => 1 + (unit.attributes.INT / 20) * 0.1;
@@ -2027,7 +2044,7 @@ export default function App() {
 
     if (myTotal > enemyTotal) {
       // 制服成功
-      const updatedDefender = { ...defender, state: '已被制服' };
+      const updatedDefender = { ...defender, state: '已被制服', hp: Math.max(10, defender.hp) };
       appendLog(logs, `${attacker.name}: 制服成功！${defender.name}（已被制服）。`);
 
       const moraleUnits = applyMoraleOutcome(units, updatedDefender, logs, 'damage', lastRoundAttackersCount);
@@ -2099,8 +2116,10 @@ export default function App() {
         if (ally) {
           appendLog(logs, `${attacker.name}: 大失败！误伤队友 ${ally.name}。`);
           const ratio = getDamageRatio(currentWeapon.type, currentWeapon.damageType);
+          const martialBonusDice = isMartialArts ? getMartialArtsBonusDice(attacker.attributes) : 0;
           const baseDamage =
             rollDice(currentWeapon.damageDice) +
+            martialBonusDice +
             Math.max(
               0,
               isBowOrCrossbow(currentWeapon.type)
@@ -2125,7 +2144,7 @@ export default function App() {
                   : 0.7;
           const bluntAfterScale = Math.round(bluntDamage * bluntScale);
           const totalDamage = Math.round(cutAfterDR + bluntAfterScale);
-          const reducedDamage = Math.max(0, Math.round(totalDamage * (1 - getWillDamageReductionRate(ally))));
+          const reducedDamage = Math.max(0, Math.round(totalDamage - getWillDamageReductionRate(ally)));
           const updatedAlly = applyDamage(ally, reducedDamage);
           appendLog(logs, `${attacker.name}: 误伤${ally.name}，造成 ${reducedDamage} 伤害。`);
           return {
@@ -2187,8 +2206,10 @@ export default function App() {
       appendLog(logs, `${defender.name}: 格挡成功 (判定 ${defenseRoll} <= ${defenseChance.toFixed(0)})`);
     }
 
+    const martialBonusDice = isMartialArts ? getMartialArtsBonusDice(attacker.attributes) : 0;
     const baseDamage =
       rollDice(currentWeapon.damageDice) +
+      martialBonusDice +
       Math.max(
         0,
         isBowOrCrossbow(currentWeapon.type)
@@ -2221,7 +2242,7 @@ export default function App() {
             : 0.7;
     const bluntAfterScale = Math.round(bluntDamage * bluntScale);
     const totalDamage = Math.round(cutAfterDR + bluntAfterScale);
-    const reducedDamage = Math.max(0, Math.round(totalDamage * (1 - getWillDamageReductionRate(defender))));
+    const reducedDamage = Math.max(0, Math.round(totalDamage - getWillDamageReductionRate(defender)));
     const armorAbsorbed = Math.round(Math.max(0, cutDamage - cutAfterDR));
 
     const hpBefore = defender.hp;

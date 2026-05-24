@@ -1610,6 +1610,10 @@
       }
 
       function getMainControllerName(data) {
+        const explicitMainSquad = String(_.get(data, '主控', '') || '').trim();
+        if (explicitMainSquad) {
+          return explicitMainSquad;
+        }
         const squad = getMainSquadData(data);
         const members = _.get(squad, '成员', {});
         const savedName = String(getSetting(SETTINGS_KEYS.MAIN_CONTROLLER) || '').trim();
@@ -3290,6 +3294,11 @@
         }
 
         async function setMainSquad(squadName) {
+          const option = { type: 'message', message_id: getCurrentMessageId() };
+          const mvuData = Mvu.getMvuData(option) || {};
+          _.set(mvuData, 'stat_data.主控', String(squadName || '').trim());
+          await Mvu.replaceMvuData(mvuData, option);
+
           const settings = loadSettings();
           settings[SETTINGS_KEYS.MAIN_SQUAD] = squadName;
           settings[SETTINGS_KEYS.MAIN_CONTROLLER] = NO_MAIN_CONTROLLER_TOKEN;

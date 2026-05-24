@@ -1,15 +1,17 @@
+import waitFor from 'async-wait-until';
+import _ from 'lodash';
+import { CheckCircle } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { initialGameState, FACILITY_BLUEPRINTS } from './data';
-import { TabState, Outpost } from './types';
+import Dashboard from './components/Dashboard';
+import Events from './components/Events';
+import Facilities from './components/Facilities';
+import Modal from './components/Modal';
+import Outposts from './components/Outposts';
+import Personnel from './components/Personnel';
 import Sidebar from './components/Sidebar';
 import TopBar from './components/TopBar';
-import Dashboard from './components/Dashboard';
-import Facilities from './components/Facilities';
-import Personnel from './components/Personnel';
-import Events from './components/Events';
-import Outposts from './components/Outposts';
-import Modal from './components/Modal';
-import { CheckCircle } from 'lucide-react';
+import { FACILITY_BLUEPRINTS, initialGameState } from './data';
+import { Employee, EmployeeStats, Facility, GameEvent, GameState, Outpost, TabState } from './types';
 
 export default function App() {
   const [gameState, setGameState] = useState(initialGameState);
@@ -45,6 +47,142 @@ export default function App() {
     };
   }, []);
 
+  const buildCharacterAttributes = (stats: EmployeeStats) => ({
+    力量: { 基础: Number(stats.力量 || 0), 加成: 0 },
+    敏捷: { 基础: Number(stats.敏捷 || 0), 加成: 0 },
+    感知: { 基础: Number(stats.感知 || 0), 加成: 0 },
+    体质: { 基础: Number(stats.体质 || 0), 加成: 0 },
+    智力: { 基础: Number(stats.智力 || 0), 加成: 0 },
+    意志: { 基础: Number(stats.意志 || 0), 加成: 0 },
+    魅力: { 基础: Number(stats.魅力 || 0), 加成: 0 },
+  });
+
+  const buildMemberVariable = (employee: Employee) => ({
+    名字: employee.name,
+    身份: employee.role || '成员',
+    状态: employee.status || '正常',
+    种族: {
+      名称: employee.race || '未知',
+    },
+    血量: {
+      当前: Number(employee.hp || 0),
+      最大: Number(employee.maxHp || 0),
+    },
+    属性: buildCharacterAttributes(employee.stats),
+    特质: Object.fromEntries((employee.traits || []).map((trait, index) => [`特征${index + 1}`, trait])),
+  });
+
+  const buildFacilityVariable = (facility: Facility, state: GameState) => {
+    const blueprint = FACILITY_BLUEPRINTS.find(item => item.id === facility.blueprintId);
+    const levelData = blueprint?.levels[facility.level];
+    const workerNames = state.employees
+      .filter(employee => facility.workers.includes(employee.id))
+      .map(employee => employee.name);
+
+    return {
+      名字: facility.customName || '',
+      分类: levelData?.name || blueprint?.id || facility.blueprintId || '未分类',
+      等级: Number(facility.level || 1),
+      工作成员: workerNames,
+    };
+  };
+
+  type WarehouseItemCategory =
+    | '食物'
+    | '饮品'
+    | '医疗用品'
+    | '科研道具'
+    | '任务道具'
+    | '矿石'
+    | '布料'
+    | '金属材料'
+    | '农作物'
+    | '其他';
+
+  const getWarehouseCategory = (name: string): WarehouseItemCategory => {
+    if (/电子元件|科技书|古代科技书|科研|研究|工程图|蓝图/i.test(name)) return '科研道具';
+    if (/水|酒|饮品|饮料|格洛格|朗姆|清酒/i.test(name)) return '饮品';
+    if (/布料|大布料|棉布|麻布|皮革/i.test(name)) return '布料';
+    if (/食物|肉|口粮|面包|米饭|干粮|烤肉/i.test(name)) return '食物';
+    if (/急救|医疗|绷带|夹板|修理包|药/i.test(name)) return '医疗用品';
+    if (/任务|钥匙|信件|委托|凭证/i.test(name)) return '任务道具';
+    if (/矿石|生铁|铜矿|铁矿|石材/i.test(name)) return '矿石';
+    if (/建筑材料|铁原板|钢筋|铜合金|金属|铁板|钢材/i.test(name)) return '金属材料';
+    if (/麻叶|小麦|稻米|面粉|棉花|大麻膏|农作物|作物/i.test(name)) return '农作物';
+    return '其他';
+  };
+
+  const buildWarehouseItems = (resources: Record<string, number>) => {
+    const warehouseItems: Record<
+      string,
+      { 分类: WarehouseItemCategory; 介绍: string; 数量: number; 重量: number; 价值: number }
+    > = {};
+    Object.entries(resources).forEach(([name, amount]) => {
+      const quantity = Number(amount || 0);
+      if (quantity <= 0) return;
+      warehouseItems[name] = {
+        分类: getWarehouseCategory(name),
+        介绍: '',
+        数量: quantity,
+        重量: 0,
+        价值: 0,
+      };
+    });
+    return warehouseItems;
+  };
+
+  const buildDestinyEvents = (events: GameEvent[]) => {
+    const mappedEvents: Record<string, string> = {};
+    events.forEach((event, index) => {
+      const title = event.title || `事件${index + 1}`;
+      mappedEvents[title] = event.description || '';
+    });
+    return mappedEvents;
+  };
+
+  const buildOutpostVariables = (state: GameState) => {
+    const sharedWarehouseItems = buildWarehouseItems(state.resources);
+    const sharedDestinyEvents = buildDestinyEvents(state.events);
+
+    return Object.fromEntries(
+      state.outposts.map(outpost => {
+        const members = state.employees.filter(employee => employee.outpostId === outpost.id);
+        const facilities = state.facilities.filter(facility => facility.outpostId === outpost.id);
+
+        return [
+          outpost.name,
+          {
+            等级: Number(outpost.level || 1),
+            收益天数: Number(state.day || 1),
+            所处区域: outpost.location || '未知区域',
+            描述: outpost.description || '',
+            资金: Number(state.cats || 0),
+            成员: Object.fromEntries(members.map(member => [member.name, buildMemberVariable(member)])),
+            仓库: {
+              物品: sharedWarehouseItems,
+            },
+            设施: Object.fromEntries(
+              facilities.map((facility, index) => [
+                facility.customName || facility.blueprintId || `设施${index + 1}`,
+                buildFacilityVariable(facility, state),
+              ]),
+            ),
+            到来事件: sharedDestinyEvents,
+          },
+        ];
+      }),
+    );
+  };
+
+  const updateMvuVariables = async (state: GameState, messageId: number | 'latest' = getCurrentMessageId()) => {
+    await waitGlobalInitialized('Mvu');
+    await waitFor(() => _.has(getVariables({ type: 'message', message_id: messageId }), 'stat_data'));
+
+    const mvuData = Mvu.getMvuData({ type: 'message', message_id: messageId });
+    _.set(mvuData, 'stat_data.据点', buildOutpostVariables(state));
+    await Mvu.replaceMvuData(mvuData, { type: 'message', message_id: messageId });
+  };
+
   const handleSecretClick = (char: string) => {
     setClickSeq(prev => {
       const next = (prev + char).slice(-8);
@@ -79,7 +217,7 @@ export default function App() {
 
   const handleBuild = (blueprintId: string, cost: Record<string, number> | undefined, targetLevel: number = 1) => {
     setGameState(prev => {
-      let newResources = { ...prev.resources };
+      const newResources = { ...prev.resources };
       if (!testMode && cost) {
         for (const [res, amount] of Object.entries(cost)) {
           newResources[res] = (newResources[res] || 0) - amount;
@@ -111,10 +249,10 @@ export default function App() {
 
       const bp = FACILITY_BLUEPRINTS.find(b => b.id === facility.blueprintId);
       if (!bp || !bp.levels[facility.level + 1]) {
-      consreturn prev; // At max level or invalid
+        return prev; // At max level or invalid
       }
 
-      let newResources = { ...prev.resources };
+      const newResources = { ...prev.resources };
       if (!testMode && cost) {
         for (const [res, amount] of Object.entries(cost)) {
           newResources[res] = (newResources[res] || 0) - amount;
@@ -137,7 +275,7 @@ export default function App() {
           e.id === employeeId ? { ...e, facilityId, status: facilityId ? 'working' : 'idle' } : e,
         ),
         facilities: prev.facilities.map(f => {
-          let workers = f.workers.filter(id => id !== employeeId);
+          const workers = f.workers.filter(id => id !== employeeId);
           if (f.id === facilityId) {
             workers.push(employeeId);
           }
@@ -159,7 +297,7 @@ export default function App() {
 
         // Update facilities workers array
         newFacilities = newFacilities.map(f => {
-          let workers = f.workers.filter(id => id !== empId); // remove from all first
+          const workers = f.workers.filter(id => id !== empId); // remove from all first
           if (f.id === facId) {
             workers.push(empId);
           }
@@ -181,7 +319,7 @@ export default function App() {
 
   const handleUpdateOutpost = (id: string, updates: any, cost?: Record<string, number>) => {
     setGameState(prev => {
-      let newResources = { ...prev.resources };
+      const newResources = { ...prev.resources };
       if (!testMode && cost) {
         for (const [res, amount] of Object.entries(cost)) {
           newResources[res] = (newResources[res] || 0) - amount;
@@ -192,14 +330,14 @@ export default function App() {
         resources: newResources,
         outposts: prev.outposts.map(o => (o.id === id ? { ...o, ...updates } : o)),
       };
-    })cons
+    });
   };
 
   const handleCreateOutpost = (name: string, location: string) => {
     setGameState(prev => {
       const costCats = 3000;
       let nextCats = prev.cats;
-      let nextResources = { ...prev.resources };
+      const nextResources = { ...prev.resources };
 
       if (!testMode) {
         nextCats -= costCats;
@@ -226,7 +364,7 @@ export default function App() {
     setActiveTab('dashboard'); // Jump to dashboard of new outpost
   };
 
-  const handleGenerateCode = () => {
+  const handleGenerateCode = async () => {
     // 压缩当前核心状态用于后续接入后端读取（Base64编码JSON）
     const minState = {
       day: gameState.day,
@@ -258,6 +396,8 @@ export default function App() {
     // 开发者需求：在前端不显示具体代码，而是放在后台/控制台供后续获取
     console.log('[Dev] 提报至后台的状态数据:', formattedCode);
 
+    await updateMvuVariables(gameState);
+
     // Increase day count and reset hasRolledEvent
     setGameState(prev => ({
       ...prev,
@@ -273,10 +413,10 @@ export default function App() {
     if (hasCollectedIncome) return;
     setHasCollectedIncome(true);
     let earnedCats = 0;
-    let earnedResources: Record<string, number> = {};
+    const earnedResources: Record<string, number> = {};
 
     setGameState(prev => {
-      let nextState = { ...prev, cats: prev.cats, resources: { ...prev.resources } };
+      const nextState = { ...prev, cats: prev.cats, resources: { ...prev.resources } };
 
       prev.facilities.forEach(fac => {
         if (fac.status === 'active') {

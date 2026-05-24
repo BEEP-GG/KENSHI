@@ -1,4 +1,4 @@
-<template>
+ <template>
   <div class="options-root">
     <div v-if="options.length" class="interactive-options-container" :class="`option-count-${options.length}`">
       <div class="actor-selector" :class="{ active: isActorMenuOpen }">
@@ -85,7 +85,7 @@ const isActorMenuOpen = ref(false);
 const selectedActorName = ref('');
 const actorOptions = ref<ActorOption[]>([]);
 const isLegacyMode = ref(false);
-const specialActions = ['战斗', '营地系统', '特质赐福'];
+const specialActions = ['战斗', '营地系统', '特质赐福', '据点建设'];
 
 const optionLineRegex = /^[^\S\n]*(?:[（(【]?\s*([A-Za-z])\s*[.、:：]\s*(.*?))\s*$/;
 const optionFallbackLineRegex = /^[^\S\n]*([A-Za-z])\s+[、.．]\s*(.*?)\s*$/;
@@ -437,6 +437,10 @@ async function triggerBlessingSystem() {
   await sendUserMessage('<特质赐福>');
 }
 
+async function triggerOutpostSystem() {
+  await sendUserMessage('<据点建设>');
+}
+
 async function handleOptionClick(opt: OptionItem, event: MouseEvent) {
   const target = event.currentTarget as HTMLElement;
   createRipple(event, target);
@@ -470,6 +474,11 @@ function handleSpecialAction(action: string) {
   }
   if (action === '特质赐福') {
     triggerBlessingSystem();
+    closeSpecialMenu();
+    return;
+  }
+  if (action === '据点建设') {
+    triggerOutpostSystem();
     closeSpecialMenu();
     return;
   }
