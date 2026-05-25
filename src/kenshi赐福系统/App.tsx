@@ -1923,9 +1923,11 @@ export default function App() {
       const traitPath = `${memberPath}.特质.${blessing.title}`;
       _.set(mvuData, traitPath, blessing.traitDescription || blessing.description || '');
 
-      const traitPointPath = `${memberPath}.特质点`;
-      const currentTraitPoint = Number(_.get(mvuData, traitPointPath, 0));
-      _.set(mvuData, traitPointPath, Math.max(0, (Number.isFinite(currentTraitPoint) ? currentTraitPoint : 0) - 1));
+      if (god.id !== 'evil' && !isLegendaryUnlockBlessing(blessing.id)) {
+        const traitPointPath = `${memberPath}.特质点`;
+        const currentTraitPoint = Number(_.get(mvuData, traitPointPath, 0));
+        _.set(mvuData, traitPointPath, Math.max(0, (Number.isFinite(currentTraitPoint) ? currentTraitPoint : 0) - 1));
+      }
 
       blessing.stats?.forEach(stat => {
         const attrKey = attrKeyMap[stat.name];
@@ -2090,6 +2092,56 @@ export default function App() {
     return runtimeSquad.length >= 2;
   };
 
+  const buildNoTraitPointWarning = (godId: string, targetName: string, traitPoints: number) => {
+    const currentPoints = Number.isFinite(traitPoints) ? traitPoints : 0;
+    if (godId === 'okran') {
+      return {
+        title: '圣火未予回应',
+        content: `${targetName} 的特质点不足（当前 ${currentPoints} 点）。\n奥克兰的恩典需要1点特质点作为承载圣火的薪柴。`,
+      };
+    }
+    if (godId === 'kral') {
+      return {
+        title: '荣耀拒绝空壳',
+        content: `${targetName} 的特质点不足（当前 ${currentPoints} 点）。\n克拉尔不向空洞之血赐下力量；承受赐福至少需要1点特质点。`,
+      };
+    }
+    if (godId === 'narko') {
+      return {
+        title: '黑夜收回低语',
+        content: `${targetName} 的特质点不足（当前 ${currentPoints} 点）。\n娜尔可的影赐需要1点特质点作为容纳黑暗的缝隙。`,
+      };
+    }
+    if (godId === 'yuri') {
+      return {
+        title: '深渊血肉尚未开裂',
+        content: `${targetName} 的特质点不足（当前 ${currentPoints} 点）。\n比拉克的异变需要1点特质点作为血肉变质的苗床。`,
+      };
+    }
+    if (godId === 'beep') {
+      return {
+        title: '比普觉得你还不够离谱',
+        content: `${targetName} 的特质点不足（当前 ${currentPoints} 点）。\n想接住比普的离谱恩赐，至少得先准备1点特质点。`,
+      };
+    }
+    if (godId === 'chitrin') {
+      return {
+        title: '机魂拒绝过载接驳',
+        content: `${targetName} 的特质点不足（当前 ${currentPoints} 点）。\n奇特林的技术赐福需要1点特质点作为接驳与校准的冗余。`,
+      };
+    }
+    if (godId === 'ken') {
+      return {
+        title: '回忆尚无容身之地',
+        content: `${targetName} 的特质点不足（当前 ${currentPoints} 点）。\n肯恩无法把新的虚假过往植入空白容器；至少需要1点特质点。`,
+      };
+    }
+    return {
+      title: '神恩被拒',
+      content: `${targetName} 的特质点不足（当前 ${currentPoints} 点）。\n每个赐福都需要消耗1点特质点。`,
+    };
+  };
+
   const handleGodClick = (god: GodTheme) => {
     if (god.id === 'evil' && !canOpenEvilGod()) {
       setRitualWarning({
@@ -2222,11 +2274,12 @@ export default function App() {
         }
       }
 
-      if (!isLegendaryUnlockBlessing(selectingTarget.blessing.id) && !(traitPoints > 0)) {
-        setRitualWarning({
-          title: '神恩被拒',
-          content: `${targetName} 的特质点不足（当前 ${Number.isFinite(traitPoints) ? traitPoints : 0} 点）。\n每个赐福都需要消耗1点特质点。`,
-        });
+      if (
+        selectingTarget.god.id !== 'evil' &&
+        !isLegendaryUnlockBlessing(selectingTarget.blessing.id) &&
+        !(traitPoints > 0)
+      ) {
+        setRitualWarning(buildNoTraitPointWarning(selectingTarget.god.id, targetName, traitPoints));
         return;
       }
 

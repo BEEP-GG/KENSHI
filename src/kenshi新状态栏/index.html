@@ -1196,6 +1196,9 @@
         stat_data: {
           世界: { 天数: 1, 时间: '下午', 当前事件: '' },
           我方派系名称: '无派系',
+          我方派系描述: '无',
+          我方派系主旨: '无',
+          我方派系规矩: '无',
           小队成员: {},
           据点: {},
           异地: {},
@@ -1244,9 +1247,15 @@
       async function syncMainPerspectiveWorldBook(mainControllerName, squadName) {
         const squadText = String(squadName || '').trim();
         if (!squadText) return;
+        const rawVars = getAllVariables();
+        const statData = _.get(rawVars, 'stat_data', {});
         const controllerText = String(mainControllerName || '').trim();
         const roleText = controllerText ? `【${controllerText}】` : '没有主要角色';
-        const worldBookContent = `当前主角是：${roleText}\n\n后续所有故事情节基于小队【${squadText}】的视角来进行`;
+        const factionName = String(_.get(statData, '我方派系名称', '无') || '').trim() || '无';
+        const factionDesc = String(_.get(statData, '我方派系描述', '无') || '').trim() || '无';
+        const factionPurpose = String(_.get(statData, '我方派系主旨', '无') || '').trim() || '无';
+        const factionRules = String(_.get(statData, '我方派系规矩', '无') || '').trim() || '无';
+        const worldBookContent = `主控的派系名字是：${factionName}\n  -派系描述：${factionDesc}\n  -派系主旨：${factionPurpose}\n  -派系规矩：${factionRules}\n当前主角是：${roleText}\n\n后续所有故事情节基于小队【${squadText}】的视角来进行`;
         if (typeof window.getCharWorldbookNames !== 'function' || typeof window.updateWorldbookWith !== 'function') {
           return;
         }
@@ -1530,6 +1539,7 @@
         if (enslaveBtn) enslaveBtn.style.display = 'none';
         const popover = document.getElementById('stance-popover');
         if (popover) popover.classList.remove('show');
+        currentModalEntity = null;
       }
       function openModal() {
         const modalContent = document.getElementById('modal-content-inner');
@@ -1629,6 +1639,40 @@
         return controllerName ? _.get(members, controllerName) : null;
       }
 
+      function getAttrTotalValue(data, attrKey) {
+        const attr = _.get(data, ['属性', attrKey], _.get(data, ['属性', attrLabels[attrKey] || attrKey], 0));
+        if (attr && typeof attr === 'object') {
+          return (Number(attr.基础 ?? 0) || 0) + (Number(attr.加成 ?? 0) || 0);
+        }
+        return Number(attr ?? 0) || 0;
+      }
+
+      function getMartialArtsDamageDice(data) {
+        const martialValue = Math.max(
+          Number(_.get(data, '武术', 0)) || 0,
+          Number(_.get(data, '技能.武术', 0)) || 0,
+          Number(_.get(data, '技能.伤害骰', 0)) || 0,
+          Number(_.get(data, '伤害骰', 0)) || 0,
+        );
+        if (martialValue > 70) return '1d10';
+        const strengthValue = getAttrTotalValue(data, 'STR');
+        if (strengthValue > 50) return '1d8';
+        return '1d6';
+      }
+
+      function buildMartialArtsWeapon(data) {
+        return {
+          名字: '武术',
+          种类: '武术类',
+          品质: '自制',
+          介绍: '',
+          伤害骰: getMartialArtsDamageDice(data),
+          伤害类型: '钝伤:0.8/切割:0.2',
+          价值: 0,
+          重量: 0,
+        };
+      }
+
       function buildCharHTML(data, isMain = false, entityType = 'current', entityName = '') {
         if (!data || typeof data !== 'object') {
           const emptyText = entityType === 'current' ? '暂无主控' : '角色数据待初始化';
@@ -1690,10 +1734,16 @@
         const mainWepForSlot = _.get(data, '主武器', {});
         const mainWeaponNameForSlot = String(_.get(mainWepForSlot, '名字', '') || '').trim();
         const mainWeaponTypeForSlot = String(_.get(mainWepForSlot, '种类', '') || '').trim();
+        if (mainWeaponNameForSlot === '武术' || mainWeaponTypeForSlot === '武术类') {
+          _.set(mainWepForSlot, '种类', '武术类');
+          _.set(mainWepForSlot, '品质', '自制');
+          _.set(mainWepForSlot, '伤害骰', getMartialArtsDamageDice(data));
+          _.set(mainWepForSlot, '伤害类型', '钝伤:0.8/切割:0.2');
+        }
         const mainHandIsEmpty =
           !mainWeaponNameForSlot ||
           ['武术', '无'].includes(mainWeaponNameForSlot) ||
-          ['空手', '无'].includes(mainWeaponTypeForSlot);
+          ['武术类', '空手', '无'].includes(mainWeaponTypeForSlot);
         const canEquipSubSlot = !mainHandIsEmpty;
         const canManageWeapon = entityType === 'current' || entityType === 'squad';
         let itemHTML = Object.entries(_.get(data, '背包.物品', {}))
@@ -1705,7 +1755,8 @@
             const rawCategory = _.get(d, '分类', '');
             const rawType = String(_.get(d, '种类', '') || '').trim();
             const isVirtualWeaponItem =
-              String(rawCategory) === '武器' && (['武术', '无'].includes(rawName) || ['空手', '无'].includes(rawType));
+              String(rawCategory) === '武器' &&
+              (['武术', '无'].includes(rawName) || ['武术类', '空手', '无'].includes(rawType));
             if (isVirtualWeaponItem) return '';
             const itemCategory = normalizeItemSubCategory(rawCategory) || '其他';
             const tip = `${rawName}\n分类: ${itemCategory}\n重量: ${w}kg\n价值: ${val} c.cat\n\n${desc}`;
@@ -1983,6 +2034,142 @@
         let squadMemberDraftAssignments = {};
         let strongholdMemberEditMode = false;
         let strongholdMemberDraftAssignments = {};
+        let factionEditMode = false;
+        let factionDescEditMode = false;
+        let factionProfileEditMode = false;
+        let factionDescCollapsed = false;
+
+        async function saveFactionProfile({ name, description, purpose, rules, syncWorldBook = true }) {
+          const option = { type: 'message', message_id: getCurrentMessageId() };
+          const mvuData = Mvu.getMvuData(option) || {};
+          if (!_.get(mvuData, 'stat_data')) {
+            const rawVars = getAllVariables();
+            const fallbackData = _.get(rawVars, 'stat_data', {});
+            if (!_.isEmpty(fallbackData)) {
+              _.set(mvuData, 'stat_data', fallbackData);
+            }
+          }
+          const currentStatData = _.get(mvuData, 'stat_data', {});
+          const nextName = String(name == null ? _.get(currentStatData, '我方派系名称', '无') : name).trim() || '无';
+          const nextDesc =
+            String(description == null ? _.get(currentStatData, '我方派系描述', '无') : description).trim() || '无';
+          const nextPurpose =
+            String(purpose == null ? _.get(currentStatData, '我方派系主旨', '无') : purpose).trim() || '无';
+          const nextRules = String(rules == null ? _.get(currentStatData, '我方派系规矩', '无') : rules).trim() || '无';
+          _.set(mvuData, ['stat_data', '我方派系名称'], nextName);
+          _.set(mvuData, ['stat_data', '我方派系描述'], nextDesc);
+          _.set(mvuData, ['stat_data', '我方派系主旨'], nextPurpose);
+          _.set(mvuData, ['stat_data', '我方派系规矩'], nextRules);
+          await Mvu.replaceMvuData(mvuData, option);
+          if (syncWorldBook) {
+            const latestStatData = _.get(mvuData, 'stat_data', {});
+            await syncMainPerspectiveWorldBook(getMainControllerName(latestStatData), getMainSquadName(latestStatData));
+          }
+        }
+
+        function finishFactionEdit() {
+          if (!factionEditMode) return;
+          factionEditMode = false;
+          const factionEl = $('#my-faction');
+          const rawText = factionEl.text();
+          const nextName = String(rawText == null ? '' : rawText).trim() || '无';
+          factionEl.text(nextName);
+          factionEl.removeAttr('contenteditable');
+          factionEl.removeClass('editing');
+          saveFactionProfile({ name: nextName })
+            .then(() => update())
+            .catch(error => {
+              console.error(error);
+              update();
+            });
+        }
+
+        function beginFactionEdit() {
+          if (factionEditMode) return;
+          factionEditMode = true;
+          const factionEl = $('#my-faction');
+          factionEl.attr('contenteditable', 'true');
+          factionEl.addClass('editing');
+          const currentText = String(factionEl.text() || '').trim();
+          if (!currentText) {
+            factionEl.text('无');
+          }
+          const el = factionEl.get(0);
+          if (el) {
+            el.focus();
+            const selection = window.getSelection();
+            const range = document.createRange();
+            range.selectNodeContents(el);
+            range.collapse(false);
+            selection.removeAllRanges();
+            selection.addRange(range);
+          }
+        }
+
+        function finishFactionDescEdit() {
+          if (!factionDescEditMode) return;
+          factionDescEditMode = false;
+          const descEl = $('#my-faction-desc');
+          const rawText = descEl.text();
+          const nextDesc = String(rawText == null ? '' : rawText).trim() || '无';
+          descEl.text(nextDesc);
+          descEl.removeAttr('contenteditable');
+          descEl.removeClass('editing');
+          saveFactionProfile({ description: nextDesc })
+            .then(() => update())
+            .catch(error => {
+              console.error(error);
+              update();
+            });
+        }
+
+        function beginFactionDescEdit() {
+          if (factionDescEditMode) return;
+          factionDescEditMode = true;
+          const descEl = $('#my-faction-desc');
+          descEl.attr('contenteditable', 'true');
+          descEl.addClass('editing');
+          const currentText = String(descEl.text() || '').trim();
+          if (!currentText) {
+            descEl.text('无');
+          }
+          const el = descEl.get(0);
+          if (el) {
+            el.focus();
+            const selection = window.getSelection();
+            const range = document.createRange();
+            range.selectNodeContents(el);
+            range.collapse(false);
+            selection.removeAllRanges();
+            selection.addRange(range);
+          }
+        }
+
+        async function submitFactionProfileEdit() {
+          const nextName = String($('#my-faction-name-input').val() || '').trim() || '无';
+          const nextDesc = String($('#my-faction-desc-input').val() || '').trim() || '无';
+          const nextPurpose = String($('#my-faction-purpose-input').val() || '').trim() || '无';
+          const nextRules = String($('#my-faction-rules-input').val() || '').trim() || '无';
+          await saveFactionProfile({ name: nextName, description: nextDesc, purpose: nextPurpose, rules: nextRules });
+          factionProfileEditMode = false;
+          update();
+        }
+
+        function cancelFactionProfileEdit() {
+          factionProfileEditMode = false;
+          update();
+        }
+
+        function beginFactionProfileEdit() {
+          factionProfileEditMode = true;
+          factionDescCollapsed = false;
+          update();
+        }
+
+        function toggleFactionDescCollapsed() {
+          factionDescCollapsed = !factionDescCollapsed;
+          update();
+        }
 
         function rebuildSquadMemberDraft(squadData) {
           const draft = {};
@@ -2200,7 +2387,57 @@
           const locationStr = `${locationRegion} - ${locationTown} - ${_.get(world, '时间', '--:--')}`;
           $('#top-loc').text(locationStr);
           $('#top-money').text(_.get(mainSquad, '金钱', 0) + ' c.cat');
-          $('#my-faction').text(_.get(data, '我方派系名称', '无派系'));
+          const myFactionName = String(_.get(data, '我方派系名称', '无') || '').trim() || '无';
+          const myFactionDesc = String(_.get(data, '我方派系描述', '无') || '').trim() || '无';
+          const myFactionPurpose = String(_.get(data, '我方派系主旨', '无') || '').trim() || '无';
+          const myFactionRules = String(_.get(data, '我方派系规矩', '无') || '').trim() || '无';
+          const myFactionEl = $('#my-faction');
+          const topMyFactionEl = $('#top-my-faction');
+          const myFactionDescEl = $('#my-faction-desc');
+          const myFactionPurposeEl = $('#my-faction-purpose');
+          const myFactionRulesEl = $('#my-faction-rules');
+          const myFactionEditBtn = $('#my-faction-edit-btn, #top-my-faction-edit-btn');
+          if (!factionProfileEditMode) {
+            myFactionEl.text(myFactionName);
+            topMyFactionEl.text(myFactionName);
+          }
+          if (!factionProfileEditMode) {
+            myFactionDescEl.text(myFactionDesc === '无' ? '' : myFactionDesc);
+            myFactionPurposeEl.text(myFactionPurpose === '无' ? '' : myFactionPurpose);
+            myFactionRulesEl.text(myFactionRules === '无' ? '' : myFactionRules);
+          }
+          $('#my-faction-desc-empty').css(
+            'display',
+            !factionProfileEditMode && !factionDescCollapsed && (!myFactionDesc || myFactionDesc === '无')
+              ? 'block'
+              : 'none',
+          );
+          $('#my-faction-purpose-empty').css(
+            'display',
+            !factionProfileEditMode && !factionDescCollapsed && (!myFactionPurpose || myFactionPurpose === '无')
+              ? 'block'
+              : 'none',
+          );
+          $('#my-faction-rules-empty').css(
+            'display',
+            !factionProfileEditMode && !factionDescCollapsed && (!myFactionRules || myFactionRules === '无')
+              ? 'block'
+              : 'none',
+          );
+          $('#my-faction, #top-my-faction').attr('title', '点击修改按钮编辑玩家派系');
+          myFactionDescEl.attr('title', '点击修改按钮编辑派系描述');
+          $('#my-faction-edit-btn').css('display', factionProfileEditMode ? 'none' : 'inline-flex');
+          $('#top-my-faction-edit-btn').css('display', squadMemberEditMode ? 'inline-flex' : 'none');
+          $('#my-faction-desc-body').css('display', factionDescCollapsed ? 'none' : 'block');
+          $('#my-faction-desc-toggle').text(factionDescCollapsed ? '展开描述' : '折叠描述');
+          $('#my-faction-view').css('display', factionProfileEditMode ? 'none' : 'block');
+          $('#my-faction-editor').css('display', factionProfileEditMode ? 'block' : 'none');
+          if (factionProfileEditMode) {
+            $('#my-faction-name-input').val(myFactionName === '无' ? '' : myFactionName);
+            $('#my-faction-desc-input').val(myFactionDesc === '无' ? '' : myFactionDesc);
+            $('#my-faction-purpose-input').val(myFactionPurpose === '无' ? '' : myFactionPurpose);
+            $('#my-faction-rules-input').val(myFactionRules === '无' ? '' : myFactionRules);
+          }
           const eventText = _.get(world, '当前事件', '');
           $('#world-event').text(eventText && eventText !== '' ? eventText : '当前无特殊事件');
           $('#world-player').html(buildCharHTML(mainController, true, 'current', mainControllerName));
@@ -2323,7 +2560,24 @@
                       ? `<div style="display:flex; align-items:center; gap:8px; margin-top:6px; color:#aaa; font-size:0.9em;"><span>所在小队</span><select class="member-squad-select" data-member="${_.escape(String(k))}" style="background:#121212; color:#ddd; border:1px solid #555; padding:2px 6px; border-radius:2px;">${assignOptions}</select></div>`
                       : '';
                     const card = $(
-                      `<div class="char-card" style="margin-bottom:8px;"><div style="display:flex; justify-content:space-between; gap:12px; align-items:center;"><div><span style="font-weight:bold">${_.get(v, '名字') || k}</span>${mainTag}${assignmentEditor}</div><button type="button" class="set-main-controller-btn" onclick="event.stopPropagation()" data-name="${k}" data-squad="${_.escape(String(squadName))}" style="padding:4px 8px; border:1px solid var(--accent-gold); background:rgba(193,163,95,0.08); color:var(--accent-gold); cursor:pointer; border-radius:2px; ${squadMemberEditMode || !showSquadActions ? 'display:none;' : ''}">主控设定</button></div><div>HP: ${hpLabel}</div></div>`,
+                      `<div class="char-card" style="margin-bottom:8px; cursor:${squadMemberEditMode ? 'default' : 'pointer'}">
+                        <div style="display:flex; justify-content:space-between; gap:12px; align-items:center;">
+                          <div>
+                            <span style="font-weight:bold">${_.get(v, '名字') || k}</span>${mainTag}${assignmentEditor}
+                          </div>
+                          <button
+                            type="button"
+                            class="set-main-controller-btn"
+                            onclick="event.stopPropagation()"
+                            data-name="${k}"
+                            data-squad="${_.escape(String(squadName))}"
+                            style="padding:4px 8px; border:1px solid var(--accent-gold); background:rgba(193,163,95,0.08); color:var(--accent-gold); cursor:pointer; border-radius:2px; ${squadMemberEditMode || !showSquadActions ? 'display:none;' : ''}"
+                          >
+                            主控设定
+                          </button>
+                        </div>
+                        <div>HP: ${hpLabel}</div>
+                      </div>`,
                     );
                     card.find('.set-main-controller-btn').on('click', async function (e) {
                       e.preventDefault();
@@ -2940,7 +3194,7 @@
           const weaponName = String(_.get(weapon, '名字', '')).trim();
           const weaponType = String(_.get(weapon, '种类', '')).trim();
           if (!weaponName) return;
-          if (['武术', '无'].includes(weaponName) || ['空手', '无'].includes(weaponType)) return;
+          if (['武术', '无'].includes(weaponName) || ['武术类', '空手', '无'].includes(weaponType)) return;
           const bagPath = [...basePath, '背包', '物品'];
           const bagItems = _.get(mvuData, bagPath, {});
           const existedKey =
@@ -2957,16 +3211,7 @@
             });
           }
           if (weaponKey === '主武器') {
-            _.set(mvuData, [...basePath, weaponKey], {
-              名字: '武术',
-              种类: '空手',
-              品质: '普通',
-              介绍: '',
-              伤害骰: '1d4',
-              伤害类型: '钝伤:1.0',
-              价值: 0,
-              重量: 0,
-            });
+            _.set(mvuData, [...basePath, weaponKey], buildMartialArtsWeapon(_.get(mvuData, basePath, {})));
           } else {
             _.unset(mvuData, [...basePath, weaponKey]);
           }
@@ -3002,7 +3247,7 @@
           const isVirtualEmptyWeapon =
             !currentEquippedName ||
             ['无', '武术'].includes(currentEquippedName) ||
-            ['无', '空手'].includes(currentEquippedType);
+            ['无', '武术类', '空手'].includes(currentEquippedType);
           if (!isVirtualEmptyWeapon) {
             const existed = _.get(mvuData, [...bagPath, currentEquippedName], null);
             if (existed && typeof existed === 'object') {
@@ -3318,7 +3563,25 @@
           const nextControllerName = String(memberName || '').trim();
           settings[SETTINGS_KEYS.MAIN_CONTROLLER] = nextControllerName || NO_MAIN_CONTROLLER_TOKEN;
           saveSettings(settings);
-          await syncMainPerspectiveWorldBook(nextControllerName, squadName);
+
+          const option = { type: 'message', message_id: getCurrentMessageId() };
+          const mvuData = Mvu.getMvuData(option) || {};
+          if (!_.get(mvuData, 'stat_data')) {
+            const rawVars = getAllVariables();
+            const fallbackData = _.get(rawVars, 'stat_data', {});
+            if (!_.isEmpty(fallbackData)) {
+              _.set(mvuData, 'stat_data', fallbackData);
+            }
+          }
+          if (nextControllerName) {
+            _.set(mvuData, ['stat_data', '主控'], nextControllerName);
+          } else {
+            _.unset(mvuData, ['stat_data', '主控']);
+          }
+          await Mvu.replaceMvuData(mvuData, option);
+
+          const latestStatData = _.get(mvuData, 'stat_data', {});
+          await syncMainPerspectiveWorldBook(getMainControllerName(latestStatData), squadName);
           update();
         }
 
@@ -3592,7 +3855,9 @@
         $(document).on('click', '.weapon-unequip-btn', async function (e) {
           e.preventDefault();
           e.stopPropagation();
+          const fromOverviewCurrent = $(e.target).closest('#world-player').length > 0;
           if (
+            fromOverviewCurrent ||
             !currentModalEntity ||
             (currentModalEntity.entityType !== 'current' && currentModalEntity.entityType !== 'squad')
           ) {
@@ -3606,7 +3871,9 @@
         $(document).on('click', '.weapon-equip-btn', async function (e) {
           e.preventDefault();
           e.stopPropagation();
+          const fromOverviewCurrent = $(e.target).closest('#world-player').length > 0;
           if (
+            fromOverviewCurrent ||
             !currentModalEntity ||
             (currentModalEntity.entityType !== 'current' && currentModalEntity.entityType !== 'squad')
           ) {
@@ -3713,6 +3980,55 @@
         $('#move-to-view-btn').on('click', function () {
           handleModalMoveToViewBtn();
         });
+        $('#my-faction, #top-my-faction')
+          .on('keydown', function (e) {
+            if (!factionEditMode) return;
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              finishFactionEdit();
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
+              factionEditMode = false;
+              $(this).removeAttr('contenteditable').removeClass('editing');
+              update();
+            }
+          })
+          .on('blur', function () {
+            finishFactionEdit();
+          });
+        $('#my-faction-edit-btn, #top-my-faction-edit-btn').on('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          beginFactionProfileEdit();
+        });
+        $('#my-faction-desc-toggle').on('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          toggleFactionDescCollapsed();
+        });
+        $('#my-faction-save-btn').on('click', async function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          await submitFactionProfileEdit();
+        });
+        $('#my-faction-cancel-btn').on('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          cancelFactionProfileEdit();
+        });
+        $('#my-faction-name-input, #my-faction-desc-input, #my-faction-purpose-input, #my-faction-rules-input').on(
+          'keydown',
+          async function (e) {
+            if (!factionProfileEditMode) return;
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              await submitFactionProfileEdit();
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
+              cancelFactionProfileEdit();
+            }
+          },
+        );
         // 设置相关事件
         $('#settings-tab-btn').on('click', function (e) {
           e.preventDefault();
@@ -4005,7 +4321,18 @@
           <span class="location-info" id="top-loc">边境地带 - 枢纽城 - 下午</span>
         </div>
         <div class="top-right">
-          <span id="my-faction" style="margin-right: 15px; font-weight: normal; color: var(--text-dim)"></span>
+          <div style="display: flex; align-items: center; gap: 6px; margin-right: 15px">
+            <span id="top-my-faction" style="font-weight: normal; color: var(--text-dim); cursor: text"></span>
+            <button
+              id="top-my-faction-edit-btn"
+              type="button"
+              class="identity-edit-btn"
+              title="修改派系名称"
+              style="display: none"
+            >
+              ✎
+            </button>
+          </div>
           <span id="top-money">0 c.cat</span>
           <button class="toggle-btn" onclick="toggleCollapse()">▼</button>
         </div>
@@ -4030,6 +4357,179 @@
             <div class="section-box">
               <div class="section-title">当前事件</div>
               <div id="world-event" class="event-text"></div>
+            </div>
+            <div class="section-box" style="margin-top: 14px">
+              <div
+                style="
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: flex-start;
+                  gap: 12px;
+                  flex-wrap: wrap;
+                "
+              >
+                <div style="flex: 1; min-width: 240px">
+                  <div class="section-title" style="margin-bottom: 10px">主控派系</div>
+                  <div id="my-faction-view">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px">
+                      <span style="color: #8d8579">派系名称</span>
+                      <span id="my-faction" style="font-weight: normal; color: var(--text-main)"></span>
+                      <button
+                        id="my-faction-edit-btn"
+                        type="button"
+                        class="identity-edit-btn"
+                        title="修改派系"
+                        style="display: inline-flex"
+                      >
+                        ✎
+                      </button>
+                      <button
+                        id="my-faction-desc-toggle"
+                        type="button"
+                        style="
+                          padding: 3px 8px;
+                          border: 1px solid rgba(193, 163, 95, 0.45);
+                          background: rgba(193, 163, 95, 0.05);
+                          color: var(--text-dim);
+                          cursor: pointer;
+                          border-radius: 2px;
+                          font-size: 0.85em;
+                        "
+                      >
+                        折叠描述
+                      </button>
+                    </div>
+                    <div id="my-faction-desc-body">
+                      <div style="color: #8d8579; margin-bottom: 6px">派系描述</div>
+                      <div
+                        id="my-faction-desc"
+                        style="font-size: 0.9em; color: #c7bda9; line-height: 1.6; min-height: 24px"
+                      ></div>
+                      <div
+                        id="my-faction-desc-empty"
+                        style="font-size: 0.88em; color: #7a7267; margin-top: 2px; display: none"
+                      >
+                        当前暂无派系描述
+                      </div>
+                      <div style="color: #8d8579; margin: 10px 0 6px">派系主旨</div>
+                      <div
+                        id="my-faction-purpose"
+                        style="font-size: 0.9em; color: #c7bda9; line-height: 1.6; min-height: 24px"
+                      ></div>
+                      <div
+                        id="my-faction-purpose-empty"
+                        style="font-size: 0.88em; color: #7a7267; margin-top: 2px; display: none"
+                      >
+                        当前暂无派系主旨
+                      </div>
+                      <div style="color: #8d8579; margin: 10px 0 6px">派系规矩</div>
+                      <div
+                        id="my-faction-rules"
+                        style="font-size: 0.9em; color: #c7bda9; line-height: 1.6; min-height: 24px"
+                      ></div>
+                      <div
+                        id="my-faction-rules-empty"
+                        style="font-size: 0.88em; color: #7a7267; margin-top: 2px; display: none"
+                      >
+                        当前暂无派系规矩
+                      </div>
+                    </div>
+                  </div>
+                  <div id="my-faction-editor" style="display: none">
+                    <div style="display: grid; gap: 10px; max-width: 620px">
+                      <label style="display: grid; gap: 5px; color: #8d8579">
+                        <span>派系名称</span>
+                        <input
+                          id="my-faction-name-input"
+                          type="text"
+                          style="
+                            background: #121212;
+                            color: #ddd;
+                            border: 1px solid #555;
+                            padding: 6px 8px;
+                            border-radius: 2px;
+                          "
+                        />
+                      </label>
+                      <label style="display: grid; gap: 5px; color: #8d8579">
+                        <span>派系描述</span>
+                        <textarea
+                          id="my-faction-desc-input"
+                          rows="3"
+                          style="
+                            background: #121212;
+                            color: #ddd;
+                            border: 1px solid #555;
+                            padding: 6px 8px;
+                            border-radius: 2px;
+                            resize: vertical;
+                          "
+                        ></textarea>
+                      </label>
+                      <label style="display: grid; gap: 5px; color: #8d8579">
+                        <span>派系主旨</span>
+                        <textarea
+                          id="my-faction-purpose-input"
+                          rows="2"
+                          style="
+                            background: #121212;
+                            color: #ddd;
+                            border: 1px solid #555;
+                            padding: 6px 8px;
+                            border-radius: 2px;
+                            resize: vertical;
+                          "
+                        ></textarea>
+                      </label>
+                      <label style="display: grid; gap: 5px; color: #8d8579">
+                        <span>派系规矩</span>
+                        <textarea
+                          id="my-faction-rules-input"
+                          rows="2"
+                          style="
+                            background: #121212;
+                            color: #ddd;
+                            border: 1px solid #555;
+                            padding: 6px 8px;
+                            border-radius: 2px;
+                            resize: vertical;
+                          "
+                        ></textarea>
+                      </label>
+                      <div style="display: flex; gap: 8px">
+                        <button
+                          id="my-faction-save-btn"
+                          type="button"
+                          style="
+                            padding: 5px 12px;
+                            border: 1px solid var(--accent-gold);
+                            background: rgba(193, 163, 95, 0.08);
+                            color: var(--accent-gold);
+                            cursor: pointer;
+                            border-radius: 2px;
+                          "
+                        >
+                          保存修改
+                        </button>
+                        <button
+                          id="my-faction-cancel-btn"
+                          type="button"
+                          style="
+                            padding: 5px 12px;
+                            border: 1px solid #555;
+                            background: rgba(255, 255, 255, 0.04);
+                            color: #aaa;
+                            cursor: pointer;
+                            border-radius: 2px;
+                          "
+                        >
+                          取消
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
             <div id="world-player"></div>
           </div>

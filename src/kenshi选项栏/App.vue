@@ -1,4 +1,4 @@
- <template>
+<template>
   <div class="options-root">
     <div v-if="options.length" class="interactive-options-container" :class="`option-count-${options.length}`">
       <div class="actor-selector" :class="{ active: isActorMenuOpen }">
@@ -434,11 +434,31 @@ async function triggerCampSystem() {
 }
 
 async function triggerBlessingSystem() {
-  await sendUserMessage('<特质赐福>');
+  if (typeof triggerSlash !== 'function') {
+    console.warn('[kenshi选项栏] triggerSlash 不可用，无法触发特质赐福');
+    return;
+  }
+  const { name, avatar } = getCharacterMeta();
+  const command = `/sendas name="${name}"${avatar ? ` avatar="${avatar}"` : ''} <特质赐福>`;
+  try {
+    await triggerSlash(command);
+  } catch (error) {
+    console.error('[kenshi选项栏] 触发特质赐福失败:', error);
+  }
 }
 
 async function triggerOutpostSystem() {
-  await sendUserMessage('<据点建设>');
+  if (typeof triggerSlash !== 'function') {
+    console.warn('[kenshi选项栏] triggerSlash 不可用，无法触发据点建设');
+    return;
+  }
+  const { name, avatar } = getCharacterMeta();
+  const command = `/sendas name="${name}"${avatar ? ` avatar="${avatar}"` : ''} <据点建设>`;
+  try {
+    await triggerSlash(command);
+  } catch (error) {
+    console.error('[kenshi选项栏] 触发据点建设失败:', error);
+  }
 }
 
 async function handleOptionClick(opt: OptionItem, event: MouseEvent) {

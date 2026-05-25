@@ -3492,8 +3492,8 @@ export const cities: City[] = [
   },
   {
     id: 'city-iron-trail-town',
-    name: '铁之径城镇',
-    description: '铁之径上的小城镇，规模不大。补给点与驻军混杂。',
+    name: '铁之径王城',
+    description: '原始诸族聚居的古老王城。',
     type: 'city',
     coordinates: [852, 1138],
     regionId: 'region-iron-trail',
@@ -4296,8 +4296,8 @@ export const ruins: City[] = [
   },
   {
     id: 'ruin-iron-trail-ruin',
-    name: '铁之径废墟',
-    description: '被标注为“请勿靠近”的危险废墟。周边常有异常活动。',
+    name: '铁之径实验室',
+    description: '研究古代生物的古代实验室。',
     type: 'ruin',
     coordinates: [840, 866],
     regionId: 'region-iron-trail',
@@ -4328,7 +4328,7 @@ export const ruins: City[] = [
   },
   {
     id: 'ruin-dead-fish-village',
-    name: '死鱼村',
+    name: '死渔村',
     description: '骗子捷径上的废弃渔村，屋门常敞开。像是匆忙撤离后的遗址。',
     type: 'ruin',
     coordinates: [7537, 4841],
