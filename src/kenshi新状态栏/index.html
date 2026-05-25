@@ -622,6 +622,33 @@
         box-sizing: border-box;
       }
 
+      #tooltip.tooltip-interactive {
+        pointer-events: auto;
+      }
+
+      .tooltip-title {
+        font-weight: bold;
+        color: var(--text-main);
+      }
+
+      .tooltip-action-row {
+        margin: 8px 0 10px;
+      }
+
+      .tooltip-forget-btn {
+        padding: 2px 8px;
+        border: 1px solid rgba(231, 76, 60, 0.45);
+        background: rgba(231, 76, 60, 0.08);
+        color: var(--accent-danger);
+        border-radius: 2px;
+        cursor: pointer;
+        font-size: 0.9em;
+      }
+
+      .tooltip-forget-btn:hover {
+        background: rgba(231, 76, 60, 0.14);
+      }
+
       .modal-overlay {
         position: fixed;
         top: 0;
@@ -1775,9 +1802,15 @@
         const positiveEffects = _.get(data, '正面效果', {});
         const negativeEffects = _.get(data, '负面效果', {});
         const relationData = _.get(data, '人际关系', {});
+        const canForgetRelation = entityType === 'current' || entityType === 'squad';
         const relationEntries = Object.entries(relationData)
           .filter(([name]) => String(name || '').trim() !== '')
           .map(([name, value]) => {
+            const escapedName = _.escape(String(name));
+            const encodedName = encodeURIComponent(String(name));
+            const forgetAction = canForgetRelation
+              ? `<div class="tooltip-action-row"><button type="button" class="tooltip-forget-btn relation-forget-btn" data-relation-encoded="${encodedName}">遗忘</button></div>`
+              : '';
             if (value && typeof value === 'object') {
               const detailLines = Object.entries(value)
                 .filter(
@@ -1789,12 +1822,12 @@
                 )
                 .map(([key, item]) => `${key}：${item}`);
               const summary = detailLines[0] || '';
-              const tooltip = detailLines.length ? `${name}\n\n${detailLines.join('\n')}` : String(name);
-              return `<span class="item-tag has-tooltip" data-tooltip="${_.escape(tooltip)}">${_.escape(String(name))}${summary ? `：${_.escape(summary)}` : ''}</span>`;
+              const tooltipHtml = `<div class="tooltip-title">${escapedName}</div>${forgetAction}<div>${detailLines.map(line => _.escape(line)).join('<br>')}</div>`;
+              return `<span class="item-tag has-tooltip" data-tooltip-html="${_.escape(tooltipHtml)}">${escapedName}${summary ? `：${_.escape(summary)}` : ''}</span>`;
             }
             const text = String(value ?? '').trim();
-            const tooltip = text ? `${name}\n\n${text}` : String(name);
-            return `<span class="item-tag has-tooltip" data-tooltip="${_.escape(tooltip)}">${_.escape(String(name))}${text ? `：${_.escape(text)}` : ''}</span>`;
+            const tooltipHtml = `<div class="tooltip-title">${escapedName}</div>${forgetAction}<div>${_.escape(text || String(name))}</div>`;
+            return `<span class="item-tag has-tooltip" data-tooltip-html="${_.escape(tooltipHtml)}">${escapedName}${text ? `：${_.escape(text)}` : ''}</span>`;
           });
         const relationHTML = relationEntries.length
           ? relationEntries.join('')
@@ -1878,9 +1911,9 @@
             .join('；');
         };
         const subWeaponBlock = hasSubWeapon
-          ? `\n\n[副手] ${_.get(subWep, '品质', '普通')} ${_.get(subWep, '种类', '无')}\n伤害: ${_.get(subWep, '伤害骰', '0')}\n伤害类型: ${_.get(subWep, '伤害类型', '无')}\n价值: ${_.get(subWep, '价值', 0)} c.cat\n介绍: ${_.get(subWep, '介绍', '无')}`
+          ? `\n\n[副手] ${_.get(subWep, '品质', '普通')} ${_.get(subWep, '种类', '无')}\n伤害: ${_.get(subWep, '伤害骰', '0')}\n伤害类型: ${_.get(subWep, '伤害类型', '无')}\n重量: ${_.get(subWep, '重量', 0)}kg\n价值: ${_.get(subWep, '价值', 0)} c.cat\n介绍: ${_.get(subWep, '介绍', '无')}`
           : '';
-        const wepTooltip = `[主手] ${_.get(mainWep, '品质', '普通')} ${_.get(mainWep, '种类', '无')}\n伤害: ${_.get(mainWep, '伤害骰', '1d4')}\n伤害类型: ${_.get(mainWep, '伤害类型', '无')}\n价值: ${_.get(mainWep, '价值', 0)} c.cat\n介绍: ${_.get(mainWep, '介绍', '无')}${subWeaponBlock}`;
+        const wepTooltip = `[主手] ${_.get(mainWep, '品质', '普通')} ${_.get(mainWep, '种类', '无')}\n伤害: ${_.get(mainWep, '伤害骰', '1d4')}\n伤害类型: ${_.get(mainWep, '伤害类型', '无')}\n重量: ${_.get(mainWep, '重量', 0)}kg\n价值: ${_.get(mainWep, '价值', 0)} c.cat\n介绍: ${_.get(mainWep, '介绍', '无')}${subWeaponBlock}`;
         const showUnequipMain = !mainHandIsEmpty;
         const showUnequipSub = hasSubWeapon;
         const weaponManageActions =
@@ -2037,7 +2070,7 @@
         let factionEditMode = false;
         let factionDescEditMode = false;
         let factionProfileEditMode = false;
-        let factionDescCollapsed = false;
+        let factionDescCollapsed = true;
 
         async function saveFactionProfile({ name, description, purpose, rules, syncWorldBook = true }) {
           const option = { type: 'message', message_id: getCurrentMessageId() };
@@ -2838,6 +2871,7 @@
         let pendingViewDeleteName = '';
         let pendingOtherDeleteName = '';
         let pendingMissionDeleteName = '';
+        let pendingRelationDeleteName = '';
         let pendingSquadDeleteName = '';
         let pendingSquadMergeSource = '';
         let pendingSquadMergeTarget = '';
@@ -2972,6 +3006,7 @@
           pendingViewDeleteName = '';
           pendingOtherDeleteName = '';
           pendingMissionDeleteName = '';
+          pendingRelationDeleteName = '';
           $('#confirm-input').val('').hide();
           $('#confirm-modal .confirm-title').text('确认删除');
           $('#confirm-modal .confirm-title').next('div').text('是否删除该往事记录？');
@@ -2986,6 +3021,7 @@
           pendingViewDeleteName = name || '';
           pendingOtherDeleteName = '';
           pendingMissionDeleteName = '';
+          pendingRelationDeleteName = '';
           $('#confirm-modal .confirm-title').text('确认移除视野');
           $('#confirm-modal .confirm-title').next('div').text(`是否确认移除"视野"，如果角色已离开但仍然存在视野请使用`);
           $('#confirm-ok').text('删除').addClass('danger');
@@ -2999,9 +3035,27 @@
           pendingViewDeleteName = '';
           pendingOtherDeleteName = name || '';
           pendingMissionDeleteName = '';
+          pendingRelationDeleteName = '';
           $('#confirm-modal .confirm-title').text('确认移除异地');
           $('#confirm-modal .confirm-title').next('div').text('是否确认遗忘该异地成员？');
           $('#confirm-ok').text('遗忘').addClass('danger');
+          $('#confirm-cancel').text('取消');
+          $('#confirm-third').css('display', 'none');
+          $('#confirm-modal').css('display', 'flex');
+        }
+
+        function openRelationDeleteConfirm(name) {
+          pendingPastDeleteIndex = null;
+          pendingViewDeleteName = '';
+          pendingOtherDeleteName = '';
+          pendingMissionDeleteName = '';
+          pendingRelationDeleteName = name || '';
+          $('#confirm-input').val('').hide();
+          $('#confirm-modal .confirm-title').text('确认遗忘人际关系');
+          $('#confirm-modal .confirm-title')
+            .next('div')
+            .text(`是否确认遗忘与“${name}”的人际关系？这只会删除这条人际关系，不会删除该角色。`);
+          $('#confirm-ok').text('遗忘关系').addClass('danger');
           $('#confirm-cancel').text('取消');
           $('#confirm-third').css('display', 'none');
           $('#confirm-modal').css('display', 'flex');
@@ -3012,6 +3066,7 @@
           pendingViewDeleteName = '';
           pendingOtherDeleteName = '';
           pendingMissionDeleteName = name || '';
+          pendingRelationDeleteName = '';
           $('#confirm-modal .confirm-title').text('确认删除任务');
           $('#confirm-modal .confirm-title').next('div').text('是否确定删除此任务');
           $('#confirm-ok').text('删除').addClass('danger');
@@ -3048,6 +3103,7 @@
           pendingViewDeleteName = '';
           pendingOtherDeleteName = '';
           pendingMissionDeleteName = '';
+          pendingRelationDeleteName = '';
           clearPendingSquadActions();
           window.pendingMoveName = '';
           window.pendingMoveTarget = '';
@@ -3140,6 +3196,42 @@
             const updated = _.get(mvuData, basePath);
             if (updated && typeof updated === 'object') {
               $('#modal-content-inner').html(buildCharHTML(updated, entityType === 'current', entityType, entityName));
+            }
+          }
+        }
+
+        async function deleteSquadRelation(relationName) {
+          if (
+            !relationName ||
+            !currentModalEntity ||
+            (currentModalEntity.entityType !== 'current' && currentModalEntity.entityType !== 'squad')
+          )
+            return;
+          const { entityType, entityName, squadName } = currentModalEntity;
+          if (!entityName) return;
+          const option = { type: 'message', message_id: getCurrentMessageId() };
+          const mvuData = Mvu.getMvuData(option) || {};
+          const basePath = getCharacterBasePath(mvuData, entityType, entityName, squadName);
+          if (!basePath) return;
+          const relationPath = [...basePath, '人际关系'];
+          const relationData = _.get(mvuData, relationPath, {});
+          if (!relationData || typeof relationData !== 'object' || !(relationName in relationData)) return;
+
+          const nextRelationData = _.omit(relationData, [relationName]);
+          _.set(mvuData, relationPath, nextRelationData);
+          await Mvu.replaceMvuData(mvuData, option);
+          update();
+
+          if (
+            currentModalEntity &&
+            currentModalEntity.entityType === entityType &&
+            currentModalEntity.entityName === entityName
+          ) {
+            const updated = _.get(mvuData, basePath);
+            if (updated && typeof updated === 'object') {
+              $('#modal-content-inner').html(
+                buildCharHTML(updated, entityType === 'current', entityType, entityName, squadName),
+              );
             }
           }
         }
@@ -3826,6 +3918,19 @@
           const value = input.val();
           await saveIdentity(entityType, entityName, value);
         });
+        $(document).on('click', '.relation-forget-btn', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (
+            !currentModalEntity ||
+            (currentModalEntity.entityType !== 'current' && currentModalEntity.entityType !== 'squad')
+          )
+            return;
+          const encoded = String($(this).attr('data-relation-encoded') || '').trim();
+          const relationName = encoded ? decodeURIComponent(encoded) : '';
+          if (!relationName) return;
+          openRelationDeleteConfirm(relationName);
+        });
         $('#other-list').on('click', '.other-card-btn', function (e) {
           e.preventDefault();
           e.stopPropagation();
@@ -3931,6 +4036,8 @@
             await deleteOtherEntry(pendingOtherDeleteName);
           } else if (pendingMissionDeleteName) {
             await deleteMissionEntry(pendingMissionDeleteName);
+          } else if (pendingRelationDeleteName) {
+            await deleteSquadRelation(pendingRelationDeleteName);
           } else if (window.pendingMoveName) {
             // 处理移动操作
             if (window.pendingMoveTarget === 'view') {
@@ -4247,9 +4354,14 @@
         let tipPinned = false;
         let tipOwner = null;
 
-        function showTip(text, x, y) {
-          if (!text) return;
-          tip.text(text).show();
+        function showTip(content, x, y, allowHtml = false) {
+          if (!content) return;
+          tip.toggleClass('tooltip-interactive', !!allowHtml);
+          if (allowHtml) {
+            tip.html(content).show();
+          } else {
+            tip.text(content).show();
+          }
           const gap = 12;
           const tipWidth = tip.outerWidth();
           const tipHeight = tip.outerHeight();
@@ -4268,14 +4380,16 @@
         }
 
         function hideTip() {
+          tip.removeClass('tooltip-interactive');
           tip.hide();
         }
 
         $(document)
           .on('mouseenter', '.has-tooltip', function (e) {
             if (tipPinned) return;
+            const html = $(this).attr('data-tooltip-html');
             const text = $(this).attr('data-tooltip');
-            showTip(text, e.clientX, e.clientY);
+            showTip(html || text, e.clientX, e.clientY, !!html);
           })
           .on('mouseleave', '.has-tooltip', function () {
             if (tipPinned) return;
@@ -4283,12 +4397,15 @@
           })
           .on('mousemove', function (e) {
             if (tip.css('display') !== 'none' && !tipPinned) {
-              showTip(tip.text(), e.clientX, e.clientY);
+              const allowHtml = tip.hasClass('tooltip-interactive');
+              showTip(allowHtml ? tip.html() : tip.text(), e.clientX, e.clientY, allowHtml);
             }
           })
           .on('click', '.has-tooltip', function (e) {
+            const html = $(this).attr('data-tooltip-html');
             const text = $(this).attr('data-tooltip');
-            if (!text) return;
+            const content = html || text;
+            if (!content) return;
 
             if (tipPinned && tipOwner === this) {
               tipPinned = false;
@@ -4299,10 +4416,10 @@
 
             tipPinned = true;
             tipOwner = this;
-            showTip(text, e.clientX, e.clientY);
+            showTip(content, e.clientX, e.clientY, !!html);
           })
           .on('click', function (e) {
-            if ($(e.target).closest('.has-tooltip').length === 0) {
+            if ($(e.target).closest('.has-tooltip').length === 0 && $(e.target).closest('#tooltip').length === 0) {
               tipPinned = false;
               tipOwner = null;
               hideTip();

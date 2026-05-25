@@ -782,6 +782,23 @@ export default function App() {
       return _.omit(builtState, ['elapsedDays', 'incomeReport']) as GameState;
     }
 
+    if (
+      !mvuOutposts ||
+      typeof mvuOutposts !== 'object' ||
+      Array.isArray(mvuOutposts) ||
+      Object.keys(mvuOutposts).length === 0
+    ) {
+      return {
+        ...initialGameState,
+        day: currentWorldDay,
+        currentOutpostId: '',
+        outposts: [],
+        facilities: [],
+        employees: [],
+        events: [],
+      };
+    }
+
     return initialGameState;
   });
   const [activeTab, setActiveTab] = useState<TabState>('outposts');
@@ -1005,37 +1022,37 @@ export default function App() {
     const eventLogs = relevantLogs.filter(log => log.kind === 'event');
 
     const lines: string[] = [];
-    lines.push('【据点提交】');
-    lines.push(`第${settlementDay}天，据点【${storyOutpostName}】位于【${storyRegion}】。`);
+    lines.push('【据点总结】');
+    lines.push('');
+    lines.push('【据点情报】');
+    lines.push(`这里是${storyRegion}区域的${storyOutpostName}据点发生的事情。`);
 
     if (renameLogs.length > 0) {
       lines.push('');
-      lines.push('【改名】');
+      lines.push('【设施改名】');
       renameLogs.forEach(log => {
-        lines.push(`- ${log.detail}`);
+        lines.push(log.detail);
       });
     }
 
     if (workLogs.length > 0) {
       lines.push('');
-      lines.push('【工作】');
+      lines.push('【成员工作】');
       workLogs.forEach(log => {
-        lines.push(`- ${log.detail}`);
+        lines.push(log.detail);
       });
     }
 
     if (eventLogs.length > 0) {
       lines.push('');
-      lines.push('【事件】');
+      lines.push('【遭遇事件】');
       eventLogs.forEach(log => {
-        lines.push(`- ${log.detail}`);
+        lines.push(log.detail);
       });
     }
 
     lines.push('');
-    lines.push(
-      '请根据以上内容，生成这个据点当日发生的故事，并帮我润色成更自然、更有废土感的叙述。重点写清：设施改名带来的变化、成员分别进行了什么工作、据点遭遇了什么事件。正文不要写成条目，不要出现代码感表述。',
-    );
+    lines.push(`请根据以上内容，生成所在据点的故事，不要在正文出现数值相关内容。这是第${settlementDay}天发生的事情。`);
 
     return lines.join('\n');
   };

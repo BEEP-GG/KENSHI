@@ -1,3 +1,5 @@
+/* eslint-disable */
+// @ts-nocheck
 import { registerMvuSchema } from 'https://testingcf.jsdelivr.net/gh/StageDog/tavern_resource/dist/util/mvu_zod.js';
 
 // 定义通用的属性/技能解析正则表达式
@@ -114,6 +116,36 @@ const TemporaryTraitSchema = z
     消除: z.string().prefault(''),
   })
   .prefault({ 描述: '', 消除: '' });
+
+const recalculateMaxHp = (data, finalAttrs, allDescriptions) => {
+  if (!data.血量) {
+    data.血量 = { 当前: 1000, 最大: 1000 };
+  }
+
+  let hpTraitModifier = 0;
+  const hpModifierRegex = /(?:最大生命值|最大血量|HP|血量)\s*[^\d\r\n]*([+-]?\s*\d+)/i;
+  allDescriptions.forEach(desc => {
+    if (!desc) return;
+    const match = desc.match(hpModifierRegex);
+    if (match && match[1] && !/属性/.test(desc) && !/(?:固定为|固定|设定为|就是)/.test(desc)) {
+      hpTraitModifier += parseInt(match[1].replace(/\s/g, ''), 10);
+    }
+  });
+
+  let maxHp = Math.floor(100 + finalAttrs.TGH * 2 + data.等级 * 1.5 + hpTraitModifier);
+  const hpFixedRegex = /(?:最大生命值|最大血量|HP|血量).*(?:固定为|固定|设定为|就是)\s*(\d+)/i;
+  for (const desc of allDescriptions) {
+    if (!desc) continue;
+    const match = desc.match(hpFixedRegex);
+    if (match && match[1]) {
+      maxHp = parseInt(match[1], 10);
+      break;
+    }
+  }
+
+  data.血量.最大 = maxHp;
+  data.血量.当前 = _.clamp(data.血量.当前, 0, data.血量.最大);
+};
 
 // 角色基础“蓝图”定义
 const CharacterSchemaBase = z.object({
@@ -244,6 +276,9 @@ const characterTransform = data => {
   delete data.临时特质['中甲妨碍'];
   delete data.临时特质['轻甲妨碍'];
   delete data.临时特质['无甲灵动'];
+  delete data.临时特质['轻度超重'];
+  delete data.临时特质['中度超重'];
+  delete data.临时特质['重度超重'];
 
   const armorType = armor.种类;
   if (armorType === '重甲') {
@@ -261,8 +296,44 @@ const characterTransform = data => {
   const temporaryTraitDescs = data.临时特质 ? _.map(_.values(data.临时特质), '描述') : [];
   const allDescriptions = [...permanentTraitDescs, ...temporaryTraitDescs];
 
+  const baseMaxWeight = Math.floor(((data.属性?.STR?.基础 || 0) + (data.属性?.STR?.加成 || 0)) * 1.5);
+  const traitWeightModifier = _.sumBy(allDescriptions, desc => {
+    if (!desc) return 0;
+    const match = desc.match(/(?:最大负重|负重上限)\s*([+-]\s*\d+)/);
+    return match ? parseInt(match[1].replace(/\s/g, ''), 10) : 0;
+  });
+  const derivedMaxCarryWeight = baseMaxWeight + traitWeightModifier;
+  const itemsWeight = _.sumBy(_.values(data.背包?.物品 || {}), item => (item.重量 || 0) * (item.数量 || 0));
+  const equippedWeight = (data.主武器?.重量 || 0) + (data.副武器?.重量 || 0) + (data.护甲?.重量 || 0);
+  const derivedCurrentCarryWeight = _.round(itemsWeight + equippedWeight, 2);
+  const dexBeforeOverweight = (data.属性?.DEX?.基础 || 0) + (data.属性?.DEX?.加成 || 0);
+
+  if (derivedMaxCarryWeight > 0) {
+    const overweightRatio = (derivedCurrentCarryWeight - derivedMaxCarryWeight) / derivedMaxCarryWeight;
+    if (overweightRatio > 0.25) {
+      data.临时特质['重度超重'] = {
+        描述: `敏捷-${Math.floor(dexBeforeOverweight * 0.8)}`,
+        消除: '负重恢复至最大负重125%及以下',
+      };
+    } else if (overweightRatio > 0.2) {
+      data.临时特质['中度超重'] = {
+        描述: `敏捷-${Math.floor(dexBeforeOverweight * 0.6)}`,
+        消除: '负重恢复至最大负重120%及以下',
+      };
+    } else if (overweightRatio > 0.15) {
+      data.临时特质['轻度超重'] = {
+        描述: `敏捷-${Math.floor(dexBeforeOverweight * 0.2)}`,
+        消除: '负重恢复至最大负重115%及以下',
+      };
+    }
+  }
+
+  // 统一提取所有特质
+  const finalTemporaryTraitDescs = data.临时特质 ? _.map(_.values(data.临时特质), '描述') : [];
+  const finalDescriptions = [...permanentTraitDescs, ...finalTemporaryTraitDescs];
+
   // 汇总来自特质的属性加成
-  for (const desc of allDescriptions) {
+  for (const desc of finalDescriptions) {
     if (!desc) continue;
     MODIFIER_REGEX.lastIndex = 0;
     let match;
@@ -330,7 +401,7 @@ const characterTransform = data => {
 
   let attackModifier = 0;
   const attackModifierRegex = /攻击次数\s*([+-]\s*\d+)/i;
-  allDescriptions.forEach(desc => {
+  finalDescriptions.forEach(desc => {
     if (!desc) return;
     const match = desc.match(attackModifierRegex);
     if (match && match[1]) {
@@ -340,44 +411,17 @@ const characterTransform = data => {
   data.攻击次数 = _.clamp(baseAttacks + attackModifier, 1, 99);
 
   // 最大生命值计算
-  let hpTraitModifier = 0;
-  const hpModifierRegex = /(?:最大生命值|最大血量|HP|血量)\s*[^\d\r\n]*([+-]?\s*\d+)/i;
-  allDescriptions.forEach(desc => {
-    if (!desc) return;
-    const match = desc.match(hpModifierRegex);
-    if (match && match[1] && !/属性/.test(desc) && !/(?:固定为|固定|设定为|就是)/.test(desc)) {
-      hpTraitModifier += parseInt(match[1].replace(/\s/g, ''), 10);
-    }
-  });
-  data.血量.最大 = Math.floor(100 + finalAttrs.TGH * 2 + data.等级 * 1.5 + hpTraitModifier);
-  const hpFixedRegex = /(?:最大生命值|最大血量|HP|血量).*(?:固定为|固定|设定为|就是)\s*(\d+)/i;
-  for (const desc of allDescriptions) {
-    if (!desc) continue;
-    const match = desc.match(hpFixedRegex);
-    if (match && match[1]) {
-      data.血量.最大 = parseInt(match[1], 10);
-      break;
-    }
-  }
+  recalculateMaxHp(data, finalAttrs, finalDescriptions);
 
   // 负重计算
-  const baseMaxWeight = Math.floor(finalAttrs.STR * 1.5);
-  const traitWeightModifier = _.sumBy(allDescriptions, desc => {
-    if (!desc) return 0;
-    const match = desc.match(/(?:最大负重|负重上限)\s*([+-]\s*\d+)/);
-    return match ? parseInt(match[1].replace(/\s/g, ''), 10) : 0;
-  });
-  data.背包.负重.最大 = baseMaxWeight + traitWeightModifier;
-  const itemsWeight = _.sumBy(_.values(data.背包.物品), item => (item.重量 || 0) * (item.数量 || 0));
-  const equippedWeight = (data.主武器?.重量 || 0) + (data.副武器?.重量 || 0) + (data.护甲?.重量 || 0);
-  data.背包.负重.当前 = _.round(itemsWeight + equippedWeight, 2);
+  data.背包.负重.最大 = derivedMaxCarryWeight;
+  data.背包.负重.当前 = derivedCurrentCarryWeight;
 
   // 最终数值约束
   data.血量.当前 = _.clamp(data.血量.当前, 0, data.血量.最大);
 
   return data;
 };
-
 // 为视野内角色/通用NPC/小队成员定义的Schema
 const CharacterSchema = CharacterSchemaBase.transform(characterTransform);
 const TeammateCharacterSchema = CharacterSchema;
