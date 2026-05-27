@@ -285,17 +285,17 @@ const godsData: GodTheme[] = [
       },
       {
         id: 'kral_4',
-        title: '蛮荒恶兽',
+        title: '战场暴君',
         description:
-          '完全退化成了只懂杀戮的猛兽。代价是你彻底丧失了作为智慧生物沟通与思考的可能，变成了在废土上漫无目的游荡、只靠本能撕咬的骇人怪物。',
+          '你将克拉尔的野性、勇武与王者气魄熔进血肉。越是惨烈的厮杀，越能激发你统御战场的压迫感与破坏力；只是这份过于强盛的斗争本能，会让你变得难以克制、难以与人平和相处。',
         rarity: '传说',
         icon: <Skull className="w-8 h-8 text-red-500" />,
         stats: [
           { name: '力量', value: 20 },
           { name: '体质', value: 18 },
           { name: '意志', value: 18 },
-          { name: '智力', value: -30 },
-          { name: '魅力', value: -30 },
+          { name: '智力', value: -14 },
+          { name: '魅力', value: -18 },
         ],
       },
       {
@@ -317,7 +317,7 @@ const godsData: GodTheme[] = [
         rarity: '史诗',
         icon: <Sword className="w-8 h-8 text-red-400" />,
         stats: [
-          { name: '力量', value: 12 },
+          { name: '力量', value: 15 },
           { name: '敏捷', value: -12 },
         ],
       },
@@ -329,7 +329,7 @@ const godsData: GodTheme[] = [
         rarity: '传说',
         icon: <Activity className="w-8 h-8 text-red-500" />,
         stats: [
-          { name: '意志', value: 20 },
+          { name: '意志', value: 30 },
           { name: '敏捷', value: -15 },
         ],
       },
@@ -377,7 +377,7 @@ const godsData: GodTheme[] = [
         id: 'kral_12',
         title: '无上王座',
         description:
-          '将生命与荣誉燃烧殆尽。正面完美碰碎格开敌方兵刃的同时爆震全身筋骨，瞬间劈出将山河与生灵斩断的绝命一斩。',
+          '将克拉尔的荣耀与战意推至极巅。正面完美碰碎格开敌方兵刃的同时震彻全身筋骨，瞬间劈出一记仿佛足以斩开山河与生灵的王者重斩。',
         rarity: '传说',
         icon: <Sword className="w-8 h-8 text-red-600" />,
         stats: [
@@ -462,8 +462,8 @@ const godsData: GodTheme[] = [
         rarity: '史诗',
         icon: <Ghost className="w-8 h-8 text-purple-400" />,
         stats: [
-          { name: '感知', value: 10 },
-          { name: '魅力', value: -10 },
+          { name: '感知', value: 12 },
+          { name: '魅力', value: -12 },
         ],
       },
       {
@@ -516,7 +516,7 @@ const godsData: GodTheme[] = [
         rarity: '传说',
         icon: <Smile className="w-8 h-8 text-fuchsia-400" />,
         stats: [
-          { name: '魅力', value: 15 },
+          { name: '魅力', value: 24 },
           { name: '意志', value: -15 },
         ],
       },
@@ -524,42 +524,61 @@ const godsData: GodTheme[] = [
         id: 'narko_8',
         title: '暗巷毒蛇',
         description:
-          '你完全拥抱了黑暗的狡诈。你习惯像肮脏的老鼠一样潜伏，精通常人所不齿的撒沙子、涂劣毒与背后敲闷棍。长期的低劣老千生活让你的身法异常灵活，但也使你的肉体越发佝偻虚弱不堪。',
-        rarity: '传说',
+          '你长期游走在阴影与夹缝之间，熟悉如何借地形、视线与小手段为自己争出优势。那些不够体面的求生经验令你行动更轻更快，也让你的体魄在日积月累的消耗中显得单薄。',
+        rarity: '普通',
         icon: <Skull className="w-8 h-8 text-purple-500" />,
         stats: [
-          { name: '敏捷', value: 15 },
-          { name: '感知', value: 12 },
-          { name: '体质', value: -15 },
+          { name: '敏捷', value: 4 },
+          { name: '感知', value: 3 },
+          { name: '体质', value: -3 },
         ],
       },
       {
         id: 'narko_9',
         title: '落影佯退步',
         description:
-          '极具欺骗性的娜尔可流步法。在兵刃相碰时做出一副气力不支倒退数步的狼狈滑步，诱骗对手露头急追，实则蓄势待发。',
-        rarity: '普通',
+          '极具欺骗性的娜尔可流步法。在兵刃相碰时总是做出一副气力不支倒退数步的狼狈滑步，诱骗对手乘胜追击，实则蓄势待发，抓住破绽一招制敌。',
+        rarity: '传说',
         icon: <Wind className="w-8 h-8 text-indigo-400" />,
-        stats: [{ name: '敏捷', value: 5 }],
+        stats: [
+          { name: '敏捷', value: 16 },
+          { name: '感知', value: 8 },
+        ],
       },
       {
         id: 'narko_10',
-        title: '诡计佯格',
-        description: '故意在防御中留出重大空门引诱合击，让敌刃擦破残影，而你的副手早已如同毒蛇吐信在暗度陈仓。',
-        rarity: '普通',
+        title: '恶念算尽',
+        description:
+          '娜尔可赐予你不择手段的阴狠计谋。你会本能地绕开正面对拼，转而优先撕扯敌人的软肋、顾虑与最脆弱之处，以此来使对方漏出破绽会被迫臣服。',
+        rarity: '史诗',
         icon: <Sword className="w-8 h-8 text-violet-400" />,
-        stats: [{ name: '感知', value: 5 }],
+        stats: [
+          { name: '感知', value: 7 },
+          { name: '敏捷', value: 3 },
+        ],
       },
       {
         id: 'narko_11',
-        title: '回马毒刺',
+        title: '毒心穿隙',
         description:
-          '黑暗的以退为进武艺之精髓。在完美卸下力道的闪避中，借由诡异无序的反转腰肌折回，以致命的剧毒短刃斜刺急躁追兵的薄弱缝隙。',
+          '你练就了极其阴狠刁钻的近身杀法。混战与纠缠之中，你总能捕捉护甲、骨架与动作衔接间最细微的空隙，把淬毒的狠手精准送进足以瓦解敌势的要害节点。',
         rarity: '史诗',
         icon: <Activity className="w-8 h-8 text-purple-400" />,
         stats: [
           { name: '敏捷', value: 7 },
           { name: '感知', value: 3 },
+        ],
+      },
+      {
+        id: 'narko_16',
+        title: '影下藏针',
+        description:
+          '你习惯在交锋前悄悄布置那些不起眼的小动作：换位、遮挡、藏械、借物。它们未必足以决定胜负，却总能让你比对手更早一步摸到有利的位置。',
+        rarity: '普通',
+        icon: <Activity className="w-8 h-8 text-violet-300" />,
+        stats: [
+          { name: '感知', value: 2 },
+          { name: '敏捷', value: 2 },
         ],
       },
       {
@@ -570,8 +589,8 @@ const godsData: GodTheme[] = [
         rarity: '传说',
         icon: <Ghost className="w-8 h-8 text-indigo-300" />,
         stats: [
-          { name: '敏捷', value: 12 },
-          { name: '感知', value: 5 },
+          { name: '敏捷', value: 18 },
+          { name: '感知', value: 8 },
         ],
       },
       {
@@ -614,7 +633,7 @@ const godsData: GodTheme[] = [
     title: '拾荒者',
     description: '迷失于旧帝国废墟中的幽魂，掌握着被遗忘的伟大科技。',
     fullDescription:
-      '血肉苦弱，唯有钢铁永存！奇特林并非神明，而是文明的残响。他将指引你发掘旧日的主宰，用极端的方式拥抱机械意志。',
+      '血肉苦弱，唯有顶级工匠得以永存！奇特林并非神明，而是文明的残响。他将指引你发掘旧日的主宰，寻求技巧，拥抱机械意志。',
     colorFrom: 'from-emerald-950',
     colorTo: 'to-teal-400',
     borderGlow: 'hover:border-teal-400',
@@ -628,20 +647,21 @@ const godsData: GodTheme[] = [
         rarity: '传说',
         icon: <Hexagon className="w-8 h-8 text-teal-300" />,
         stats: [
-          { name: '智力', value: 25 },
-          { name: '力量', value: -10 },
-          { name: '体质', value: -10 },
-          { name: '意志', value: -10 },
+          { name: '智力', value: 30 },
+          { name: '力量', value: -12 },
+          { name: '意志', value: -12 },
         ],
       },
       {
         id: 'chitrin_3',
-        title: 'AI寻路大师',
-        description: '你总能找到地图的“最优解”，以诡异步伐高速移动，但这种非人感让你产生了严重的社交障碍。',
+        title: '废土机械师',
+        description:
+          '你深谙废土上最实用的生存本领：拆、修、拼、补。无论是残破义体、旧发电机还是快散架的武器护甲，你都能从垃圾堆里榨出继续活下去的价值，只是长期与铁片和零件为伴，让你比起人情世故更信任扳手与焊枪。',
         rarity: '稀有',
         icon: <Activity className="w-8 h-8 text-emerald-400" />,
         stats: [
-          { name: '敏捷', value: 9 },
+          { name: '智力', value: 10 },
+          { name: '感知', value: 5 },
           { name: '魅力', value: -8 },
         ],
       },
@@ -653,14 +673,15 @@ const godsData: GodTheme[] = [
         rarity: '稀有',
         icon: <Cpu className="w-8 h-8 text-teal-200" />,
         stats: [
-          { name: '力量', value: 12 },
-          { name: '体质', value: -6 },
+          { name: '力量', value: 16 },
+          { name: '体质', value: -9 },
         ],
       },
       {
         id: 'chitrin_5',
-        title: '超重型装甲偏执狂',
-        description: '你把所有能找到的铁板都焊在了身上，防御力惊人得像个移动的铁罐头，但也笨重得像个装满矿石的背篓。',
+        title: '精工重甲师',
+        description:
+          '你懂得如何用旧帝国遗构与废土材料拼出真正经得起战场考验的重甲。你打造的护层更讲究受力分配、连接结构与关键部位防护，因此能让穿戴者在硬扛重击时依旧稳固可靠，但厚重装配终究会拖慢动作。',
         rarity: '史诗',
         icon: <Shield className="w-8 h-8 text-emerald-300" />,
         stats: [
@@ -693,8 +714,8 @@ const godsData: GodTheme[] = [
         rarity: '史诗',
         icon: <Activity className="w-8 h-8 text-teal-400" />,
         stats: [
-          { name: '智力', value: 6 },
-          { name: '敏捷', value: 4 },
+          { name: '智力', value: 8 },
+          { name: '敏捷', value: 6 },
         ],
       },
       {
@@ -746,7 +767,7 @@ const godsData: GodTheme[] = [
       {
         id: 'chitrin_13',
         title: '扭矩校准',
-        description: '你对发力角度和承重点有着近乎本能的计算习惯。哪怕是最朴素的一次格挡，也会被你调整到更省力的位置。',
+        description: '你对发力角度和承重点有着特别的习惯。哪怕是最朴素的一次格挡，也会被你调整到更省力的位置。',
         rarity: '普通',
         icon: <Cpu className="w-8 h-8 text-teal-300" />,
         stats: [
@@ -844,6 +865,21 @@ const godsData: GodTheme[] = [
           { name: '体质', value: 15 },
           { name: '意志', value: 10 },
           { name: '敏捷', value: -12 },
+        ],
+      },
+      {
+        id: 'yuri_6b',
+        title: '蛮荒恶兽',
+        description:
+          '比拉克将你朝着野兽化的完美猎杀形态推进。你的肌肉、骨架与咬合本能都在异变中变得更适合扑杀与撕裂，战斗时会爆发出近乎蛮荒凶兽般的压制力；代价则是日常姿态与面容都愈发偏离人形，渐渐的失去思考能力。',
+        rarity: '传说',
+        icon: <Skull className="w-8 h-8 text-pink-500" />,
+        stats: [
+          { name: '力量', value: 28 },
+          { name: '体质', value: 24 },
+          { name: '意志', value: 24 },
+          { name: '魅力', value: -40 },
+          { name: '智力', value: -40 },
         ],
       },
       {
@@ -956,7 +992,7 @@ const godsData: GodTheme[] = [
     title: '欢乐之神',
     description: '废土最强（自封）战士，带来打破第四面墙的离谱恩赐。',
     fullDescription:
-      '哔！比普是最强的！跟随比普的脚步，你将获得打破第四面墙的奇妙力量。别太把这个烂世界当回事，毕竟快乐才是废土生存的第一法则！',
+      '比！比普是最强的！跟随比普的脚步，你将获得打破第四面墙的奇妙力量。别太把这个烂世界当回事，毕竟快乐才是废土生存的第一法则！',
     colorFrom: 'from-lime-500',
     colorTo: 'to-green-400',
     borderGlow: 'hover:border-green-500',
@@ -983,6 +1019,17 @@ const godsData: GodTheme[] = [
         stats: [
           { name: '意志', value: 9 },
           { name: '体质', value: -8 },
+        ],
+      },
+      {
+        id: 'beep_chitrin_3',
+        title: 'AI寻路大师',
+        description: '你总能找到地图的“最优解”，以诡异步伐高速移动，但这种非人感让你产生了严重的社交障碍。',
+        rarity: '稀有',
+        icon: <Activity className="w-8 h-8 text-emerald-400" />,
+        stats: [
+          { name: '敏捷', value: 9 },
+          { name: '魅力', value: -8 },
         ],
       },
       {
@@ -1977,7 +2024,7 @@ export default function App() {
             evil_7: '将队伍里最勤恳死忠的同伴作为活祭品生埋',
           };
           const ritualText = evilRitualMap[blessing.id] || '献上禁忌祭品';
-          return `${roleName}向心中的【罪恶】祈祷，要求${ritualText}，于是${roleName}杀死了${sacrificeName}将其献祭给【恶念】，得到了【${blessing.title}】${blessing.description}。`;
+          return `【祈祷与赐福】\n${roleName}向心中的【罪恶】祈祷，要求${ritualText}，于是${roleName}杀死了${sacrificeName}将其献祭给【恶念】，得到了【${blessing.title}】${blessing.description}。`;
         }
         if (god.id === 'yuri') {
           const yuriMutationMap: Record<string, string> = {
@@ -1994,11 +2041,11 @@ export default function App() {
             yuri_11: `${roleName}的胸腹与前臂角质层增生为同心鳞甲，并出现偏振收缩反应，可偏导正面冲击`,
           };
           const mutationText = yuriMutationMap[blessing.id] || `${roleName}的血肉发生了诡异异变`;
-          const godDisplayName = `${god.title}${god.name}`;
-          return `${roleName}向【${godDisplayName}】祈祷，得到了赐福【${blessing.title}】${blessing.description}。与此同时，${mutationText}。`;
+          const godDisplayName = god.name;
+          return `【祈祷与赐福】\n${roleName}向【${godDisplayName}】祈祷，得到了赐福【${blessing.title}】${blessing.description}。与此同时，${mutationText}。`;
         }
-        const godDisplayName = `${god.title}${god.name}`;
-        return `${roleName}向【${godDisplayName}】祈祷，得到了赐福【${blessing.title}】${blessing.description}。`;
+        const godDisplayName = god.name;
+        return `【祈祷与赐福】\n${roleName}向【${godDisplayName}】祈祷，得到了赐福【${blessing.title}】${blessing.description}。`;
       })
       .join('\n');
 
@@ -2242,6 +2289,15 @@ export default function App() {
       const targetName = runtimeSquad.find(member => member.id === characterId)?.name || memberName || '该角色';
       const targetMember = runtimeSquad.find(member => member.id === characterId);
       const brandGodId = getBrandGodIdFromMember(targetMember);
+      const raceName = String(_.get(mvuData, `stat_data.小队成员.${squadName}.成员.${memberName}.种族.名称`, ''));
+
+      if (selectingTarget.god.id === 'yuri' && raceName.includes('骨人')) {
+        setRitualWarning({
+          title: '深渊拒绝无肉之骨',
+          content: `${targetName} 当前种族为【${raceName || '骨人'}】。\n比拉克渴求的是会畸变、会增生、会哀嚎的血肉之躯；冰冷的骨架与机件无法成为深渊异化的温床。`,
+        });
+        return;
+      }
 
       if (isSpecialGod(selectingTarget.god.id)) {
         if (brandGodId && brandGodId !== selectingTarget.god.id) {
