@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="options-root">
     <div v-if="options.length" class="interactive-options-container" :class="`option-count-${options.length}`">
       <div class="actor-selector" :class="{ active: isActorMenuOpen }">
@@ -154,8 +154,39 @@ function selectActor(name: string) {
   closeActorMenu();
 }
 
+async function syncLegacyWorldbookEntry(enabled: boolean) {
+  try {
+    const charWorldbook = getCharWorldbookNames('current');
+    const wbName = charWorldbook.primary;
+    if (!wbName) {
+      console.warn('[kenshi选项栏] 当前角色未绑定主世界书，无法同步旧版开关 UID939');
+      return;
+    }
+
+    let foundTargetUid = false;
+    await updateWorldbookWith(
+      wbName,
+      entries =>
+        entries.map(entry => {
+          if (Number(entry.uid) !== 939) return entry;
+          foundTargetUid = true;
+          return entry.enabled === enabled ? entry : { ...entry, enabled };
+        }),
+      { render: 'debounced' },
+    );
+
+    if (!foundTargetUid) {
+      console.warn('[kenshi选项栏] 世界书 UID939 未找到，无法同步旧版开关');
+    }
+  } catch (error) {
+    console.error('[kenshi选项栏] 同步旧版世界书开关 UID939 失败:', error);
+  }
+}
+
 function toggleLegacyMode() {
-  isLegacyMode.value = !isLegacyMode.value;
+  const nextLegacyMode = !isLegacyMode.value;
+  isLegacyMode.value = nextLegacyMode;
+  void syncLegacyWorldbookEntry(nextLegacyMode);
 }
 
 function toggleSpecialMenu() {
