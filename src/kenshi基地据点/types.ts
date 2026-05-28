@@ -1,10 +1,10 @@
-export interface EmployeeStats {
+﻿export interface EmployeeStats {
   力量: number;
   敏捷: number;
   感知: number;
   体质: number;
   智力: number;
-  意志: number;
+  韧性: number;
   魅力: number;
 }
 

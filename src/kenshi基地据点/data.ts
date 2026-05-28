@@ -1,4 +1,4 @@
-import { GameState, Employee, GameEvent, Facility, FacilityBlueprint, Outpost } from './types';
+﻿import { GameState, Employee, GameEvent, Facility, FacilityBlueprint, Outpost } from './types';
 
 export const FACILITY_BLUEPRINTS: FacilityBlueprint[] = [
   {
@@ -158,7 +158,7 @@ export const FACILITY_BLUEPRINTS: FacilityBlueprint[] = [
     id: 'stone-processor',
     category: '生产',
     icon: 'Pickaxe',
-    statScaling: ['力量', '意志'],
+    statScaling: ['力量', '韧性'],
     levels: {
       1: { level: 1, name: '手动石材加工机', description: '人工将石头敲打成建筑材料。', productionRate: 10, productionType: '建筑材料/天', maxWorkers: 3, upgradeCost: {'铁原板': 5}, requiredOutpostLevel: 1 },
       2: { level: 2, name: '石材加工机 II', description: '半自动加工机。', productionRate: 25, productionType: '建筑材料/天', maxWorkers: 2, upgradeCost: {'铁原板': 10, '电子元件': 1}, requiredOutpostLevel: 2 },
@@ -285,7 +285,7 @@ export const FACILITY_BLUEPRINTS: FacilityBlueprint[] = [
     id: 'prison',
     category: '囚禁',
     icon: 'Lock',
-    statScaling: ['力量', '意志'],
+    statScaling: ['力量', '韧性'],
     levels: {
       1: { level: 1, name: '简易绑缚柱', description: '几根木桩系上绳子，勉强绑住俘虏。', productionRate: '1名', productionType: '关押上限', maxWorkers: 0, upgradeCost: {'建筑材料': 3}, requiredOutpostLevel: 1 },
       2: { level: 2, name: '铁笼', description: '用铁条焊死的笼子，防止犯人逃跑。', productionRate: '3名', productionType: '关押上限', maxWorkers: 1, upgradeCost: {'铁原板': 10}, requiredOutpostLevel: 2 },
@@ -372,10 +372,10 @@ export const initialFacilities: Facility[] = [
 ];
 
 export const initialEmployees: Employee[] = [
-  { id: 'emp-1', name: '哔噗', race: '蜂巢族工蜂', role: '见习武圣', status: 'working', facilityId: 'fac-1', outpostId: 'out-1', traits: ['跑得极快', '蜂巢族', '四肢缺失'], hp: 75, maxHp: 75, stats: { 力量: 8, 敏捷: 15, 感知: 12, 体质: 6, 智力: 10, 意志: 18, 魅力: 20 } },
-  { id: 'emp-2', name: '阿格努', race: '骨人', role: '重装打手', status: 'working', facilityId: 'fac-2', outpostId: 'out-1', traits: ['无需食物', '天气免疫', '无法说话'], hp: 200, maxHp: 200, stats: { 力量: 16, 敏捷: 8, 感知: 9, 体质: 18, 智力: 7, 意志: 14, 魅力: 4 } },
-  { id: 'emp-3', name: '康', race: '沙克族', role: '精锐战士', status: 'working', facilityId: 'fac-1', outpostId: 'out-1', traits: ['天生狂战士', '大胃王', '高血量'], hp: 125, maxHp: 125, stats: { 力量: 18, 敏捷: 10, 感知: 11, 体质: 16, 智力: 8, 意志: 15, 魅力: 10 } },
-  { id: 'emp-4', name: '绿', race: '焦土之子', role: '炮塔射手', status: 'idle', outpostId: 'out-1', traits: ['神射手', '嗜酒', '生肉食用'], hp: 80, maxHp: 80, stats: { 力量: 9, 敏捷: 17, 感知: 18, 体质: 9, 智力: 12, 意志: 10, 魅力: 8 } },
+  { id: 'emp-1', name: '哔噗', race: '蜂巢族工蜂', role: '见习武圣', status: 'working', facilityId: 'fac-1', outpostId: 'out-1', traits: ['跑得极快', '蜂巢族', '四肢缺失'], hp: 75, maxHp: 75, stats: { 力量: 8, 敏捷: 15, 感知: 12, 体质: 6, 智力: 10, 韧性: 18, 魅力: 20 } },
+  { id: 'emp-2', name: '阿格努', race: '骨人', role: '重装打手', status: 'working', facilityId: 'fac-2', outpostId: 'out-1', traits: ['无需食物', '天气免疫', '无法说话'], hp: 200, maxHp: 200, stats: { 力量: 16, 敏捷: 8, 感知: 9, 体质: 18, 智力: 7, 韧性: 14, 魅力: 4 } },
+  { id: 'emp-3', name: '康', race: '沙克族', role: '精锐战士', status: 'working', facilityId: 'fac-1', outpostId: 'out-1', traits: ['天生狂战士', '大胃王', '高血量'], hp: 125, maxHp: 125, stats: { 力量: 18, 敏捷: 10, 感知: 11, 体质: 16, 智力: 8, 韧性: 15, 魅力: 10 } },
+  { id: 'emp-4', name: '绿', race: '焦土之子', role: '炮塔射手', status: 'idle', outpostId: 'out-1', traits: ['神射手', '嗜酒', '生肉食用'], hp: 80, maxHp: 80, stats: { 力量: 9, 敏捷: 17, 感知: 18, 体质: 9, 智力: 12, 韧性: 10, 魅力: 8 } },
 ];
 
 export const initialEvents: GameEvent[] = [];

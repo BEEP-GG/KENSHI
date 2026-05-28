@@ -1,10 +1,10 @@
-/* eslint-disable */
+﻿/* eslint-disable */
 // @ts-nocheck
 import { registerMvuSchema } from 'https://testingcf.jsdelivr.net/gh/StageDog/tavern_resource/dist/util/mvu_zod.js';
 
 // 定义通用的属性/技能解析正则表达式
 const MODIFIER_REGEX =
-  /(全属性|力量|敏捷|感知|体质|意志|智力|魅力|STR|DEX|PER|TGH|WIL|INT|CHA|潜行|运动|偷窃|撬锁|暗杀|侦查|科学|工程学|战地急救|机器人学|交易|说服|烹饪|火焰抗性|寒冷抗性|酸蚀抗性|毒素抗性|闪避|防护能力|DR)(?:属性|检定|加成|减益)?\s*([+-]\s*\d+)/gi;
+  /(全属性|力量|敏捷|感知|体质|韧性|智力|魅力|STR|DEX|PER|TGH|WIL|INT|CHA|潜行|运动|偷窃|撬锁|暗杀|侦查|科学|工程学|战地急救|机器人学|交易|说服|烹饪|火焰抗性|寒冷抗性|酸蚀抗性|毒素抗性|闪避|防护能力|DR)(?:属性|检定|加成|减益)?\s*([+-]\s*\d+)/gi;
 
 // 定义一个辅助函数，用于将伤害类型中的百分比转换为小数
 const parseDamageType = damageTypeStr => {
@@ -96,9 +96,10 @@ const ItemSchema = z
 const AttributeDetailSchema = z
   .object({
     基础: z.coerce.number().prefault(30),
+    手动加成: z.coerce.number().prefault(0),
     加成: z.coerce.number().prefault(0),
   })
-  .prefault({ 基础: 30, 加成: 0 });
+  .prefault({ 基础: 30, 手动加成: 0, 加成: 0 });
 
 // 定义部位创伤结构
 const PartTraumaSchema = z
@@ -163,19 +164,23 @@ const CharacterSchemaBase = z.object({
     .record(z.string(), z.union([z.coerce.number(), AttributeDetailSchema]))
     .transform(input => {
       const defaultAttrs = { STR: 30, DEX: 30, PER: 30, TGH: 30, WIL: 30, INT: 30, CHA: 30 };
-      const attrMap = { 力量: 'STR', 敏捷: 'DEX', 感知: 'PER', 体质: 'TGH', 意志: 'WIL', 智力: 'INT', 魅力: 'CHA' };
+      const attrMap = { 力量: 'STR', 敏捷: 'DEX', 感知: 'PER', 体质: 'TGH', 韧性: 'WIL', 智力: 'INT', 魅力: 'CHA' };
       const finalOutput = {};
       for (const key in defaultAttrs) {
-        finalOutput[key] = { 基础: defaultAttrs[key], 加成: 0 };
+        finalOutput[key] = { 基础: defaultAttrs[key], 手动加成: 0, 加成: 0 };
       }
       for (const rawKey in input) {
         const stdKey = attrMap[rawKey] || rawKey.toUpperCase();
         if (defaultAttrs.hasOwnProperty(stdKey)) {
           const value = input[rawKey];
           if (typeof value === 'object' && value !== null && '基础' in value) {
-            finalOutput[stdKey] = { 基础: Number(value.基础) || defaultAttrs[stdKey], 加成: Number(value.加成) || 0 };
+            finalOutput[stdKey] = {
+              基础: Number(value.基础) || defaultAttrs[stdKey],
+              手动加成: Number(value.手动加成) || 0,
+              加成: Number(value.加成) || 0,
+            };
           } else if (value !== undefined && value !== null && !isNaN(Number(value))) {
-            finalOutput[stdKey] = { 基础: Number(value), 加成: 0 };
+            finalOutput[stdKey] = { 基础: Number(value), 手动加成: 0, 加成: 0 };
           }
         }
       }
@@ -209,7 +214,7 @@ const characterTransform = data => {
     敏捷: 'DEX',
     感知: 'PER',
     体质: 'TGH',
-    意志: 'WIL',
+    韧性: 'WIL',
     智力: 'INT',
     魅力: 'CHA',
     STR: 'STR',
@@ -284,7 +289,7 @@ const characterTransform = data => {
 
   const finalAttrs = {};
   for (const key in data.属性) {
-    finalAttrs[key] = (data.属性[key]?.基础 || 0) + (data.属性[key]?.加成 || 0);
+    finalAttrs[key] = (data.属性[key]?.基础 || 0) + (data.属性[key]?.手动加成 || 0) + (data.属性[key]?.加成 || 0);
   }
 
   if ((data.种族?.名称 || '').includes('骨人')) {

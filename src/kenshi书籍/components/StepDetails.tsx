@@ -1,4 +1,4 @@
-import { Activity, Eye, Heart, Minus, Plus, Shield, Sparkles, Users, Zap } from 'lucide-react';
+﻿import { Activity, Eye, Heart, Minus, Plus, Shield, Sparkles, Users, Zap } from 'lucide-react';
 import { motion } from 'motion/react';
 import React from 'react';
 import { RACES, SCENARIOS, TRAITS } from '../data';
@@ -21,7 +21,7 @@ const ATTRIBUTE_CONFIG: Record<Attribute, { label: string; icon: any; desc: stri
   dexterity: { label: '敏捷', icon: Zap, desc: '影响攻击速度和格挡几率' },
   perception: { label: '感知', icon: Eye, desc: '影响远程精度和侦察能力' },
   constitution: { label: '体质', icon: Heart, desc: '影响生命值和抗击打能力' },
-  will: { label: '意志', icon: Sparkles, desc: '影响战斗士气与胆量' },
+  will: { label: '韧性', icon: Sparkles, desc: '影响战斗士气与胆量' },
   intelligence: { label: '智力', icon: Sparkles, desc: '影响科研速度和医疗效率' },
   charisma: { label: '魅力', icon: Activity, desc: '影响交易价格和招募成功率' },
 };
@@ -68,7 +68,7 @@ const ATTRIBUTE_LABEL_TO_KEY: Record<string, Attribute> = {
   敏捷: 'dexterity',
   感知: 'perception',
   体质: 'constitution',
-  意志: 'will',
+  韧性: 'will',
   智力: 'intelligence',
   魅力: 'charisma',
 };
@@ -109,7 +109,7 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
       subraceSummary,
     ].join(' ');
 
-    const regex = /(力量|敏捷|感知|体质|意志|智力|魅力)\s*([+-]\s*\d+)/g;
+    const regex = /(力量|敏捷|感知|体质|韧性|智力|魅力)\s*([+-]\s*\d+)/g;
     let match = regex.exec(textSource);
     while (match) {
       const attrKey = ATTRIBUTE_LABEL_TO_KEY[match[1]];
@@ -137,7 +137,7 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
     const selectedScenario = SCENARIOS.find(scenario => scenario.id === data.scenario);
     const textSource = selectedScenario?.description ?? '';
 
-    const regex = /(力量|敏捷|感知|体质|意志|智力|魅力)\s*([+-]\s*\d+)/g;
+    const regex = /(力量|敏捷|感知|体质|韧性|智力|魅力)\s*([+-]\s*\d+)/g;
     let match = regex.exec(textSource);
     while (match) {
       const attrKey = ATTRIBUTE_LABEL_TO_KEY[match[1]];
@@ -477,7 +477,7 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
                       <Plus size={16} className="mx-auto" />
                     </button>
                   </div>
-                  {isLocked && <div className="text-[10px] text-white/40 mt-1">骨人意志固定为 100</div>}
+                  {isLocked && <div className="text-[10px] text-white/40 mt-1">骨人韧性固定为 100</div>}
 
                   <p className="text-[10px] text-white/40 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     {config.desc}

@@ -1,4 +1,4 @@
-export const SCENARIOS = [
+﻿export const SCENARIOS = [
   {
     id: 'wanderer',
     title: '流浪者 (The Wanderer)',
@@ -16,6 +16,21 @@ export const SCENARIOS = [
     icon: 'Sparkles',
     equipment: ['无'],
     money: 0,
+  },
+  {
+    id: 'heretic_fire',
+    title: '异端之火',
+    description:
+      '你抵达铁之径王城，站在远古血盟的战旗之下。女王哈兹姆已将濒临灭绝的古老种族聚成复仇之剑，而你将成为这场反人类怒潮中的第一缕火焰。',
+    difficulty: '困难',
+    icon: 'Flame',
+    equipment: ['粗制铁刀', '破旧皮甲', '干肉'],
+    money: 100,
+    forbiddenRaces: ['human'],
+    fixedRegion: 'iron_path',
+    fixedTown: '铁之径王城',
+    alliedFactions: ['远古血盟'],
+    hostileFactions: ['神圣教国', '联合城', '食人族部落', '奴隶商人'],
   },
   {
     id: 'slave_master',
@@ -538,7 +553,7 @@ export const SCENARIOS = [
   {
     id: 'mongrel_wanderer',
     title: '蒙格勒迷途者',
-    description: '浓雾笼罩的雾岛之中，你在迷途中求生，依靠残存的意志寻找出路。',
+    description: '浓雾笼罩的雾岛之中，你在迷途中求生，依靠残存的韧性寻找出路。',
     difficulty: '困难',
     icon: 'Compass',
     equipment: ['破旧披风', '干粮'],
@@ -730,6 +745,14 @@ export const REGIONS = [
     danger: '极高',
   },
   {
+    id: 'iron_path',
+    title: '铁之径',
+    description:
+      '大陆西北角偏僻而充满敌意的荒凉走廊，旧帝国废弃机械的残骸半埋在尘沙与锈土之间。远古血盟占据此地后，将人类视作不共戴天的死敌；对异族流亡者而言这里是壁垒，对人类而言这里就是绝地。平坦地势让风毫无阻碍地横扫荒原，卷起混杂着尘土、海腥与铁锈味的碎屑。',
+    towns: ['铁之径王城'],
+    danger: '极高',
+  },
+  {
     id: 'lagoon_lowland',
     title: '洼地泻湖',
     description:
@@ -872,6 +895,8 @@ export const TOWN_DESCRIPTIONS: Record<string, string> = {
   开顿城: '高地上的联合之城，四周遍布巨兽骸骨。',
   沙尔维尔驿站: '矗立于目之地风暴腹地的孤独旅馆，商旅、逃亡者与濒死之人都曾在此歇脚。',
   利维坦观测站: '营地位于海岸高地，瞭望塔与简易帐篷拼接而成，是追踪巨兽动向的前线据点。',
+  铁之径王城:
+    '铁之径西侧浅海岛屿上的异族王城，坐标为纬度 7348、经度 1138。城池依托巨大的古代机械穹顶废墟而建，粗犷石块与废旧铁皮填补着残骸缺口，使整座城市的轮廓与旧时代遗迹融为一体。绘有各异族图腾的破旧旗帜在海风与锈尘中猎猎作响。',
 };
 
 export const RACES = [
@@ -963,6 +988,48 @@ export const RACES = [
     title: '南部蜂巢族',
     description:
       '蜂巢族拥有近似昆虫的生理结构，最显著的特征是细长、宛如枯枝般的四肢。他们的身体异常脆弱，四肢很容易在战斗中被切断。他们的胸腔骨骼奇特，导致无法穿戴普通人类的衬衫；由于生有宽大、平坦且没有脚趾的脚掌，他们终生无法穿戴任何鞋类。不过，他们体内流淌着特殊的体液，天生免疫废土上致命的酸雨。\n\n排外且侵略性的血红色蜂巢族，拥有更强的军事力量。\n初始属性修正：力量+5、体质+5、魅力-15、智力-10。\n种族特性：战斗狂热（最终伤害+5）。\n南部蜂巢族排外且侵略性的血红色肤色的蜂巢族，拥有更强的军事力量但智力其他相比较低',
+    subraces: [
+      {
+        id: 'hive_prince',
+        title: '智蜂',
+        description:
+          '蜂巢中的最高等级，女王的右手。没有人见过真正的女王，是智蜂掌管一切。自由智蜂通常是由于失去对一位敌对智蜂的命令，或是被驱逐出去作为对某种失败的惩罚而导致的结果。它们比普通的蜂群更聪明，更自由。',
+        attributeSummary: '智力+15、感知+10、力量-10',
+        allowedGenders: ['male'],
+      },
+      {
+        id: 'hive_worker',
+        title: '工蜂',
+        description:
+          '这些工人是消耗品，生来就是为蜂巢劳动的，他们只知道服从和为蜂巢族服务，他们将这些置于个人利益、安危和舒适之上。如果切断蜂巢对他们的控制，他们通常就会死亡，但在极少数情况下也会成为自由的个体。他们会对新得到的自由感到困惑，也会因为失去预先确定的目的而迷茫，他们会茫然地寻找人生的意义，但他们通常只能找到死亡和剥削。',
+        attributeSummary: '敏捷+5、力量+5、体质+5、智力-15',
+        allowedGenders: ['male'],
+      },
+      {
+        id: 'hive_soldier',
+        title: '兵蜂',
+        description:
+          '兵蜂生来就是为了保护蜂巢和控制工蜂。他们比工蜂更强壮，也更聪明，他们很少追寻自由，脱离种族的人最后大多成为了雇佣兵或是其他派系的士兵。',
+        attributeSummary: '智力+15、感知+10、力量-10、敏捷+5',
+        allowedGenders: ['male'],
+      },
+      {
+        id: 'hive_princess',
+        title: '蜂巢公主',
+        description:
+          '每隔一段时间，就有一种异常体出现在蜂巢族的形成过程中。古老的基因模板，长时间处于休眠状态，干扰并与标准工蜂融合在一起。大多数情况下，这导致了可恶的动物的死亡，但偶尔也会有一个幸存下来。一个假女王，注定要制造失败的蜂房，然后慢慢地腐烂。由于它们无法自己创造新的蜂巢族，而且通常没有信息素来保持它们的温顺和顺从，它们很快就会被赶出蜂巢，在严酷的外部世界中枯萎。',
+        attributeSummary: '魅力+5、敏捷+5、感知+5、力量-15',
+        allowedGenders: ['female'],
+      },
+    ],
+  },
+  {
+    id: 'xeno_hive',
+    title: '异虫蜂巢族',
+    description:
+      '蜂巢族拥有近似昆虫的生理结构，最显著的特征是细长、宛如枯枝般的四肢。他们的身体异常脆弱，四肢很容易在战斗中被切断。他们的胸腔骨骼奇特，导致无法穿戴普通人类的衬衫；由于生有宽大、平坦且没有脚趾的脚掌，他们终生无法穿戴任何鞋类。不过，他们体内流淌着特殊的体液，天生免疫废土上致命的酸雨。\n\n暗紫色皮肤的稀有蜂巢分支，头部生有类似甲虫的触角，皮肤表壳比其他蜂巢种族更为坚硬。本族数量稀少，通常只会在远古血盟庇护下现身。\n初始属性修正：韧性+10、体质+10。\n种族特性：脆弱肢体。',
+    attributeSummary: '韧性+10、体质+10',
+    unlockScenarios: ['heretic_fire'],
     subraces: [
       {
         id: 'hive_prince',
@@ -1148,7 +1215,7 @@ export const RACES = [
         title: '圆头',
         description:
           '圆形脑袋是第二帝国时期生产的最为广泛的通用型劳工或民用骨人。它们的设计理念是“可靠与泛用”，光滑的圆形脑袋上没有任何多余的装饰，结构简单，易于维护。它们的身体构造均衡，能够胜任从耕作、建造到基础战斗等各种任务。过于朴实的设计也意味着它们缺乏在特定领域的专精能力，学习高级技能时效率略逊于其他专业型号。',
-        attributeSummary: '力量+3、敏捷+3、感知+3、体质+3、意志+3、智力+3、魅力+3',
+        attributeSummary: '力量+3、敏捷+3、感知+3、体质+3、韧性+3、智力+3、魅力+3',
       },
       {
         id: 'skeleton_camera',
@@ -1176,7 +1243,7 @@ export const RACES = [
         title: '骨人-虚伪者',
         description:
           '外观、皮肤纹理与呼吸节律几乎与人类无异，连多数简易体检都难以识别其机械本质。其核心却是为高强度歼灭行动打造的古代战争单元，具备极端环境生存与持续作战能力。为了潜入与猎杀而存在，擅长在伪装与暴起之间切换，是第二帝国遗产中最危险的异化型号之一。',
-        attributeSummary: '力量+10、敏捷+10、感知+10、体质+10、意志+10、智力+10、魅力+10',
+        attributeSummary: '力量+10、敏捷+10、感知+10、体质+10、韧性+10、智力+10、魅力+10',
         allowedGenders: ['male', 'female', 'other'],
         unlockScenarios: ['false_savior'],
       },
@@ -1246,7 +1313,7 @@ export const TRAITS = {
     {
       id: 'save_load_courage',
       title: '读档胆略',
-      description: '你脑海中总有一个声音告诉你“死了可以重来”，因此你面对食人族也丝毫不慌。意志 +5',
+      description: '你脑海中总有一个声音告诉你“死了可以重来”，因此你面对食人族也丝毫不慌。韧性 +5',
       category: 'attribute',
     },
     {
@@ -1270,7 +1337,7 @@ export const TRAITS = {
     {
       id: 'holy_boomer',
       title: '圣国老保',
-      description: '“赞美奥克兰！”你对某些教条有着刻板且顽固的坚持，精神极难被摧毁。意志 +4',
+      description: '“赞美奥克兰！”你对某些教条有着刻板且顽固的坚持，精神极难被摧毁。韧性 +4',
       category: 'attribute',
     },
     {
@@ -1300,7 +1367,7 @@ export const TRAITS = {
     {
       id: 'swamp_haze',
       title: '沼泽大麻鬼',
-      description: '吸入过多的沼泽迷雾让你对任何疼痛都反应迟钝，坏处是脑子有点慢，好处是稳如老狗。意志 +3',
+      description: '吸入过多的沼泽迷雾让你对任何疼痛都反应迟钝，坏处是脑子有点慢，好处是稳如老狗。韧性 +3',
       category: 'attribute',
     },
     {
@@ -1343,20 +1410,20 @@ export const TRAITS = {
     {
       id: 'save_reload_oracle',
       title: '读档预知者',
-      description: '你似乎能预见“读档”前的未来以避开危险，但也因此十分依赖“重来”，稍有不顺就想放弃。感知 +10，意志 -10',
+      description: '你似乎能预见“读档”前的未来以避开危险，但也因此十分依赖“重来”，稍有不顺就想放弃。感知 +10，韧性 -10',
       category: 'attribute',
     },
     {
       id: 'oakran_zealot_extreme',
       title: '极致的奥克兰信徒',
-      description: '你的信仰坚如神圣胸甲，但大脑也因此拒绝理解除了奥克兰圣典以外的任何复杂事物。意志 +10，智力 -9',
+      description: '你的信仰坚如神圣胸甲，但大脑也因此拒绝理解除了奥克兰圣典以外的任何复杂事物。韧性 +10，智力 -9',
       category: 'attribute',
     },
     {
       id: 'hive_sales_king',
       title: '蜂巢传销之王',
       description:
-        '你的口才堪比最顶级的蜂巢族商人，能把沙子卖给沙匪，但自尊心像玻璃一样脆弱，一句重话就能让你崩溃。魅力 +10，意志 -8',
+        '你的口才堪比最顶级的蜂巢族商人，能把沙子卖给沙匪，但自尊心像玻璃一样脆弱，一句重话就能让你崩溃。魅力 +10，韧性 -8',
       category: 'attribute',
     },
     {
@@ -1390,7 +1457,7 @@ export const TRAITS = {
     {
       id: 'mechanical_ascension_mania',
       title: '机械飞升狂热症',
-      description: '你坚信“血肉苦弱，机械飞升”，用钢铁意志强迫自己无视痛苦，但也因此搞垮了脆弱的肉体。意志 +9，体质 -8',
+      description: '你坚信“血肉苦弱，机械飞升”，用钢铁韧性强迫自己无视痛苦，但也因此搞垮了脆弱的肉体。韧性 +9，体质 -8',
       category: 'attribute',
     },
     {
@@ -1418,7 +1485,7 @@ export const TRAITS = {
       id: 'shackle_breaker',
       title: '破铐者',
       description:
-        '你曾在圣国重生镇的采石场服刑。那段暗无天日的绝望岁月没能压垮你，反而将你的精神淬炼成了真正的钢铁。意志 +6',
+        '你曾在圣国重生镇的采石场服刑。那段暗无天日的绝望岁月没能压垮你，反而将你的精神淬炼成了真正的钢铁。韧性 +6',
       category: 'attribute',
     },
     {
@@ -1445,7 +1512,7 @@ export const TRAITS = {
       id: 'shek_milf_superfan',
       title: '沙克大妈狂热粉',
       description:
-        '你对沙克族那些浑身骨刺、肌肉虬结的女性有着某种不可告人的狂热XP。只要一想到她们的肌肉，你就会像打了鸡血一样充满斗志。意志 +5',
+        '你对沙克族那些浑身骨刺、肌肉虬结的女性有着某种不可告人的狂热XP。只要一想到她们的肌肉，你就会像打了鸡血一样充满斗志。韧性 +5',
       category: 'attribute',
     },
     {
@@ -1574,7 +1641,7 @@ export const TRAITS = {
       id: 'chainbreaker',
       title: '枷锁挣脱者',
       description:
-        '曾经的奴隶印记与非人的折磨没能让你屈服，反而让你的内心淬炼得坚不可摧，你发誓绝不再向任何人低头。意志 +5',
+        '曾经的奴隶印记与非人的折磨没能让你屈服，反而让你的内心淬炼得坚不可摧，你发誓绝不再向任何人低头。韧性 +5',
       category: 'attribute',
     },
   ],

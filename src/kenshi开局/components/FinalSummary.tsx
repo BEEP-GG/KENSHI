@@ -11,6 +11,54 @@ const ATTRIBUTE_MIN = 1;
 const GOD_MODE_POINTS_PER_LEVEL = 5;
 const SQUAD_LEVEL_POINTS_PER_LEVEL = 5;
 
+const SCENARIO_START_LEVELS: Record<string, number> = {
+  monster_hunter: 30,
+  apex_hunter: 40,
+  officer_son: 20,
+  holy_crusade: 20,
+  false_savior: 30,
+};
+
+const getWeaponWeight = (type?: string, name?: string) => {
+  const text = `${type ?? ''}${name ?? ''}`;
+  if (/武术|无/.test(text)) return 0;
+  if (/利维坦狩猎之刃/.test(text)) return 48;
+  if (/大剑|沙克大剑|巨骨战斧/.test(text)) return 42;
+  if (/圣杖/.test(text)) return 18;
+  if (/重型长柄刀|鱼矛/.test(text)) return 16;
+  if (/铁棒/.test(text)) return 28;
+  if (/砍刀/.test(text)) return 20;
+  if (/弯刀/.test(text)) return 8;
+  if (/长官佩刀/.test(text)) return 7;
+  if (/武士刀/.test(text)) return 6;
+  if (/防身小刀|生锈短刀|短刀/.test(text)) return 2;
+  if (/生锈的铁剑/.test(text)) return 5;
+  if (/钝器/.test(text)) return 28;
+  if (/大型/.test(text)) return 36;
+  if (/长柄/.test(text)) return 8;
+  if (/军刀/.test(text)) return 6;
+  if (/武士刀/.test(text)) return 1;
+  if (/弓|弩/.test(text)) return 6;
+  return 1;
+};
+
+const getArmorWeight = (type?: string, name?: string) => {
+  const text = `${type ?? ''}${name ?? ''}`;
+  if (/无甲/.test(text)) return 0;
+  if (/利维坦幼兽铠甲套装/.test(text)) return 30;
+  if (/遗传的武士铠甲|猎手披风|雇佣兵之甲|奥克兰赐福祭司服/.test(text)) return 12;
+  if (
+    /贴身太空服|贵族服饰|破布衫|残破束身衣|破烂腰布|简单的布衣布裤|黑色亚麻衣物|衬衫|破旧的衣服|猎手皮甲|布背心|夹克/.test(
+      text,
+    )
+  )
+    return 3;
+  if (type === '重甲') return 17;
+  if (type === '中甲') return 5;
+  if (type === '轻甲') return 1;
+  return 0;
+};
+
 interface FinalSummaryProps {
   data: CharacterData;
 }
@@ -169,7 +217,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
 这里是臭名昭著的雾岛，而你正困在这片死地中心的孤城——蒙格勒。
 凄厉的惨叫声时不时穿透浓雾刺入耳膜，那是被雾人活生生啃食的倒霉蛋发出的绝望哀嚎。
 你不知道自己是如何迷失在这片恐怖地带的，但城外的每一寸土地都潜伏着那些盲目、贪婪的蓝色食人怪物。
-留在城里只能慢慢发疯；而想要活下去，你就必须握紧武器，依靠残存的理智与钢铁般的意志，在雾人的无尽包围中杀出一条血路又或者在这个城中衰老腐烂致死。`,
+留在城里只能慢慢发疯；而想要活下去，你就必须握紧武器，依靠残存的理智与钢铁般的韧性，在雾人的无尽包围中杀出一条血路又或者在这个城中衰老腐烂致死。`,
     kral_choice: `沙克的血液在你体内沸腾，先祖克拉尔的英魂在向你呼唤！
 传说你是战神克拉尔的直系后裔，沙克王国真正的、也是唯一的合法领袖。
 然而如今，懦弱的女皇却坐在宝座上瑟瑟发抖，面对奥克兰人的步步紧逼，她唯一的计划竟是坐以待毙！
@@ -188,6 +236,19 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
 你的样貌、身份、甚至是行囊中那些根本不属于这个世界的奇特装备，全凭你一手捏造。这个世界对你的突兀降临毫无准备，但这正是你最大的特权。
 随心所欲地塑造你的化身吧，打破一切常理与束缚
 在这片焦土上，亲自执导属于你的第一场大戏。`,
+    heretic_fire: `属于人类的审判日，正随着你的脚步声悄然降临。
+在这片废土上，你见证了太多属于异族的悲剧：
+山羊人沦为盘中餐，蜥蜴人的鳞片被挂在集市，沙克族戴着镣铐弯下了脊梁，骨人被当做恶魔砸成废铁。
+长者们说
+人类的贪婪是毁掉这片大陆的毒瘤，他们把世界变成了单方面的屠宰场
+但逃亡到此为止了！
+你历经九死一生，终于抵达了这片没有歧视与压迫的净土——铁之径王城
+抬头仰望吧，“远古血盟”的战旗在风中猎猎作响
+伟大的女王哈兹姆已将濒临灭绝的原始种族重铸为一把复仇之剑
+人类自以为躲在高墙后就能延续暴政，却不知墙外早已燃起异端的燎原之火
+化身这场血腥狂潮的一部分吧
+去撕碎他们，让那些自命不凡的渣滓用生命明白，究竟谁才是猎物
+谁才是大陆的主人！！`,
   };
 
   const scenario = SCENARIOS.find(s => s.id === data.scenario);
@@ -208,7 +269,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
     dexterity: '敏捷',
     perception: '感知',
     constitution: '体质',
-    will: '意志',
+    will: '韧性',
     intelligence: '智力',
     charisma: '魅力',
   };
@@ -232,7 +293,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
 
   const stripAttributeTextFromDescription = (text: string) =>
     text
-      .replace(/[，、；\s]*(力量|敏捷|感知|体质|意志|智力|魅力)\s*[+-]\s*\d+/g, '')
+      .replace(/[，、；\s]*(力量|敏捷|感知|体质|韧性|智力|魅力)\s*[+-]\s*\d+/g, '')
       .replace(/[，、；\s]+$/g, '')
       .trim();
 
@@ -281,16 +342,19 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
       const weaponDesc = data.customStart.weaponDescription?.trim() || '无';
       const weaponValue = Math.max(0, Number(data.customStart.weaponValue || 0));
       const armorDr = Math.max(0, Number(data.customStart.armorDr || 0));
+      const customWeaponType = data.customStart.weaponType;
+      const customArmorType = data.customStart.armorType || '轻甲';
 
       return {
         主武器: {
           名字: weaponName,
-          种类: data.customStart.weaponType,
+          种类: customWeaponType,
           品质: '普通',
           介绍: weaponDesc,
           伤害骰: `1d${diceSides}`,
           伤害类型: `切割:${cut.toFixed(2)}/钝伤:${blunt.toFixed(2)}`,
           特效: {},
+          重量: getWeaponWeight(customWeaponType, weaponName),
           价值: weaponValue,
         },
         副武器: {
@@ -301,13 +365,15 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
           伤害骰: '1d4',
           伤害类型: '钝伤:1.0',
           特效: {},
+          重量: 0,
           价值: 0,
         },
         护甲: {
-          种类: data.customStart.armorType || '轻甲',
+          种类: customArmorType,
           '防护能力(DR)': armorDr,
           介绍: `自定义护甲（${data.customStart.armorType || '轻甲'}）`,
           特性: {},
+          重量: getArmorWeight(customArmorType),
         },
         背包物品: [],
       };
@@ -601,6 +667,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
             伤害骰: '1d30',
             伤害类型: '切割:0.2/钝伤:0.8',
             特效: {},
+            重量: getWeaponWeight('大型类', '大剑'),
             价值: 99999,
           }
         : {
@@ -617,6 +684,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
             伤害骰: weaponMeta.dice,
             伤害类型: weaponMeta.damage,
             特效: {},
+            重量: getWeaponWeight(weaponMeta.type, weaponMeta.name),
             价值: 0,
           };
 
@@ -633,6 +701,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
         伤害骰: '1d4',
         伤害类型: '钝伤:1.0',
         特效: {},
+        重量: 0,
         价值: 0,
       },
       护甲: {
@@ -640,6 +709,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
         '防护能力(DR)': armorMeta.dr,
         介绍: armorMeta.desc,
         特性: {},
+        重量: getArmorWeight(armorMeta.type, armorItem),
       },
       背包物品: cleanedBackpackItems,
     };
@@ -733,6 +803,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
         伤害骰: weaponMeta.dice,
         伤害类型: weaponMeta.damage,
         特效: {},
+        重量: getWeaponWeight(weaponMeta.type, weaponMeta.name),
         价值: 0,
       },
       副武器: {
@@ -743,6 +814,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
         伤害骰: '1d4',
         伤害类型: '钝伤:1.0',
         特效: {},
+        重量: 0,
         价值: 0,
       },
       护甲: {
@@ -750,6 +822,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
         '防护能力(DR)': armorMeta.dr,
         介绍: armorMeta.desc,
         特性: {},
+        重量: getArmorWeight(armorMeta.type, armorItem),
       },
       背包物品: cleanedBackpackItems,
     };
@@ -765,7 +838,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
       intelligence: 0,
       charisma: 0,
     };
-    const regex = /(力量|敏捷|感知|体质|意志|智力|魅力)\s*([+-]\s*\d+)/g;
+    const regex = /(力量|敏捷|感知|体质|韧性|智力|魅力)\s*([+-]\s*\d+)/g;
     let match: RegExpExecArray | null = null;
     while ((match = regex.exec(text)) !== null) {
       const key = match[1];
@@ -774,7 +847,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
       if (key === '敏捷') modifiers.dexterity += value;
       if (key === '感知') modifiers.perception += value;
       if (key === '体质') modifiers.constitution += value;
-      if (key === '意志') modifiers.will += value;
+      if (key === '韧性') modifiers.will += value;
       if (key === '智力') modifiers.intelligence += value;
       if (key === '魅力') modifiers.charisma += value;
     }
@@ -853,52 +926,30 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
     );
     const scenarioBonus = getScenarioAttributeBonus();
     const traitBonus = getSelectedTraitAttributeBonus();
-    const finalStrength =
-      data.attributes.strength +
-      raceModifiers.strength +
-      subraceModifiers.strength +
-      scenarioBonus.strength +
-      traitBonus.strength;
-    const finalDexterity =
-      data.attributes.dexterity +
-      raceModifiers.dexterity +
-      subraceModifiers.dexterity +
-      scenarioBonus.dexterity +
-      traitBonus.dexterity;
-    const finalPerception =
-      data.attributes.perception +
-      raceModifiers.perception +
-      subraceModifiers.perception +
-      scenarioBonus.perception +
-      traitBonus.perception;
-    const finalConstitution =
-      data.attributes.constitution +
-      raceModifiers.constitution +
-      subraceModifiers.constitution +
-      scenarioBonus.constitution +
-      traitBonus.constitution;
-    const finalWill =
-      data.attributes.will + raceModifiers.will + subraceModifiers.will + scenarioBonus.will + traitBonus.will;
-    const finalIntelligence =
-      data.attributes.intelligence +
-      raceModifiers.intelligence +
-      subraceModifiers.intelligence +
-      scenarioBonus.intelligence +
-      traitBonus.intelligence;
-    const finalCharisma =
-      data.attributes.charisma +
-      raceModifiers.charisma +
-      subraceModifiers.charisma +
-      scenarioBonus.charisma +
-      traitBonus.charisma;
+    const manualBonus = {
+      strength: scenarioBonus.strength + traitBonus.strength,
+      dexterity: scenarioBonus.dexterity + traitBonus.dexterity,
+      perception: scenarioBonus.perception + traitBonus.perception,
+      constitution: scenarioBonus.constitution + traitBonus.constitution,
+      will: scenarioBonus.will + traitBonus.will,
+      intelligence: scenarioBonus.intelligence + traitBonus.intelligence,
+      charisma: scenarioBonus.charisma + traitBonus.charisma,
+    };
+    const finalStrength = data.attributes.strength + raceModifiers.strength + subraceModifiers.strength;
+    const finalDexterity = data.attributes.dexterity + raceModifiers.dexterity + subraceModifiers.dexterity;
+    const finalPerception = data.attributes.perception + raceModifiers.perception + subraceModifiers.perception;
+    const finalConstitution = data.attributes.constitution + raceModifiers.constitution + subraceModifiers.constitution;
+    const finalWill = data.attributes.will + raceModifiers.will + subraceModifiers.will;
+    const finalIntelligence = data.attributes.intelligence + raceModifiers.intelligence + subraceModifiers.intelligence;
+    const finalCharisma = data.attributes.charisma + raceModifiers.charisma + subraceModifiers.charisma;
     return {
-      STR: { 基础: finalStrength, 加成: 0 },
-      DEX: { 基础: finalDexterity, 加成: 0 },
-      PER: { 基础: finalPerception, 加成: 0 },
-      TGH: { 基础: finalConstitution, 加成: 0 },
-      WIL: { 基础: finalWill, 加成: 0 },
-      INT: { 基础: finalIntelligence, 加成: 0 },
-      CHA: { 基础: finalCharisma, 加成: 0 },
+      STR: { 基础: finalStrength, 手动加成: manualBonus.strength, 加成: 0 },
+      DEX: { 基础: finalDexterity, 手动加成: manualBonus.dexterity, 加成: 0 },
+      PER: { 基础: finalPerception, 手动加成: manualBonus.perception, 加成: 0 },
+      TGH: { 基础: finalConstitution, 手动加成: manualBonus.constitution, 加成: 0 },
+      WIL: { 基础: finalWill, 手动加成: manualBonus.will, 加成: 0 },
+      INT: { 基础: finalIntelligence, 手动加成: manualBonus.intelligence, 加成: 0 },
+      CHA: { 基础: finalCharisma, 手动加成: manualBonus.charisma, 加成: 0 },
     };
   };
 
@@ -941,13 +992,13 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
     const finalCharisma = member.attributes.charisma + raceModifiers.charisma + subraceModifiers.charisma;
 
     return {
-      STR: { 基础: finalStrength, 加成: 0 },
-      DEX: { 基础: finalDexterity, 加成: 0 },
-      PER: { 基础: finalPerception, 加成: 0 },
-      TGH: { 基础: finalConstitution, 加成: 0 },
-      WIL: { 基础: finalWill, 加成: 0 },
-      INT: { 基础: finalIntelligence, 加成: 0 },
-      CHA: { 基础: finalCharisma, 加成: 0 },
+      STR: { 基础: finalStrength, 手动加成: 0, 加成: 0 },
+      DEX: { 基础: finalDexterity, 手动加成: 0, 加成: 0 },
+      PER: { 基础: finalPerception, 手动加成: 0, 加成: 0 },
+      TGH: { 基础: finalConstitution, 手动加成: 0, 加成: 0 },
+      WIL: { 基础: finalWill, 手动加成: 0, 加成: 0 },
+      INT: { 基础: finalIntelligence, 手动加成: 0, 加成: 0 },
+      CHA: { 基础: finalCharisma, 手动加成: 0, 加成: 0 },
     };
   };
 
@@ -958,40 +1009,76 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
     return Math.max(0, totalPoints - usedPoints);
   };
 
+  const getInitialMainSquadName = () => String(data.mainSquadName || '').trim() || '小队1';
+
+  const withTimeout = async <T,>(promise: Promise<T>, timeoutMs = 3000, label = '异步操作') => {
+    let timeoutId: number | undefined;
+    try {
+      return await Promise.race([
+        promise,
+        new Promise<T>((_, reject) => {
+          timeoutId = window.setTimeout(() => reject(new Error(`${label}超时`)), timeoutMs);
+        }),
+      ]);
+    } finally {
+      if (timeoutId !== undefined) {
+        window.clearTimeout(timeoutId);
+      }
+    }
+  };
+
   const updateMvuVariables = async (messageId: number | 'latest' = getCurrentMessageId()) => {
     await waitGlobalInitialized('Mvu');
     await waitUntil(() => _.has(getVariables({ type: 'message', message_id: messageId }), 'stat_data'));
 
     const mvuData = Mvu.getMvuData({ type: 'message', message_id: messageId });
+    _.set(mvuData, 'stat_data', {
+      世界: {
+        天数: 1,
+        时间: '上午',
+        当前事件: '',
+      },
+      我方派系名称: '无名者',
+      小队成员: {},
+      据点: {},
+      视野: {},
+      异地: {},
+      局势: {
+        已知派系: {},
+        敌对派系: {},
+        友方派系: {},
+      },
+      任务系统: {},
+      往事: {
+        交友记录: [],
+        城镇纪略: {},
+        死亡名单: {},
+        关键记忆: [],
+      },
+      闲言: {
+        当前内容: '',
+      },
+    });
     const equipment = buildEquipmentSummary();
+    const mainCharacterName = data.name || '无名氏';
+    const mainSquadName = getInitialMainSquadName();
+    _.set(mvuData, 'stat_data.主控', mainSquadName);
 
-    _.set(mvuData, 'stat_data.当前角色.名字', data.name || '无名氏');
-    _.set(
-      mvuData,
-      'stat_data.当前角色.性别',
-      data.race === 'skeleton' ? '无性别' : data.gender === 'male' ? '男' : data.gender === 'female' ? '女' : '其他',
-    );
-    _.set(mvuData, 'stat_data.当前角色.年龄', data.age);
-    _.set(mvuData, 'stat_data.当前角色.外貌', '');
-    _.set(mvuData, 'stat_data.当前角色.体型', `${(data.appearance.height / 100).toFixed(2)}m`);
-    const currentLevel = data.godModeEnabled ? data.godModeLevel : 1;
+    const scenarioStartLevel = SCENARIO_START_LEVELS[data.scenario] ?? 1;
+    const currentLevel = Math.max(scenarioStartLevel, data.godModeEnabled ? data.godModeLevel : 1);
     const baseAttributePoints = data.race === 'skeleton' ? SKELETON_ATTRIBUTE_POINTS : TOTAL_ATTRIBUTE_POINTS;
-    const godModeBonusPoints = data.godModeEnabled ? (currentLevel - 1) * GOD_MODE_POINTS_PER_LEVEL : 0;
-    const totalAttributePoints = baseAttributePoints + godModeBonusPoints;
+    const levelBonusPoints = (currentLevel - 1) * GOD_MODE_POINTS_PER_LEVEL;
+    const totalAttributePoints = baseAttributePoints + levelBonusPoints;
     const usedPoints = Object.entries(data.attributes).reduce((sum, [key, value]) => {
       if (data.race === 'skeleton' && key === 'will') return sum;
       return sum + (value - ATTRIBUTE_MIN);
     }, 0);
     const remainingPoints = Math.max(0, totalAttributePoints - usedPoints);
-    _.set(mvuData, 'stat_data.当前角色.等级', currentLevel);
-    _.set(mvuData, 'stat_data.当前角色.经验值.当前', 0);
-    _.set(mvuData, 'stat_data.当前角色.经验值.升级所需', Math.floor(currentLevel * 10 + 100));
-    _.set(mvuData, 'stat_data.当前角色.属性点', remainingPoints);
-    _.set(mvuData, 'stat_data.当前角色.种族.名称', resolvedRaceTitle);
 
     const scenarioIdentityMap: Record<string, string> = {
       wanderer: '流浪者',
       unknown_dream: '未知来客',
+      heretic_fire: '远古血盟复仇者',
       slave_master: '奴隶主',
       human_torso: '残躯求生者',
       monster_hunter: '怪物猎人',
@@ -1013,67 +1100,87 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
       kral_choice: '王位挑战者',
       fish_island_refugee: '渔岛难民',
     };
-    _.set(mvuData, 'stat_data.当前角色.身份', scenarioIdentityMap[data.scenario] || '自由人');
 
-    _.set(mvuData, 'stat_data.当前角色.属性', buildAttributesRecord());
-    _.set(mvuData, 'stat_data.当前角色.特质', buildTraitsRecord());
     const attrsForInit = buildAttributesRecord();
     const scenarioBonus = getScenarioAttributeBonus();
-    if (Object.values(scenarioBonus).some(value => value !== 0)) {
-      _.set(mvuData, 'stat_data.当前角色.临时特质.剧本属性加成', {
-        描述: `力量${scenarioBonus.strength >= 0 ? '+' : ''}${scenarioBonus.strength}，敏捷${scenarioBonus.dexterity >= 0 ? '+' : ''}${scenarioBonus.dexterity}，感知${scenarioBonus.perception >= 0 ? '+' : ''}${scenarioBonus.perception}，体质${scenarioBonus.constitution >= 0 ? '+' : ''}${scenarioBonus.constitution}，意志${scenarioBonus.will >= 0 ? '+' : ''}${scenarioBonus.will}，智力${scenarioBonus.intelligence >= 0 ? '+' : ''}${scenarioBonus.intelligence}，魅力${scenarioBonus.charisma >= 0 ? '+' : ''}${scenarioBonus.charisma}`,
-        消除: '不可移除',
-      });
-    }
-    const tgh = Number(attrsForInit.TGH?.基础 || 1);
-    const wil = Number(attrsForInit.WIL?.基础 || 1);
+    const tgh =
+      Number(attrsForInit.TGH?.基础 || 0) +
+        Number(attrsForInit.TGH?.手动加成 || 0) +
+        Number(attrsForInit.TGH?.加成 || 0) || 1;
     const bodyHeight = Number(data.appearance.height || 180) / 100;
     const bodySizeHpModifier =
       bodyHeight < 1.3 ? -15 : bodyHeight < 1.6 ? -8 : bodyHeight < 1.9 ? 0 : bodyHeight < 2.2 ? 8 : 15;
     const hpMax = Math.floor(50 + tgh * 2 + currentLevel + bodySizeHpModifier);
-    const moodMax = Math.floor(50 + wil * 1.5);
-    _.set(mvuData, 'stat_data.当前角色.血量.最大', hpMax);
-    _.set(mvuData, 'stat_data.当前角色.血量.当前', hpMax);
-    _.set(mvuData, 'stat_data.当前角色.心情.最大', moodMax);
-    _.set(mvuData, 'stat_data.当前角色.心情.当前', moodMax);
-    _.set(mvuData, 'stat_data.当前角色.创伤', {});
-    _.set(mvuData, 'stat_data.当前角色.临时特质', {});
+
+    const mainCharacterEntry: Record<string, any> = {
+      名字: mainCharacterName,
+      性别:
+        data.race === 'skeleton' ? '无性别' : data.gender === 'male' ? '男' : data.gender === 'female' ? '女' : '其他',
+      年龄: data.age,
+      身份: scenarioIdentityMap[data.scenario] || '自由人',
+      外貌: '',
+      体型: `${(data.appearance.height / 100).toFixed(2)}m`,
+      立场: '友方',
+      等级: currentLevel,
+      经验值: {
+        当前: 0,
+        升级所需: Math.floor(currentLevel * 10 + 100),
+      },
+      属性点: remainingPoints,
+      种族: {
+        名称: resolvedRaceTitle,
+      },
+      属性: buildAttributesRecord(),
+      特质: buildTraitsRecord(),
+      临时特质: {},
+      血量: {
+        最大: hpMax,
+        当前: hpMax,
+      },
+      创伤: {},
+      主武器: equipment.主武器,
+      副武器: equipment.副武器,
+      护甲: equipment.护甲,
+      背包: {
+        物品: {},
+      },
+    };
+
+    if (Object.values(scenarioBonus).some(value => value !== 0)) {
+      mainCharacterEntry.临时特质.剧本属性加成 = {
+        描述: `力量${scenarioBonus.strength >= 0 ? '+' : ''}${scenarioBonus.strength}，敏捷${scenarioBonus.dexterity >= 0 ? '+' : ''}${scenarioBonus.dexterity}，感知${scenarioBonus.perception >= 0 ? '+' : ''}${scenarioBonus.perception}，体质${scenarioBonus.constitution >= 0 ? '+' : ''}${scenarioBonus.constitution}，韧性${scenarioBonus.will >= 0 ? '+' : ''}${scenarioBonus.will}，智力${scenarioBonus.intelligence >= 0 ? '+' : ''}${scenarioBonus.intelligence}，魅力${scenarioBonus.charisma >= 0 ? '+' : ''}${scenarioBonus.charisma}`,
+        消除: '不可移除',
+      };
+    }
+
     _.set(mvuData, 'stat_data.任务系统', {});
-    _.set(mvuData, 'stat_data.往事.交友记录', _.get(mvuData, 'stat_data.往事.交友记录', []));
-    _.set(mvuData, 'stat_data.往事.城镇记录', _.get(mvuData, 'stat_data.往事.城镇记录', []));
-    _.set(mvuData, 'stat_data.往事.击杀记录', _.get(mvuData, 'stat_data.往事.击杀记录', []));
-    _.set(mvuData, 'stat_data.往事.关键记忆', _.get(mvuData, 'stat_data.往事.关键记忆', []));
     if (data.scenario === 'rock_bottom') {
-      _.set(mvuData, 'stat_data.当前角色.创伤.左臂', { 等级: 4, 描述: '断肢' });
+      mainCharacterEntry.创伤.左臂 = { 等级: 4, 描述: '断肢' };
     }
     if (data.scenario === 'human_torso') {
-      _.set(mvuData, 'stat_data.当前角色.创伤.左臂', { 等级: 4, 描述: '被喙嘴兽吃掉啦' });
-      _.set(mvuData, 'stat_data.当前角色.创伤.右臂', { 等级: 4, 描述: '被喙嘴兽吃掉啦' });
-      _.set(mvuData, 'stat_data.当前角色.创伤.左腿', { 等级: 4, 描述: '被喙嘴兽吃掉啦' });
-      _.set(mvuData, 'stat_data.当前角色.创伤.右腿', { 等级: 4, 描述: '被喙嘴兽吃掉啦' });
+      mainCharacterEntry.创伤.左臂 = { 等级: 4, 描述: '被喙嘴兽吃掉啦' };
+      mainCharacterEntry.创伤.右臂 = { 等级: 4, 描述: '被喙嘴兽吃掉啦' };
+      mainCharacterEntry.创伤.左腿 = { 等级: 4, 描述: '被喙嘴兽吃掉啦' };
+      mainCharacterEntry.创伤.右腿 = { 等级: 4, 描述: '被喙嘴兽吃掉啦' };
     }
     if (data.scenario === 'slave') {
-      _.set(mvuData, 'stat_data.当前角色.临时特质.囚犯', {
+      mainCharacterEntry.临时特质.囚犯 = {
         描述: '敏捷-30',
         消除: '解开脚镣',
-      });
+      };
     }
     if (data.scenario === 'male_slave') {
-      _.set(mvuData, 'stat_data.当前角色.临时特质.奴隶项圈', {
+      mainCharacterEntry.临时特质.奴隶项圈 = {
         描述: '敏捷-30',
         消除: '解开项圈',
-      });
+      };
     }
     if (data.scenario === 'false_savior') {
-      _.set(mvuData, 'stat_data.当前角色.临时特质.记忆断片', {
+      mainCharacterEntry.临时特质.记忆断片 = {
         描述: '大脑记忆模块在坠落中受损，导致任务目标和关键信息模糊不清。',
         消除: '找到卡特龙',
-      });
+      };
     }
-    _.set(mvuData, 'stat_data.当前角色.主武器', equipment.主武器);
-    _.set(mvuData, 'stat_data.当前角色.副武器', equipment.副武器);
-    _.set(mvuData, 'stat_data.当前角色.护甲', equipment.护甲);
-    _.set(mvuData, 'stat_data.当前角色.背包.物品', {});
 
     if (equipment.背包物品.length > 0) {
       const backpackItems: Record<string, { 介绍: string; 数量: number; 重量: number; 价值: number }> = {};
@@ -1098,13 +1205,16 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
         backpackItems[finalName].数量 += 1;
       });
       if (Object.keys(backpackItems).length > 0) {
-        _.set(mvuData, 'stat_data.当前角色.背包.物品', backpackItems);
+        mainCharacterEntry.背包.物品 = backpackItems;
       }
     }
 
+    const squadMembers: Record<string, any> = {
+      [mainCharacterName]: mainCharacterEntry,
+    };
+
     const hasCompanions = data.squadMembers.some(member => member.name || member.race || member.subrace);
     if (data.scenario === 'freedom_seekers' || hasCompanions) {
-      const squadMembers: Record<string, any> = {};
       data.squadMembers.forEach((member, index) => {
         if (!member.name && !member.race && !member.subrace && data.scenario !== 'freedom_seekers') {
           return;
@@ -1145,14 +1255,26 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
 
         squadMembers[member.name || `队员${index + 1}`] = squadEntry;
       });
-      _.set(mvuData, 'stat_data.小队成员', squadMembers);
-    } else {
-      _.set(mvuData, 'stat_data.小队成员', {});
     }
 
-    _.set(mvuData, 'stat_data.世界.区域', region?.title || data.region || '未知区域');
-    _.set(mvuData, 'stat_data.世界.城镇', data.town || '未知城镇');
-    _.set(mvuData, 'stat_data.世界.金钱', scenario?.money ?? 0);
+    _.set(mvuData, 'stat_data.小队成员', {
+      [mainSquadName]: {
+        金钱: scenario?.money ?? 0,
+        所处位置: {
+          区域: region?.title || data.region || '未知区域',
+          城镇: data.town || '未知城镇',
+        },
+        成员: squadMembers,
+        视野: {},
+      },
+    });
+
+    if (_.has(mvuData, 'stat_data.当前角色')) {
+      _.unset(mvuData, 'stat_data.当前角色');
+    }
+    _.set(mvuData, 'stat_data.世界.天数', 1);
+    _.set(mvuData, 'stat_data.世界.时间', '上午');
+    _.set(mvuData, 'stat_data.世界.当前事件', '');
 
     const hostileFactions = (scenario as any)?.hostileFactions ?? [];
     const alliedFactions = (scenario as any)?.alliedFactions ?? [];
@@ -1175,6 +1297,17 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
           联合城: '帝国贵族出身受其庇护',
           商人行会: '财富往来紧密互惠互利',
           奴隶商人: '奴隶交易利益高度一致',
+        },
+      },
+      heretic_fire: {
+        hostile: {
+          神圣教国: '宗教狂热与种族清洗使其成为远古血盟死敌',
+          联合城: '奴隶制与贵族暴政欠下异族血债',
+          食人族部落: '猎食山羊人与弱小异族的旧怨未清',
+          奴隶商人: '贩卖异族与沙克奴隶的罪行不可饶恕',
+        },
+        allied: {
+          远古血盟: '受女王哈兹姆庇护并加入异族复仇战旗',
         },
       },
       holy_sword: {
@@ -1290,8 +1423,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
     _.set(mvuData, 'stat_data.局势.友方派系', allies);
     _.set(mvuData, 'stat_data.局势.已知派系', knownFactions);
 
-    const primaryFaction = alliedFactions[0] || (scenario?.id === 'slave_master' ? '联合城' : '无派系');
-    _.set(mvuData, 'stat_data.我方派系名称', primaryFaction);
+    _.set(mvuData, 'stat_data.我方派系名称', '无名者');
 
     if (data.scenario === 'monster_hunter') {
       _.set(mvuData, 'stat_data.任务系统.巨兽猎杀条目', {
@@ -1563,7 +1695,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
       });
 
       _.set(mvuData, 'stat_data.任务系统.圣言同盟', {
-        描述: '以“圣言”影响四个中立派系领袖，使其在信念、利益或恐惧中选择站到你的旗帜下。你不必征服他们的土地，但必须征服他们的意志。',
+        描述: '以“圣言”影响四个中立派系领袖，使其在信念、利益或恐惧中选择站到你的旗帜下。你不必征服他们的土地，但必须征服他们的韧性。',
         奖励: '1600经验，新增四方盟友关系',
         主任务状态: '进行中',
         子任务: {
@@ -1994,56 +2126,6 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
   const buildBaseSettingText = () => {
     const equipmentList = scenario?.equipment ?? [];
     const lines: string[] = [];
-    const raceModifiers = parseAttributeModifiers(
-      [race?.description ?? '', (race as { attributeSummary?: string })?.attributeSummary ?? ''].join(' '),
-    );
-    const subraceModifiers = parseAttributeModifiers(
-      [subrace?.description ?? '', (subrace as { attributeSummary?: string })?.attributeSummary ?? ''].join(' '),
-    );
-    const scenarioBonus = getScenarioAttributeBonus();
-    const traitBonus = getSelectedTraitAttributeBonus();
-    const finalAttributes = {
-      strength:
-        data.attributes.strength +
-        raceModifiers.strength +
-        subraceModifiers.strength +
-        scenarioBonus.strength +
-        traitBonus.strength,
-      dexterity:
-        data.attributes.dexterity +
-        raceModifiers.dexterity +
-        subraceModifiers.dexterity +
-        scenarioBonus.dexterity +
-        traitBonus.dexterity,
-      perception:
-        data.attributes.perception +
-        raceModifiers.perception +
-        subraceModifiers.perception +
-        scenarioBonus.perception +
-        traitBonus.perception,
-      constitution:
-        data.attributes.constitution +
-        raceModifiers.constitution +
-        subraceModifiers.constitution +
-        scenarioBonus.constitution +
-        traitBonus.constitution,
-      will: data.attributes.will + raceModifiers.will + subraceModifiers.will + scenarioBonus.will + traitBonus.will,
-      intelligence:
-        data.attributes.intelligence +
-        raceModifiers.intelligence +
-        subraceModifiers.intelligence +
-        scenarioBonus.intelligence +
-        traitBonus.intelligence,
-      charisma:
-        data.attributes.charisma +
-        raceModifiers.charisma +
-        subraceModifiers.charisma +
-        scenarioBonus.charisma +
-        traitBonus.charisma,
-    };
-    const attributeLine = Object.entries(finalAttributes)
-      .map(([key, value]) => `${attributeLabels[key as keyof CharacterData['attributes']]}=${value}`)
-      .join('，');
     lines.push('主角设定');
     lines.push('基础设定');
     lines.push(`角色名：${data.name || '无名氏'}`);
@@ -2087,7 +2169,6 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
       lines.push(`自定义护甲：${data.customStart.armorType}（DR:${data.customStart.armorDr || 0}）`);
       lines.push(`自定义物品：${data.customStart.customItems?.trim() || '无'}`);
     }
-    lines.push(`七维属性：${attributeLine}`);
     const mainAppearanceDescription =
       data.appearance.description?.trim() ||
       (data.scenario === 'false_savior' ? '默认人类长相' : `默认${resolvedRaceTitle || '该种族'}的外貌`);

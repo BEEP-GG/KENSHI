@@ -23,8 +23,8 @@ export default function TopBar({
   const FullscreenIcon = isFullscreen ? Minimize2 : Maximize2;
 
   return (
-    <div className="h-16 glass-panel border-b border-x-0 border-t-0 px-4 md:px-8 flex justify-between items-center z-10 sticky top-0">
-      <div className="flex items-center space-x-2 text-slate-300">
+    <div className="min-h-16 glass-panel border-b border-x-0 border-t-0 px-3 md:px-8 py-2 flex flex-wrap justify-between items-center gap-2 z-30 sticky top-0 shrink-0">
+      <div className="flex items-center space-x-2 text-slate-300 min-w-0">
         <button
           className="md:hidden mr-2 p-1 text-slate-400 hover:text-amber-400 transition-colors"
           onClick={onToggleMenu}
@@ -40,11 +40,11 @@ export default function TopBar({
         )}
       </div>
 
-      <div className="flex items-center space-x-2 md:space-x-4 lg:space-x-6">
+      <div className="flex items-center justify-end gap-2 md:gap-4 lg:gap-6 flex-wrap min-w-0">
         <button
           type="button"
           onClick={onToggleFullscreen}
-          className="flex items-center justify-center gap-1 md:gap-2 border border-white/10 bg-black/30 hover:bg-white/10 text-slate-300 hover:text-amber-400 px-2 md:px-3 py-1.5 rounded-lg transition-all duration-300 shadow-[0_0_16px_rgba(0,0,0,0.35)] backdrop-blur-sm"
+          className="flex items-center justify-center gap-1 md:gap-2 border border-white/10 bg-black/30 hover:bg-white/10 text-slate-300 hover:text-amber-400 px-2 md:px-3 py-1.5 rounded-lg transition-all duration-300 shadow-[0_0_16px_rgba(0,0,0,0.35)] backdrop-blur-sm shrink-0"
           aria-label={isFullscreen ? '退出全屏模式' : '进入全屏模式'}
           title={isFullscreen ? '退出全屏模式' : '进入全屏模式'}
         >
@@ -54,7 +54,7 @@ export default function TopBar({
 
         <div
           onClick={() => onSecretClick('D')}
-          className="flex items-center space-x-1 md:space-x-2 glass-card px-2 md:px-4 py-1.5 rounded-full border border-amber-900/30 cursor-pointer select-none"
+          className="flex items-center space-x-1 md:space-x-2 glass-card px-2 md:px-4 py-1.5 rounded-full border border-amber-900/30 cursor-pointer select-none shrink-0"
         >
           <CalendarDays size={14} className="text-amber-500/70" />
           <span className="text-xs md:text-sm font-mono text-amber-500/90 tracking-widest hidden sm:inline">
@@ -65,7 +65,7 @@ export default function TopBar({
 
         <div
           onClick={() => onSecretClick('C')}
-          className="flex items-center space-x-1 md:space-x-3 glass-card px-2 md:px-4 py-1.5 rounded-full bg-amber-500/5 border-amber-500/20 cursor-pointer select-none"
+          className="flex items-center space-x-1 md:space-x-3 glass-card px-2 md:px-4 py-1.5 rounded-full bg-amber-500/5 border-amber-500/20 cursor-pointer select-none shrink-0"
         >
           <Coins size={14} className="text-amber-500" />
           <div className="flex items-baseline space-x-1">
@@ -77,7 +77,7 @@ export default function TopBar({
           </div>
         </div>
 
-        <div className="relative group">
+        <div className="relative group shrink-0">
           <button
             onClick={hasRolledEvent ? onSubmitTurn : undefined}
             disabled={!hasRolledEvent}

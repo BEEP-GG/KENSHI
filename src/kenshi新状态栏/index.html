@@ -167,6 +167,22 @@
         }
       }
 
+      @keyframes blessingPulse {
+        0%,
+        100% {
+          box-shadow: 0 0 6px rgba(193, 163, 95, 0.25);
+          transform: translateY(0);
+        }
+        50% {
+          box-shadow: 0 0 16px rgba(241, 196, 15, 0.65);
+          transform: translateY(-1px);
+        }
+      }
+
+      .blessing-trigger-btn {
+        animation: blessingPulse 1.6s ease-in-out infinite;
+      }
+
       .section-box {
         background: var(--bg-panel);
         border: 1px solid rgba(193, 163, 95, 0.2);
@@ -732,6 +748,48 @@
         border-color: var(--accent-gold);
         box-shadow: 0 0 0 1px rgba(193, 163, 95, 0.2);
       }
+      .medical-target-list {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+        max-height: 360px;
+        overflow-y: auto;
+        margin-top: 16px;
+        text-align: left;
+      }
+      .medical-target-btn {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid rgba(74, 222, 128, 0.3);
+        background: rgba(34, 197, 94, 0.06);
+        color: var(--text-main);
+        cursor: pointer;
+        text-align: left;
+        transition: 0.2s;
+      }
+      .medical-target-btn:hover {
+        border-color: rgba(134, 239, 172, 0.75);
+        background: rgba(34, 197, 94, 0.14);
+      }
+      .medical-target-btn.unavailable {
+        border-color: rgba(193, 163, 95, 0.25);
+        background: rgba(193, 163, 95, 0.05);
+        cursor: default;
+        opacity: 0.72;
+      }
+      .medical-target-btn.unavailable:hover {
+        border-color: rgba(193, 163, 95, 0.4);
+        background: rgba(193, 163, 95, 0.08);
+      }
+      .medical-target-title {
+        color: #86efac;
+        font-weight: bold;
+        margin-bottom: 4px;
+      }
+      .medical-target-meta {
+        color: var(--text-dim);
+        font-size: 0.88em;
+      }
       .setting-item {
         display: flex;
         justify-content: space-between;
@@ -1229,9 +1287,11 @@
           小队成员: {},
           据点: {},
           异地: {},
-          局势: { 已知派系: {}, 敌对派系: {}, 友方派系: {} },
+          已知派系: {},
+          敌对派系: {},
+          友方派系: {},
           任务系统: {},
-          往事: { 交友记录: [], 城镇纪略: {}, 击杀名单: {}, 关键记忆: [] },
+          往事: { 交友记录: [], 城镇记录: [], 击杀名单: {}, 关键记忆: [] },
           闲言: { 当前内容: '' },
         },
       };
@@ -1282,7 +1342,7 @@
         const factionDesc = String(_.get(statData, '我方派系描述', '无') || '').trim() || '无';
         const factionPurpose = String(_.get(statData, '我方派系主旨', '无') || '').trim() || '无';
         const factionRules = String(_.get(statData, '我方派系规矩', '无') || '').trim() || '无';
-        const worldBookContent = `主控的派系名字是：${factionName}\n  -派系描述：${factionDesc}\n  -派系主旨：${factionPurpose}\n  -派系规矩：${factionRules}\n当前主角是：${roleText}\n\n后续所有故事情节基于小队【${squadText}】的视角来进行`;
+        const worldBookContent = `主控小队的派系名字是：${factionName}\n  -派系描述：${factionDesc}\n  -派系主旨：${factionPurpose}\n  -派系规矩：${factionRules}\n当前主角是：${roleText}\n\n后续所有故事情节基于小队【${squadText}】的视角来进行`;
         if (typeof window.getCharWorldbookNames !== 'function' || typeof window.updateWorldbookWith !== 'function') {
           return;
         }
@@ -1291,7 +1351,7 @@
         if (!wbName) return;
         await window.updateWorldbookWith(wbName, entries =>
           entries.map(entry => {
-            if (Number(entry.uid) !== 2) return entry;
+            if (Number(entry.uid) !== 953) return entry;
             return {
               ...entry,
               enabled: true,
@@ -1299,6 +1359,162 @@
             };
           }),
         );
+      }
+
+      function getStrongholdLevelTitle(level) {
+        const safeLevel = Math.max(1, Math.min(5, Math.round(Number(level) || 1)));
+        return { 1: '房屋', 2: '哨站', 3: '村庄', 4: '村庄', 5: '城镇' }[safeLevel] || '房屋';
+      }
+
+      function getStrongholdStatusByLevel(level) {
+        const safeLevel = Math.max(1, Math.min(5, Math.round(Number(level) || 1)));
+        if (safeLevel === 1) return '新建据点，仍处于脆弱的立足阶段';
+        if (safeLevel === 2) return '小型哨站，已经具备基础防御与固定生活秩序';
+        if (safeLevel === 3) return '成熟村庄，拥有稳定设施、常驻人口与区域影响力';
+        if (safeLevel === 4) return '区域堡垒，防务、生产和管理体系已经成型';
+        return '城镇级据点，已成为玩家派系在当地的重要权力中心';
+      }
+
+      function getStrongholdItemUnitValue(name) {
+        if (/古代科技书|AI核心|工程图|蓝图/i.test(name)) return 1000;
+        if (/电子元件|铜合金/i.test(name)) return 120;
+        if (/钢筋/i.test(name)) return 80;
+        if (/铁原板|建筑材料|皮革/i.test(name)) return 50;
+        if (/大麻膏|酒|格洛格|朗姆|清酒/i.test(name)) return 75;
+        if (/布料|麻叶|小麦|面粉|棉花/i.test(name)) return 25;
+        if (/食物|肉|口粮|面包|米饭|水/i.test(name)) return 15;
+        return 10;
+      }
+
+      function getStrongholdWarehouseValue(stronghold) {
+        const items = _.get(stronghold, '仓库.物品', {});
+        return Math.max(
+          0,
+          Math.round(
+            Object.entries(items || {}).reduce((total, [itemName, item]) => {
+              const amount = Math.max(0, Number(_.get(item, '数量', 0)) || 0);
+              const value = Number(_.get(item, '价值', 0)) || getStrongholdItemUnitValue(itemName);
+              return total + amount * value;
+            }, 0),
+          ),
+        );
+      }
+
+      function buildStrongholdWorldBookContent(name, stronghold, statData) {
+        const factionName = String(_.get(statData, '我方派系名称', '无派系') || '').trim() || '无派系';
+        const region = String(_.get(stronghold, '所处区域', '未知区域') || '').trim() || '未知区域';
+        const level = Math.max(1, Math.min(5, Math.round(Number(_.get(stronghold, '等级', 1)) || 1)));
+        const facilities = _.get(stronghold, '设施', {});
+        const members = _.get(stronghold, '成员', {});
+        const facilityEntries = Object.entries(facilities || {});
+        const getFacilityName = ([key, facility]) =>
+          String(_.get(facility, '名字', '') || key || _.get(facility, '分类', '未命名设施')).trim();
+        const getFacilityDescription = facility =>
+          String(
+            _.get(facility, '描述', '') || _.get(facility, '介绍', '') || _.get(facility, '分类', '暂无描述'),
+          ).trim();
+        const facilityText = facilityEntries.length
+          ? `\n${facilityEntries.map(entry => `     -${getFacilityName(entry)}：${getFacilityDescription(entry[1])}`).join('\n')}`
+          : '暂无登记设施';
+        const defensiveFacilities = facilityEntries.filter(([, facility]) => {
+          const text = `${_.get(facility, '名字', '')} ${_.get(facility, '分类', '')} ${_.get(facility, '描述', '')} ${_.get(facility, '介绍', '')}`;
+          return /防御墙|墙|城墙|炮塔|弩炮|鱼叉|大门|门/i.test(text);
+        });
+        const wallNames = defensiveFacilities
+          .filter(([, facility]) =>
+            /防御墙|墙|城墙|大门|门/i.test(`${_.get(facility, '名字', '')} ${_.get(facility, '分类', '')}`),
+          )
+          .map(getFacilityName);
+        const turretNames = defensiveFacilities
+          .filter(([, facility]) =>
+            /炮塔|弩炮|鱼叉/i.test(`${_.get(facility, '名字', '')} ${_.get(facility, '分类', '')}`),
+          )
+          .map(getFacilityName);
+        const defenseText = `${wallNames.length ? wallNames.join('、') : '无防御墙'},${turretNames.length ? turretNames.join('、') : '无炮塔'}`;
+        return `当前登记据点是：${factionName}派系的【${name}】\n  -据点区域：${region}\n  -据点等级：Lv.${level} ${getStrongholdLevelTitle(level)}\n  -据点状态：${getStrongholdStatusByLevel(level)}\n  -据点统御：最高统御阶层称为【老大】\n  -据点防御：${defenseText}\n  -据点设施：${facilityText}\n  -据点人口：${Object.keys(members || {}).length}人\n  -据点财富：${getStrongholdWarehouseValue(stronghold)} Cats（仓库价值）`;
+      }
+
+      function stripWorldbookRuntimeFields(entry) {
+        const { uid, ...rest } = entry || {};
+        return rest;
+      }
+
+      async function syncStrongholdWorldBookEntry(name, stronghold, statData) {
+        if (typeof window.getCharWorldbookNames !== 'function' || typeof window.updateWorldbookWith !== 'function')
+          return;
+        const strongholdName = String(name || '').trim();
+        if (!strongholdName) return;
+        try {
+          const charWorldbook = window.getCharWorldbookNames('current');
+          const wbName = charWorldbook.primary;
+          if (!wbName) return;
+          const region = String(_.get(stronghold, '所处区域', '') || '').trim();
+          const triggerKeys = Array.from(new Set([strongholdName, region].filter(Boolean)));
+          const entryName = `据点：${strongholdName}`;
+          const entryContent = buildStrongholdWorldBookContent(strongholdName, stronghold, statData || {});
+          await window.updateWorldbookWith(
+            wbName,
+            entries => {
+              const nextEntries = [...entries];
+              const existingIndex = nextEntries.findIndex(entry => entry.name === entryName);
+              const patch = {
+                name: entryName,
+                enabled: true,
+                strategy: {
+                  type: 'selective',
+                  keys: triggerKeys,
+                  keys_secondary: { logic: 'and_any', keys: [] },
+                  scan_depth: 'same_as_global',
+                },
+                position: {
+                  type: 'before_author_note',
+                  role: 'system',
+                  depth: 4,
+                  order: 100,
+                },
+                content: entryContent,
+                probability: 100,
+                recursion: {
+                  prevent_incoming: false,
+                  prevent_outgoing: false,
+                  delay_until: null,
+                },
+                effect: {
+                  sticky: null,
+                  cooldown: null,
+                  delay: null,
+                },
+              };
+              if (existingIndex >= 0) {
+                nextEntries[existingIndex] = { ...nextEntries[existingIndex], ...patch };
+                return nextEntries.map(stripWorldbookRuntimeFields);
+              }
+              nextEntries.push(patch);
+              return nextEntries.map(stripWorldbookRuntimeFields);
+            },
+            { render: 'immediate' },
+          );
+        } catch (error) {
+          console.error('同步据点世界书失败', error);
+        }
+      }
+
+      async function deleteStrongholdWorldBookEntry(name) {
+        if (typeof window.getCharWorldbookNames !== 'function' || typeof window.updateWorldbookWith !== 'function')
+          return;
+        const strongholdName = String(name || '').trim();
+        if (!strongholdName) return;
+        try {
+          const charWorldbook = window.getCharWorldbookNames('current');
+          const wbName = charWorldbook.primary;
+          if (!wbName) return;
+          const entryName = `据点：${strongholdName}`;
+          await window.updateWorldbookWith(wbName, entries =>
+            entries.filter(entry => entry.name !== entryName).map(stripWorldbookRuntimeFields),
+          );
+        } catch (error) {
+          console.error('删除据点世界书失败', error);
+        }
       }
 
       function switchTab(tabName) {
@@ -1352,6 +1568,43 @@
       function getSetting(key) {
         const settings = loadSettings();
         return settings[key] ?? DEFAULT_SETTINGS[key];
+      }
+
+      function getCharacterMeta() {
+        const parentContext = (() => {
+          try {
+            return window.parent || window;
+          } catch {
+            return window;
+          }
+        })();
+        const context = parentContext || window;
+        const name =
+          context?.getContext?.().characterName ||
+          (context?.this_chid && context?.characters?.[context.this_chid]?.name) ||
+          context?.name1 ||
+          '角色';
+        const avatar =
+          context?.getContext?.().characterAvatar ||
+          (context?.this_chid && context?.characters?.[context.this_chid]?.avatar);
+        return { name: String(name || '角色'), avatar: avatar ? String(avatar) : '' };
+      }
+
+      async function triggerSpecialSend(actionText) {
+        const { name, avatar } = getCharacterMeta();
+        const command = `/sendas name="${name}"${avatar ? ` avatar="${avatar}"` : ''} <${actionText}>`;
+        const slash = (() => {
+          try {
+            return window.triggerSlash || window.parent?.triggerSlash;
+          } catch {
+            return window.triggerSlash;
+          }
+        })();
+        if (typeof slash === 'function') {
+          await slash(command);
+          return;
+        }
+        appendTextToPlayerInput(`<${actionText}>`);
       }
 
       function appendTextToPlayerInput(text) {
@@ -1450,6 +1703,7 @@
       }
 
       let currentModalEntity = null;
+      let pendingMedicalUse = null;
 
       function setModalEntity(entityType, entityName, squadName = '') {
         currentModalEntity = { entityType, entityName, squadName };
@@ -1608,7 +1862,7 @@
         DEX: '敏捷 (DEX)\n影响攻击速度、闪避率、潜行效果及格挡效率。',
         PER: '感知 (PER)\n影响远程射击精度、侦测潜行敌人的能力。',
         TGH: '体质 (TGH)\n决定生命值上限、伤害减免及对环境的抵抗力。',
-        WIL: '意志 (WIL)\n影响士气、抵抗精神攻击及昏迷后的苏醒速度。',
+        WIL: '韧性 (WIL)\n代表抗击打能力、伤害减免与临战勇气。数值越高，越能承受重创并在危险中保持战意。',
         INT: '智力 (INT)\n决定学习技能的速度，影响工程与医疗效果。',
         CHA: '魅力 (CHA)\n影响交易价格及说服他人的成功率。',
       };
@@ -1617,7 +1871,7 @@
         DEX: '敏捷',
         PER: '感知',
         TGH: '体质',
-        WIL: '意志',
+        WIL: '韧性',
         INT: '智力',
         CHA: '魅力',
       };
@@ -1636,6 +1890,8 @@
 
       function getMainSquadName(data) {
         const squadData = _.get(data, '小队成员', {});
+        const explicitMainSquad = String(_.get(data, '主控', '') || '').trim();
+        if (explicitMainSquad && _.has(squadData, explicitMainSquad)) return explicitMainSquad;
         const savedName = String(getSetting(SETTINGS_KEYS.MAIN_SQUAD) || '').trim();
         if (savedName && _.has(squadData, savedName)) return savedName;
         return Object.keys(squadData)[0] || '';
@@ -1647,10 +1903,6 @@
       }
 
       function getMainControllerName(data) {
-        const explicitMainSquad = String(_.get(data, '主控', '') || '').trim();
-        if (explicitMainSquad) {
-          return explicitMainSquad;
-        }
         const squad = getMainSquadData(data);
         const members = _.get(squad, '成员', {});
         const savedName = String(getSetting(SETTINGS_KEYS.MAIN_CONTROLLER) || '').trim();
@@ -1669,7 +1921,7 @@
       function getAttrTotalValue(data, attrKey) {
         const attr = _.get(data, ['属性', attrKey], _.get(data, ['属性', attrLabels[attrKey] || attrKey], 0));
         if (attr && typeof attr === 'object') {
-          return (Number(attr.基础 ?? 0) || 0) + (Number(attr.加成 ?? 0) || 0);
+          return (Number(attr.基础 ?? 0) || 0) + (Number(attr.手动加成 ?? 0) || 0) + (Number(attr.加成 ?? 0) || 0);
         }
         return Number(attr ?? 0) || 0;
       }
@@ -1732,7 +1984,8 @@
         const formatAttr = value => {
           if (value && typeof value === 'object') {
             const base = Number(value.基础 ?? 0) || 0;
-            const bonus = Number(value.加成 ?? 0) || 0;
+            const manualBonus = Number(value.手动加成 ?? 0) || 0;
+            const bonus = manualBonus + (Number(value.加成 ?? 0) || 0);
             return { base, bonus };
           }
           const base = Number(value ?? 0) || 0;
@@ -1747,6 +2000,10 @@
         if (stance === '友方') factionColor = 'var(--accent-positive)';
 
         const canAddAttr = (entityType === 'current' || entityType === 'squad') && attrPt > 0;
+        const canTriggerBlessing = (entityType === 'current' || entityType === 'squad') && traitPt > 0;
+        const blessingButton = canTriggerBlessing
+          ? `<button type="button" class="blessing-trigger-btn" data-name="${_.escape(String(entityName))}" style="padding:4px 10px; border:1px solid var(--accent-gold); background:linear-gradient(135deg, rgba(193,163,95,0.28), rgba(241,196,15,0.12)); color:var(--accent-gold); border-radius:3px; cursor:pointer; font-weight:bold; letter-spacing:1px;">获取赐福</button>`
+          : '';
         let attrHTML = Object.entries(_.get(data, '属性', {}))
           .map(([k, v]) => {
             const label = attrLabels[k] || k;
@@ -1788,11 +2045,16 @@
             const itemCategory = normalizeItemSubCategory(rawCategory) || '其他';
             const tip = `${rawName}\n分类: ${itemCategory}\n重量: ${w}kg\n价值: ${val} c.cat\n\n${desc}`;
             const encodedItemName = encodeURIComponent(rawName);
+            const isMedicalItem = itemCategory === '医疗用品' || /急救|医疗|绷带|夹板|修理包|药/i.test(rawName);
             const equipActions =
               canManageWeapon && String(rawCategory) === '武器'
                 ? `<span style="display:inline-flex; gap:6px; margin-left:8px;"><button type="button" class="weapon-equip-btn" data-item-encoded="${encodedItemName}" data-slot="main" style="padding:2px 6px; border:1px solid rgba(193,163,95,0.45); background:rgba(193,163,95,0.08); color:var(--accent-gold); border-radius:2px; cursor:pointer;">主手</button>${canEquipSubSlot ? `<button type="button" class="weapon-equip-btn" data-item-encoded="${encodedItemName}" data-slot="sub" style="padding:2px 6px; border:1px solid rgba(193,163,95,0.35); background:rgba(193,163,95,0.04); color:var(--text-main); border-radius:2px; cursor:pointer;">副手</button>` : ''}</span>`
                 : '';
-            return `<div class="item-tag has-tooltip" data-tooltip="${tip}">${rawName} x${_.get(d, '数量', 1)}${equipActions}</div>`;
+            const medicalAction =
+              canManageWeapon && isMedicalItem
+                ? `<button type="button" class="medical-use-btn" data-item-encoded="${encodedItemName}" style="margin-left:8px; padding:2px 6px; border:1px solid rgba(74,222,128,0.45); background:rgba(34,197,94,0.08); color:#86efac; border-radius:2px; cursor:pointer;">使用</button>`
+                : '';
+            return `<div class="item-tag has-tooltip" data-tooltip="${tip}">${rawName} x${_.get(d, '数量', 1)}${equipActions}${medicalAction}</div>`;
           })
           .join('');
 
@@ -1957,7 +2219,7 @@
                             <div style="margin-top:8px; color:var(--text-dim); font-size:0.9em; line-height:1.45;"><span style="color:#888;">心理想法：</span>${_.escape(thoughtText || '暂无')}</div>
                         </div>
                         <div class="section-box">
-                            <div class="section-title">身体属性</div>
+                            <div class="section-title" style="display:flex; justify-content:space-between; align-items:center; gap:10px;">身体属性${blessingButton}</div>
                             <div class="points-summary"><span class="point-tag">属性点: ${attrPt}</span><span class="point-tag">特质点: ${traitPt}</span><span class="point-tag" style="border-color:var(--accent-danger); color:var(--accent-danger)">攻击次数: ${atkCount}</span></div>
                             <div class="stat-grid">${attrHTML}</div>
                         </div>
@@ -2022,18 +2284,11 @@
         const map = [
           { key: '交友记录', label: '交友记录' },
           { key: '城镇记录', label: '城镇记录' },
-          { key: '城镇纪略', label: '城镇纪略' },
           { key: '关键记忆', label: '关键记忆' },
         ];
         const out = [];
         map.forEach(({ key, label }) => {
           const value = _.get(pastRaw, key, []);
-          if (key === '城镇纪略' && value && typeof value === 'object' && !Array.isArray(value)) {
-            Object.entries(value).forEach(([town, state]) => {
-              out.push({ 分类: label, 日期: '', 描述: `${town}：${state}` });
-            });
-            return;
-          }
           if (
             (key === '死亡名单' || key === '击杀名单') &&
             value &&
@@ -2691,13 +2946,16 @@
           }
 
           $('#intel-rumors').text(_.get(data, '闲言.当前内容', '暂无传闻'));
-          const knownFaction = _.get(data, '局势.已知派系', _.get(data, '局势.已知势力', {}));
-          const hostileFaction = _.get(data, '局势.敌方派系', _.get(data, '局势.敌对派系', {}));
-          const allyFaction = _.get(data, '局势.友方派系', {});
+          const knownFaction = _.get(data, '已知派系', _.get(data, '局势.已知派系', _.get(data, '局势.已知势力', {})));
+          const hostileFaction = _.get(
+            data,
+            '敌方派系',
+            _.get(data, '敌对派系', _.get(data, '局势.敌方派系', _.get(data, '局势.敌对派系', {}))),
+          );
+          const allyFaction = _.get(data, '友方派系', _.get(data, '局势.友方派系', {}));
           renderFactionList($('#intel-known'), knownFaction, false);
           renderFactionList($('#intel-hostile'), hostileFaction, true);
           renderFactionList($('#intel-ally'), allyFaction, false);
-          $('#intel-world-situation').text(_.get(data, '局势.世界局势', '') || '暂无世界局势');
           const killList = _.get(data, '往事.死亡名单', _.get(data, '往事.击杀名单', {}));
           const killListContainer = $('#intel-kill-list').empty();
           if (!killList || typeof killList !== 'object' || Object.keys(killList).length === 0) {
@@ -2768,8 +3026,9 @@
                       '',
                     )}</select><button type="button" class="stronghold-add-member-btn" data-stronghold="${_.escape(String(name))}" style="padding:4px 10px; border:1px solid rgba(193,163,95,0.45); background:rgba(193,163,95,0.05); color:var(--text-main); cursor:pointer; border-radius:2px;">移入据点</button></div>`
                 : '';
+              const deleteButton = `<button type="button" class="delete-stronghold-btn" data-stronghold="${_.escape(String(name))}" data-member-count="${members}" style="padding:4px 10px; border:1px solid rgba(231,76,60,0.55); background:rgba(231,76,60,0.08); color:var(--accent-danger); cursor:pointer; border-radius:2px;">删除据点</button>`;
               strongholdList.append(
-                `<div class="section-box" style="margin-bottom:12px;"><div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap;"><div><div class="section-title">${_.escape(String(name))} · Lv.${level}</div><div style="color:var(--text-dim); margin-bottom:6px;">${_.escape(String(region))} · 资金 ${fund} · 收益天数 ${incomeDays}</div><div style="color:var(--text-dim); margin-bottom:6px;">成员 ${members} 人 · 设施 ${facilities} 项</div><div style="color:#cfcfcf;">${_.escape(String(desc || '暂无描述'))}</div></div><div style="display:flex; gap:8px; flex-wrap:wrap;"><button type="button" class="toggle-stronghold-member-edit-btn" style="padding:4px 10px; border:1px solid rgba(193,163,95,0.45); background:rgba(193,163,95,0.05); color:var(--text-main); cursor:pointer; border-radius:2px;">${strongholdMemberEditMode ? '取消调整' : '调整成员'}</button>${strongholdMemberEditMode ? '<button type="button" class="submit-stronghold-member-edit-btn" style="padding:4px 10px; border:1px solid var(--accent-positive); background:rgba(46,204,113,0.12); color:var(--accent-positive); cursor:pointer; border-radius:2px;">提交调整</button>' : ''}</div></div>${memberList ? `<div style="margin-top:10px;">${memberList}</div>` : '<div style="margin-top:10px; color:#666;">暂无驻守成员</div>'}${recruitBox}</div>`,
+                `<div class="section-box" style="margin-bottom:12px;"><div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap;"><div><div class="section-title">${_.escape(String(name))} · Lv.${level}</div><div style="color:var(--text-dim); margin-bottom:6px;">${_.escape(String(region))} · 资金 ${fund} · 收益天数 ${incomeDays}</div><div style="color:var(--text-dim); margin-bottom:6px;">成员 ${members} 人 · 设施 ${facilities} 项</div><div style="color:#cfcfcf;">${_.escape(String(desc || '暂无描述'))}</div></div><div style="display:flex; gap:8px; flex-wrap:wrap;"><button type="button" class="enter-stronghold-btn" data-stronghold="${_.escape(String(name))}" style="padding:4px 10px; border:1px solid var(--accent-gold); background:rgba(193,163,95,0.12); color:var(--accent-gold); cursor:pointer; border-radius:2px;">进入据点</button><button type="button" class="toggle-stronghold-member-edit-btn" style="padding:4px 10px; border:1px solid rgba(193,163,95,0.45); background:rgba(193,163,95,0.05); color:var(--text-main); cursor:pointer; border-radius:2px;">${strongholdMemberEditMode ? '取消调整' : '调整成员'}</button>${strongholdMemberEditMode ? '<button type="button" class="submit-stronghold-member-edit-btn" style="padding:4px 10px; border:1px solid var(--accent-positive); background:rgba(46,204,113,0.12); color:var(--accent-positive); cursor:pointer; border-radius:2px;">提交调整</button>' : ''}${deleteButton}</div></div>${memberList ? `<div style="margin-top:10px;">${memberList}</div>` : '<div style="margin-top:10px; color:#666;">暂无驻守成员</div>'}${recruitBox}</div>`,
               );
             });
           }
@@ -2844,18 +3103,11 @@
             城镇更替: '城镇记录',
             广交良友: '交友记录',
             关键记忆: '关键记忆',
-            城镇纪略: '城镇纪略',
             城镇记录: '城镇记录',
             交友记录: '交友记录',
           };
           const targetKey = keyMap[categoryValue] || '城镇记录';
-          if (targetKey === '城镇纪略') {
-            const input = String(descValue);
-            const splitIdx = input.indexOf('：') >= 0 ? input.indexOf('：') : input.indexOf(':');
-            const town = splitIdx >= 0 ? input.slice(0, splitIdx).trim() : input.trim();
-            const state = splitIdx >= 0 ? input.slice(splitIdx + 1).trim() : '未知';
-            if (town) _.set(mvuData, ['stat_data', '往事', '城镇纪略', town], state || '未知');
-          } else {
+          {
             const existing = _.get(mvuData, `stat_data.往事.${targetKey}`, []);
             const nextList = Array.isArray(existing) ? [...existing] : [];
             nextList.push({ 日期: dateNumber, 描述: String(descValue) });
@@ -2873,6 +3125,7 @@
         let pendingMissionDeleteName = '';
         let pendingRelationDeleteName = '';
         let pendingSquadDeleteName = '';
+        let pendingStrongholdDeleteName = '';
         let pendingSquadMergeSource = '';
         let pendingSquadMergeTarget = '';
         let pendingSquadRenameSource = '';
@@ -2881,6 +3134,7 @@
 
         function clearPendingSquadActions() {
           pendingSquadDeleteName = '';
+          pendingStrongholdDeleteName = '';
           pendingSquadMergeSource = '';
           pendingSquadMergeTarget = '';
           pendingSquadRenameSource = '';
@@ -2903,6 +3157,36 @@
           $('#confirm-ok').text('删除小队').addClass('danger');
           $('#confirm-cancel').text('取消');
           $('#confirm-third').css('display', 'none');
+          $('#confirm-modal').css('display', 'flex');
+        }
+
+        function openStrongholdDeleteConfirm(name) {
+          const data = getAllVariables();
+          const stronghold = _.get(data, ['stat_data', '据点', name], null);
+          const memberCount = Object.keys(_.get(stronghold, '成员', {})).length;
+          if (!stronghold) return;
+          clearPendingSquadActions();
+          pendingPastDeleteIndex = null;
+          pendingViewDeleteName = '';
+          pendingOtherDeleteName = '';
+          pendingMissionDeleteName = '';
+          pendingRelationDeleteName = '';
+          $('#confirm-input').val('').hide();
+          $('#confirm-cancel').text('取消');
+          $('#confirm-third').css('display', 'none');
+          if (memberCount > 0) {
+            pendingStrongholdDeleteName = '';
+            $('#confirm-modal .confirm-title').text('无法删除据点');
+            $('#confirm-modal .confirm-title')
+              .next('div')
+              .text(`据点“${name}”还有 ${memberCount} 名成员，必须先把成员移出据点后才能删除。`);
+            $('#confirm-ok').text('知道了').removeClass('danger');
+          } else {
+            pendingStrongholdDeleteName = name || '';
+            $('#confirm-modal .confirm-title').text('确认删除据点');
+            $('#confirm-modal .confirm-title').next('div').text(`是否确定删除据点“${name}”？`);
+            $('#confirm-ok').text('删除据点').addClass('danger');
+          }
           $('#confirm-modal').css('display', 'flex');
         }
 
@@ -3168,6 +3452,23 @@
           }
         }
 
+        async function deleteStronghold(name) {
+          if (!name) return;
+          const option = { type: 'message', message_id: getCurrentMessageId() };
+          const mvuData = Mvu.getMvuData(option) || {};
+          const strongholdData = _.get(mvuData, 'stat_data.据点', {});
+          const stronghold = _.get(strongholdData, name);
+          const memberCount = Object.keys(_.get(stronghold, '成员', {})).length;
+          if (!stronghold || memberCount > 0) return;
+          _.set(mvuData, 'stat_data.据点', _.omit(strongholdData, [name]));
+          await Mvu.replaceMvuData(mvuData, option);
+          const latestData = Mvu.getMvuData(option) || {};
+          if (!_.has(latestData, ['stat_data', '据点', name])) {
+            await deleteStrongholdWorldBookEntry(name);
+          }
+          update();
+        }
+
         async function saveIdentity(entityType, entityName, identityValue) {
           const option = { type: 'message', message_id: getCurrentMessageId() };
           const mvuData = Mvu.getMvuData(option) || {};
@@ -3373,6 +3674,210 @@
           update();
           const latest = _.get(mvuData, basePath, {});
           $('#modal-content-inner').html(buildCharHTML(latest, entityType === 'current', entityType, entityName));
+        }
+
+        function getAttributeTotal(rawAttr) {
+          if (rawAttr && typeof rawAttr === 'object') {
+            return (Number(rawAttr.基础) || 0) + (Number(rawAttr.加成) || 0) + (Number(rawAttr.手动加成) || 0);
+          }
+          return Number(rawAttr) || 0;
+        }
+
+        function isSkeletonCharacter(characterData) {
+          return /骨人/.test(String(_.get(characterData, '种族.名称', _.get(characterData, '种族', '')) || ''));
+        }
+
+        function isRepairMedicalItem(itemName) {
+          return /骨人修理包|骨人修理箱|修理包|修理箱/.test(String(itemName || ''));
+        }
+
+        function isSplintMedicalItem(itemName) {
+          return /普通夹板包|高级夹板包|夹板/.test(String(itemName || ''));
+        }
+
+        function isHpMedicalItem(itemName) {
+          return !isSplintMedicalItem(itemName);
+        }
+
+        function getTacticEffectMultiplier(actorData) {
+          const actorInt = getAttributeTotal(_.get(actorData, '属性.INT', _.get(actorData, '属性.智力', 0)));
+          return 1 + (actorInt / 20) * 0.1;
+        }
+
+        function getMedicalHealAmount(itemName, itemData, maxHp, actorData) {
+          const name = String(itemName || '').trim();
+          const desc = String(_.get(itemData, '介绍', '') || '');
+          const value = Number(_.get(itemData, '价值', 0)) || 0;
+          const safeMaxHp = Math.max(1, Number(maxHp) || 100);
+          const tacticEffectMultiplier = getTacticEffectMultiplier(actorData);
+          const text = `${name} ${desc}`;
+          let baseRate = Math.max(0.1, Math.min(0.5, (Math.round(value / 25) || 20) / 100));
+          if (/骨人修理箱/.test(text)) baseRate = 0.65;
+          else if (/高级急救包|高级医疗包|高级/.test(text)) baseRate = 0.55;
+          else if (/标准急救包|急救包|医疗包|医疗箱/.test(text)) baseRate = 0.35;
+          else if (/骨人修理包|修理包/.test(text)) baseRate = 0.35;
+          else if (/基础急救包|简易急救包|绷带|药/.test(text)) baseRate = 0.2;
+          return Math.max(1, Math.round(safeMaxHp * baseRate * tacticEffectMultiplier));
+        }
+
+        function getSplintTraumaPreview(itemName, targetData, actorData) {
+          const tacticEffectMultiplier = getTacticEffectMultiplier(actorData);
+          const traumaReduce = Math.max(
+            1,
+            Math.round((/高级夹板包/.test(String(itemName || '')) ? 2 : 1) * tacticEffectMultiplier),
+          );
+          const traumaObj = _.get(targetData, '创伤', {}) || {};
+          const entries = Object.entries(traumaObj).map(([part, value]) => [
+            part,
+            Number(_.get(value, '等级', 0)) || 0,
+          ]);
+          const [partToHeal, currentLevel] = entries.sort((a, b) => b[1] - a[1])[0] || ['创伤部位', 0];
+          const actualReduce = Math.max(0, Math.min(Number(currentLevel) || 0, traumaReduce));
+          return { traumaReduce, actualReduce, partToHeal, currentLevel: Number(currentLevel) || 0 };
+        }
+
+        function canUseMedicalItemOnTarget(itemName, targetData) {
+          const targetIsSkeleton = isSkeletonCharacter(targetData);
+          const itemIsRepair = isRepairMedicalItem(itemName);
+          if (itemIsRepair && !targetIsSkeleton) return { ok: false, reason: '此物品只能对骨人有用' };
+          if (!itemIsRepair && targetIsSkeleton) return { ok: false, reason: '此物品无法对骨人使用' };
+          if (isSplintMedicalItem(itemName)) {
+            const traumaObj = _.get(targetData, '创伤', {}) || {};
+            const hasTrauma = Object.values(traumaObj).some(value => (Number(_.get(value, '等级', 0)) || 0) > 0);
+            if (!hasTrauma) return { ok: false, reason: '没有创伤，无法使用夹板包' };
+          }
+          return { ok: true, reason: '' };
+        }
+
+        function collectMedicalTargets(mvuData) {
+          const statData = _.get(mvuData, 'stat_data', {});
+          const squads = _.get(statData, '小队成员', {});
+          const targets = [];
+          Object.entries(squads || {}).forEach(([sqName, sqData]) => {
+            const members = _.get(sqData, '成员', {});
+            Object.entries(members || {}).forEach(([memberName, memberData]) => {
+              if (!memberData || memberData === '待初始化') return;
+              const path = ['stat_data', '小队成员', sqName, '成员', memberName];
+              const displayName = String(_.get(memberData, '名字', memberName) || memberName).trim();
+              const currentHp = Number(_.get(memberData, '血量.当前', 0)) || 0;
+              const maxHp = Math.max(1, Number(_.get(memberData, '血量.最大', currentHp || 100)) || 100);
+              targets.push({ path, displayName, squadName: sqName, currentHp, maxHp, data: memberData });
+            });
+          });
+          return targets;
+        }
+
+        function closeMedicalTargetModal() {
+          pendingMedicalUse = null;
+          $('#medical-target-list').empty();
+          $('#medical-target-modal').hide();
+        }
+        window.closeMedicalTargetModal = closeMedicalTargetModal;
+
+        function openMedicalTargetModal(itemName) {
+          if (!currentModalEntity) return;
+          const { entityType, entityName, squadName } = currentModalEntity;
+          if (entityType !== 'current' && entityType !== 'squad') return;
+          const option = { type: 'message', message_id: getCurrentMessageId() };
+          const mvuData = Mvu.getMvuData(option) || {};
+          const actorPath = getCharacterBasePath(mvuData, entityType, entityName, squadName);
+          if (!actorPath) return;
+          const actorData = _.get(mvuData, actorPath, {});
+          const bagPath = [...actorPath, '背包', '物品'];
+          const normalizedItemName = String(itemName || '').trim();
+          const bagItems = _.get(mvuData, bagPath, {});
+          const fallbackKey =
+            Object.keys(bagItems || {}).find(k => String(k).trim() === normalizedItemName) || normalizedItemName;
+          const bagItem = _.cloneDeep(_.get(mvuData, [...bagPath, fallbackKey], null));
+          if (!bagItem) return;
+          pendingMedicalUse = { itemName: normalizedItemName, actorPath, fallbackKey };
+          $('#medical-target-title').text(`选择${normalizedItemName}的使用目标`);
+          const $list = $('#medical-target-list').empty();
+          collectMedicalTargets(mvuData).forEach((target, index) => {
+            const usageCheck = canUseMedicalItemOnTarget(normalizedItemName, target.data);
+            const intValue = getAttributeTotal(_.get(actorData, '属性.INT', _.get(actorData, '属性.智力', 0)));
+            let previewText = usageCheck.reason;
+            if (usageCheck.ok && isSplintMedicalItem(normalizedItemName)) {
+              const splint = getSplintTraumaPreview(normalizedItemName, target.data, actorData);
+              previewText = `${splint.partToHeal}创伤降低${splint.actualReduce}级并解除骨折`;
+            } else if (usageCheck.ok) {
+              const healAmount = getMedicalHealAmount(normalizedItemName, bagItem, target.maxHp, actorData);
+              const actualHeal = Math.max(
+                0,
+                Math.round(Math.min(target.maxHp, target.currentHp + healAmount) - target.currentHp),
+              );
+              previewText = `预计恢复 ${actualHeal} 血量`;
+            }
+            $list.append(
+              `<button type="button" class="medical-target-btn ${usageCheck.ok ? '' : 'unavailable'}" data-target-index="${index}" data-available="${usageCheck.ok ? '1' : '0'}"><div class="medical-target-title">${_.escape(target.displayName)} <span style="color:var(--text-dim);">(${_.escape(target.squadName)})</span></div><div class="medical-target-meta">当前血量 ${Math.round(target.currentHp)}/${Math.round(target.maxHp)} · ${previewText} · 使用者智力 ${Math.round(intValue)}</div></button>`,
+            );
+          });
+          $('#medical-target-modal').css('display', 'flex');
+        }
+
+        async function useMedicalItemFromBag(targetIndex) {
+          if (!pendingMedicalUse) return;
+          const option = { type: 'message', message_id: getCurrentMessageId() };
+          const mvuData = Mvu.getMvuData(option) || {};
+          const { itemName, actorPath, fallbackKey } = pendingMedicalUse;
+          const actorData = _.get(mvuData, actorPath, {});
+          const actorName = String(_.get(actorData, '名字', '角色') || '角色').trim();
+          const bagPath = [...actorPath, '背包', '物品'];
+          const bagItem = _.cloneDeep(_.get(mvuData, [...bagPath, fallbackKey], null));
+          if (!bagItem) return;
+          const targets = collectMedicalTargets(mvuData);
+          const target = targets[Number(targetIndex) || 0];
+          if (!target) return;
+
+          const usageCheck = canUseMedicalItemOnTarget(itemName, target.data);
+          if (!usageCheck.ok) return;
+
+          let effectText = '';
+          if (isSplintMedicalItem(itemName)) {
+            const splint = getSplintTraumaPreview(itemName, target.data, actorData);
+            const traumaPath = [...target.path, '创伤', splint.partToHeal];
+            const nextLevel = Math.max(0, splint.currentLevel - splint.traumaReduce);
+            _.set(mvuData, [...traumaPath, '等级'], nextLevel);
+            const oldDesc = String(_.get(mvuData, [...traumaPath, '描述'], '') || '');
+            if (/骨折|断裂/.test(oldDesc)) {
+              _.set(mvuData, [...traumaPath, '描述'], oldDesc.replace(/骨折|断裂/g, '已固定').trim() || '已固定');
+            }
+            _.set(mvuData, [...target.path, '骨折层数'], 0);
+            effectText =
+              splint.actualReduce > 0 ? `${splint.partToHeal}创伤降低${splint.actualReduce}级并解除骨折` : '解除骨折';
+          } else {
+            const currentHp = Number(_.get(mvuData, [...target.path, '血量', '当前'], 0)) || 0;
+            const maxHp = Math.max(
+              1,
+              Number(_.get(mvuData, [...target.path, '血量', '最大'], currentHp || 100)) || 100,
+            );
+            const healAmount = getMedicalHealAmount(itemName, bagItem, maxHp, actorData);
+            const nextHp = Math.min(maxHp, currentHp + healAmount);
+            const actualHeal = Math.max(0, Math.round(nextHp - currentHp));
+            _.set(mvuData, [...target.path, '血量', '当前'], nextHp);
+            effectText =
+              actualHeal > 0
+                ? `恢复${actualHeal}血量，当前血量${Math.round(nextHp)}/${Math.round(maxHp)}`
+                : `血量已满，当前血量${Math.round(nextHp)}/${Math.round(maxHp)}`;
+          }
+
+          const nextQty = Number(_.get(bagItem, '数量', 1)) - 1;
+          if (nextQty > 0) _.set(mvuData, [...bagPath, fallbackKey, '数量'], nextQty);
+          else _.unset(mvuData, [...bagPath, fallbackKey]);
+
+          await Mvu.replaceMvuData(mvuData, option);
+          appendTextToPlayerInput(`${actorName}对${target.displayName}使用了${itemName}，达成了${effectText}的效果。`);
+          closeMedicalTargetModal();
+          update();
+          const latest = _.get(mvuData, actorPath, {});
+          $('#modal-content-inner').html(
+            buildCharHTML(
+              latest,
+              currentModalEntity?.entityType === 'current',
+              currentModalEntity?.entityType || 'current',
+              currentModalEntity?.entityName || actorName,
+            ),
+          );
         }
 
         async function deleteViewEntry(name) {
@@ -3613,7 +4118,8 @@
           const currentRegion = _.get(mainSquad, '区域', _.get(mainSquad, '所处位置.区域', '未知区域'));
           let index = 1;
           while (strongholdData[`据点${index}`]) index += 1;
-          _.set(mvuData, ['stat_data', '据点', `据点${index}`], {
+          const strongholdName = `据点${index}`;
+          const newStronghold = {
             等级: 1,
             收益天数: 0,
             所处区域: currentRegion || '未知区域',
@@ -3625,8 +4131,10 @@
             },
             设施: {},
             到来事件: {},
-          });
+          };
+          _.set(mvuData, ['stat_data', '据点', strongholdName], newStronghold);
           await Mvu.replaceMvuData(mvuData, option);
+          await syncStrongholdWorldBookEntry(strongholdName, newStronghold, _.get(mvuData, 'stat_data', {}));
           update();
         }
 
@@ -3665,11 +4173,7 @@
               _.set(mvuData, 'stat_data', fallbackData);
             }
           }
-          if (nextControllerName) {
-            _.set(mvuData, ['stat_data', '主控'], nextControllerName);
-          } else {
-            _.unset(mvuData, ['stat_data', '主控']);
-          }
+          _.set(mvuData, ['stat_data', '主控'], String(squadName || '').trim());
           await Mvu.replaceMvuData(mvuData, option);
 
           const latestStatData = _.get(mvuData, 'stat_data', {});
@@ -3792,6 +4296,23 @@
           e.preventDefault();
           e.stopPropagation();
           await createStronghold();
+        });
+        $(document).on('click', '.enter-stronghold-btn', async function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          await triggerSpecialSend('据点建设');
+        });
+        $(document).on('click', '.delete-stronghold-btn', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          const strongholdName = String($(this).attr('data-stronghold') || '').trim();
+          if (!strongholdName) return;
+          openStrongholdDeleteConfirm(strongholdName);
+        });
+        $(document).on('click', '.blessing-trigger-btn', async function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          await triggerSpecialSend('特质赐福');
         });
         $(document).on('change', '.stronghold-member-target-select', function (e) {
           e.preventDefault();
@@ -3992,6 +4513,30 @@
           if (!itemName) return;
           await equipWeaponFromBag(itemName, slot);
         });
+        $(document).on('click', '.medical-use-btn', async function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          const fromOverviewCurrent = $(e.target).closest('#world-player').length > 0;
+          if (
+            fromOverviewCurrent ||
+            !currentModalEntity ||
+            (currentModalEntity.entityType !== 'current' && currentModalEntity.entityType !== 'squad')
+          ) {
+            const raw = getAllVariables();
+            const statData = _.get(raw, 'stat_data', {});
+            setModalEntity('current', getMainControllerName(statData), getMainSquadName(statData));
+          }
+          const encoded = String($(this).attr('data-item-encoded') || '').trim();
+          const itemName = encoded ? decodeURIComponent(encoded) : String($(this).attr('data-item') || '').trim();
+          if (!itemName) return;
+          openMedicalTargetModal(itemName);
+        });
+        $(document).on('click', '.medical-target-btn', async function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          if ($(this).attr('data-available') !== '1') return;
+          await useMedicalItemFromBag($(this).attr('data-target-index'));
+        });
         $('#mission-list').on('click', '.mission-delete-btn', function (e) {
           e.preventDefault();
           e.stopPropagation();
@@ -4015,6 +4560,11 @@
         $('#confirm-ok').on('click', async () => {
           if (pendingSquadDeleteName) {
             await deleteSquad(pendingSquadDeleteName);
+          } else if (pendingStrongholdDeleteName) {
+            await deleteStronghold(pendingStrongholdDeleteName);
+          } else if ($('#confirm-modal .confirm-title').text() === '无法删除据点') {
+            closeConfirmModal();
+            return;
           } else if (pendingSquadRenameSource) {
             await renameSquad(pendingSquadRenameSource, $('#confirm-input').val());
           } else if (pendingSquadMergeSource) {
@@ -4199,11 +4749,12 @@
           let nextValue = currentValue;
           if (typeof currentValue === 'object' && currentValue !== null) {
             const base = Number(_.get(currentValue, '基础', 0));
+            const manualBonus = Number(_.get(currentValue, '手动加成', 0));
             const bonus = Number(_.get(currentValue, '加成', 0));
-            nextValue = { ...currentValue, 基础: base + 1, 加成: bonus };
+            nextValue = { ...currentValue, 基础: base + 1, 手动加成: manualBonus, 加成: bonus };
           } else {
             const base = Number(currentValue ?? 0) || 0;
-            nextValue = { 基础: base + 1, 加成: 0 };
+            nextValue = { 基础: base + 1, 手动加成: 0, 加成: 0 };
           }
 
           _.set(mvuData, attrPath, nextValue);
@@ -4751,19 +5302,14 @@
           </div>
           <div id="pane-intel" class="tab-pane">
             <div class="section-box">
-              <div class="section-title">世界局势</div>
+              <div class="section-title">派系情报</div>
               <div style="margin-bottom: 10px">
                 <span style="color: #888; margin-right: 10px">已知:</span><span id="intel-known"></span>
               </div>
               <div style="margin-bottom: 10px">
-                <span style="color: #888; margin-right: 10px">敌对:</span><span id="intel-hostile"></span>
+                <span style="color: #888; margin-right: 10px">敌方:</span><span id="intel-hostile"></span>
               </div>
-              <div style="margin-bottom: 10px">
-                <span style="color: #888; margin-right: 10px">友方:</span><span id="intel-ally"></span>
-              </div>
-              <div>
-                <span style="color: #888; margin-right: 10px">局势:</span><span id="intel-world-situation"></span>
-              </div>
+              <div><span style="color: #888; margin-right: 10px">友方:</span><span id="intel-ally"></span></div>
             </div>
             <div class="section-box">
               <div class="section-title">街谈巷议</div>
@@ -4781,7 +5327,6 @@
               <select id="past-category-input" class="past-input">
                 <option value="交友记录">交友记录</option>
                 <option value="城镇记录">城镇记录</option>
-                <option value="城镇纪略">城镇纪略</option>
                 <option value="关键记忆">关键记忆</option>
               </select>
               <input id="past-date-input" class="past-input" type="number" placeholder="天数(默认当前天数)" />
@@ -4829,6 +5374,16 @@
           <span id="mood-history-role">当前角色</span> · 共 <span id="mood-history-count">0</span> 条
         </div>
         <ol id="mood-history-list" class="mood-history-list"></ol>
+      </div>
+    </div>
+    <div id="medical-target-modal" class="modal-overlay">
+      <div class="confirm-modal" style="max-width: 560px">
+        <div id="medical-target-title" class="confirm-title">选择医疗目标</div>
+        <div style="color: var(--text-dim); font-size: 0.92em">选择目标后会立即恢复血量，并把行动描述写入文本框。</div>
+        <div id="medical-target-list" class="medical-target-list"></div>
+        <div class="confirm-actions">
+          <button class="confirm-btn" onclick="closeMedicalTargetModal()">取消</button>
+        </div>
       </div>
     </div>
     <div id="confirm-modal" class="modal-overlay">

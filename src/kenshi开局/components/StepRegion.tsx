@@ -18,12 +18,22 @@ export const StepRegion: React.FC<StepRegionProps> = ({ data, updateData }) => {
   const fixedTown = selectedScenario?.fixedTown;
   const isUnknownDream = data.scenario === 'unknown_dream';
 
-  const specialRegionIds = ['iron_valley', 'stenn_desert', 'bonefields_south', 'cannibal_plains', 'stobers_garden', 'rebirth'];
-  const availableRegions = allowedRegionIds
-    ? REGIONS.filter(region => allowedRegionIds.includes(region.id))
-    : isUnknownDream
-      ? REGIONS
-      : REGIONS.filter(region => !specialRegionIds.includes(region.id));
+  const specialRegionIds = [
+    'iron_valley',
+    'stenn_desert',
+    'bonefields_south',
+    'cannibal_plains',
+    'stobers_garden',
+    'rebirth',
+    'iron_path',
+  ];
+  const availableRegions = fixedRegion
+    ? REGIONS.filter(region => region.id === fixedRegion)
+    : allowedRegionIds
+      ? REGIONS.filter(region => allowedRegionIds.includes(region.id))
+      : isUnknownDream
+        ? REGIONS
+        : REGIONS.filter(region => !specialRegionIds.includes(region.id));
 
   const selectedRegion = availableRegions.find(r => r.id === data.region);
 
@@ -84,7 +94,9 @@ export const StepRegion: React.FC<StepRegionProps> = ({ data, updateData }) => {
           </div>
 
           {allowedRegionIds && (
-            <p className="text-xs text-[#C2B280]/80 mt-2 leading-relaxed">当前开局限定出生区域，仅可在指定区域内选择。</p>
+            <p className="text-xs text-[#C2B280]/80 mt-2 leading-relaxed">
+              当前开局限定出生区域，仅可在指定区域内选择。
+            </p>
           )}
           {fixedRegion && <p className="text-xs text-[#C2B280]/80 mt-2 leading-relaxed">当前开局锁定出生区域。</p>}
         </div>
@@ -92,7 +104,12 @@ export const StepRegion: React.FC<StepRegionProps> = ({ data, updateData }) => {
 
       <div className="flex-1 min-h-0 lg:self-start bg-black/40 border border-white/10 rounded-xl p-6 relative overflow-hidden">
         {selectedRegion ? (
-          <motion.div key={selectedRegion.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="h-full min-h-0 flex flex-col">
+          <motion.div
+            key={selectedRegion.id}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="h-full min-h-0 flex flex-col"
+          >
             <div className="absolute top-0 right-0 p-32 bg-[#C2B280] opacity-5 blur-[100px] rounded-full pointer-events-none" />
 
             <h2 className="text-4xl font-serif text-[#C2B280] mb-4">{selectedRegion.title}</h2>
@@ -133,7 +150,9 @@ export const StepRegion: React.FC<StepRegionProps> = ({ data, updateData }) => {
             </div>
           </motion.div>
         ) : (
-          <div className="h-full flex items-center justify-center text-white/30 italic font-serif">请从左侧选择一个区域。</div>
+          <div className="h-full flex items-center justify-center text-white/30 italic font-serif">
+            请从左侧选择一个区域。
+          </div>
         )}
       </div>
     </div>

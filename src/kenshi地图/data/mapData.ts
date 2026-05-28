@@ -4336,7 +4336,7 @@ export const ruins: City[] = [
   },
   {
     id: 'ruin-destroyed-settlement',
-    name: '毁灭的定居点',
+    name: '庄园废墟',
     description: '已经成为废墟的定居点',
     type: 'ruin',
     coordinates: [4282, 3412],

@@ -1,4 +1,4 @@
-import { waitUntil } from 'async-wait-until';
+﻿import { waitUntil } from 'async-wait-until';
 import _ from 'lodash';
 import {
   Activity,
@@ -52,6 +52,7 @@ interface Member {
   status: string;
   race: string;
   identity?: string;
+  squadName?: string;
   rawIntelligence?: number;
   stats: Record<string, number>;
 }
@@ -207,7 +208,7 @@ const attrMap: Record<string, string> = {
   agility: '敏捷',
   perception: '感知',
   constitution: '体质',
-  willpower: '意志',
+  willpower: '韧性',
   intelligence: '智力',
   charisma: '魅力',
   special: '特殊',
@@ -250,6 +251,7 @@ const buildMemberFromData = (value: any, fallbackId: string): Member | null => {
     status: String(_.get(value, ['状态'], '正常')),
     race: String(_.get(value, ['种族', '名称'], '未知')),
     identity: String(_.get(value, ['身份'], '')),
+    squadName: String(_.get(value, ['__小队名'], '')),
     rawIntelligence: getAttr('INT'),
     stats: {
       strength: calcStatModifier(getAttr('STR')),
@@ -340,7 +342,7 @@ const buildMemberRuntimeData = (value: any): MemberRuntimeData => {
   _.forEach(items, (item, itemName) => {
     const count = Number(_.get(item, ['数量'], 0)) || 0;
     if (count <= 0) return;
-    const sub = String(_.get(item, ['子分类'], ''));
+    const sub = String(_.get(item, ['分类'], _.get(item, ['子分类'], '')));
     if (sub === '食物' || sub === '饮品') hasFoodOrDrink = true;
     if (sub === '医疗用品') {
       const n = String(itemName || '');
@@ -375,7 +377,7 @@ const buildMemberRuntimeData = (value: any): MemberRuntimeData => {
   _.forEach(items, (item, itemName) => {
     const quantity = Number(_.get(item, ['数量'], 0)) || 0;
     const unitValue = Number(_.get(item, ['价值'], 0)) || 0;
-    const subCategory = String(_.get(item, ['子分类'], ''));
+    const subCategory = String(_.get(item, ['分类'], _.get(item, ['子分类'], '')));
     if (quantity > 0) {
       inventoryItems.push({ name: String(itemName || ''), quantity, subCategory });
     }
@@ -573,7 +575,7 @@ const slaveCategories: MainCategory[] = [
       { id: 'sc2', name: '敏捷戏耍', desc: '把奴隶当作活动障碍物或投掷目标，练习闪避和出手速度。' },
       { id: 'sc3', name: '感知洞察', desc: '让奴隶在暗处躲藏或发动偷袭，训练对杀气的感知。' },
       { id: 'sc4', name: '体质挨揍', desc: '让强大的奴隶单方面殴打你，用肉身硬抗伤害以提升体格。' },
-      { id: 'sc5', name: '意志对峙', desc: '在残酷的牢笼里与凶悍的奴隶生死对视，锻炼胆识与精神抗性。' },
+      { id: 'sc5', name: '韧性对峙', desc: '在残酷的牢笼里与凶悍的奴隶生死对视，锻炼胆识与精神抗性。' },
       { id: 'sc6', name: '智力解构', desc: '从奴隶的战斗方式和破绽中研究战斗力学与人体弱点结构。' },
       { id: 'sc7', name: '魅力震慑', desc: '去笼子旁边，对抓来的土匪软硬兼施，一会威胁一会许诺，练习话术。' },
     ],
@@ -634,7 +636,7 @@ const categories: MainCategory[] = [
   },
   {
     id: 'willpower',
-    name: '意志训练',
+    name: '韧性训练',
     icon: Brain,
     subcategories: [
       { id: 'w1', name: '失血清醒', desc: '自己割开伤口，在痛苦和失血中保持清醒，拒绝昏迷。' },
@@ -698,7 +700,7 @@ const categories: MainCategory[] = [
       },
       {
         id: 'sp7',
-        name: '特殊意志：抖M训练',
+        name: '特殊韧性：抖M训练',
         desc: '要求小队成员围成一圈，对着自己用废土上最恶毒的脏话进行长达数小时的人身攻击（辱骂抗压）；或者自己去盯着营地最刺眼的火炉底座/直视烈日，眼睛流泪了也不眨眼。',
       },
     ],
@@ -886,7 +888,7 @@ const actionDescriptions: Record<
   w1: {
     大失败: name => `伤口大量失血，${name}很快由于失血过多陷入了休克。`,
     失败: name => `${name}尝试在失血中保持清醒，但剧痛和眩晕还是击倒了他。`,
-    成功: name => `脸色苍白冷汗直流，${name}依然强撑着没有昏迷，意志进一步坚定。`,
+    成功: name => `脸色苍白冷汗直流，${name}依然强撑着没有昏迷，韧性进一步坚定。`,
     大成功: name => `战胜了虚弱的肉体本能！${name}的心智如同被重锤锻打过一般坚不可摧！`,
   },
   w2: {
@@ -899,7 +901,7 @@ const actionDescriptions: Record<
     大失败: name => `饿得胃酸倒流，${name}虚弱得吐出了胆汁，状态极差。`,
     失败: name => `饥饿本能战胜了理性，${name}绝食没能走到底。`,
     成功: name => `忍受住了胃抽筋的绞痛，${name}用理智强压下进食欲望。`,
-    大成功: name => `饥饿不仅没有击倒${name}，反而让他精神更加空明透彻，意志力爆表！`,
+    大成功: name => `饥饿不仅没有击倒${name}，反而让他精神更加空明透彻，韧性力爆表！`,
   },
   i1: {
     大失败: name => `${name}强行解读看不懂的图纸，搞乱了资料，一怒之下把书撕成了废纸。`,
@@ -1255,24 +1257,30 @@ export default function App() {
         const runtimeMap: Record<string, MemberRuntimeData> = {};
         const insertedIds = new Set<string>();
 
-        // 先读取“当前角色”
-        const currentCharacter = _.get(mvuData, ['stat_data', '当前角色']);
-        const currentMember = buildMemberFromData(currentCharacter, '当前角色');
-        if (currentMember) {
-          parsedMembers.push(currentMember);
-          insertedIds.add(currentMember.id);
-          runtimeMap[currentMember.id] = buildMemberRuntimeData(currentCharacter);
-        }
-
-        // 再读取“小队成员”
-        const squad = _.get(mvuData, ['stat_data', '小队成员'], {});
-        _.forEach(squad, (value, key) => {
-          const member = buildMemberFromData(value, String(key));
+        const insertMember = (rawMember: any, fallbackId: string, squadName = '') => {
+          if (!rawMember || rawMember === '待初始化') return;
+          const normalizedMember = _.isPlainObject(rawMember) ? { ...rawMember, __小队名: squadName } : rawMember;
+          const member = buildMemberFromData(normalizedMember, fallbackId);
           if (!member) return;
           if (insertedIds.has(member.id)) return;
           parsedMembers.push(member);
           insertedIds.add(member.id);
-          runtimeMap[member.id] = buildMemberRuntimeData(value);
+          runtimeMap[member.id] = buildMemberRuntimeData(rawMember);
+        };
+
+        const squadMap = _.get(mvuData, ['stat_data', '小队成员'], {});
+        _.forEach(squadMap, (squadValue, squadKey) => {
+          const squadName = String(squadKey);
+
+          if (_.has(squadValue, '成员') || _.has(squadValue, '视野')) {
+            const squadMembers = _.get(squadValue, ['成员'], {});
+            _.forEach(squadMembers, (memberValue, memberKey) => {
+              insertMember(memberValue, `${squadName}:${String(memberKey)}`, squadName);
+            });
+            return;
+          }
+
+          insertMember(squadValue, squadName, squadName);
         });
 
         setMembers(parsedMembers);
@@ -1624,7 +1632,7 @@ export default function App() {
           sp4: '敏捷',
           sp5: '体质',
           sp6: '智力',
-          sp7: '意志',
+          sp7: '韧性',
         };
         attrName = specialAttrMap[subId] || attrName;
       }
@@ -2963,7 +2971,7 @@ export default function App() {
                   ))}
                 </select>
                 <span className="text-kenshi-rust/80 text-xs">
-                  售卖执行：{members.find(m => m.id === selectedMember)?.name || '当前角色'}
+                  售卖执行：{members.find(m => m.id === selectedMember)?.name || '已选成员'}
                 </span>
               </div>
 

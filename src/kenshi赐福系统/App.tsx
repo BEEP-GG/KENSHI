@@ -1,4 +1,4 @@
-import { waitUntil } from 'async-wait-until';
+﻿import { waitUntil } from 'async-wait-until';
 import _ from 'lodash';
 import {
   Activity,
@@ -24,12 +24,12 @@ import {
   Zap,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import React, { cloneElement, useState } from 'react';
+import React, { cloneElement, useEffect, useState } from 'react';
 
 // --- Data Models ---
 
 interface BlessingStat {
-  name: '力量' | '敏捷' | '感知' | '体质' | '意志' | '智力' | '魅力';
+  name: '力量' | '敏捷' | '感知' | '体质' | '韧性' | '智力' | '魅力';
   value: number;
 }
 
@@ -44,7 +44,7 @@ interface BlessingOption {
   stats?: BlessingStat[];
 }
 
-const legendaryUnlockBlessingIds = ['okran_15', 'kral_16', 'narko_15', 'yuri_15'];
+const legendaryUnlockBlessingIds = ['okran_15', 'kral_16', 'narko_15', 'chitrin_15', 'yuri_15'];
 
 interface GodTheme {
   id: string;
@@ -92,7 +92,7 @@ const godsData: GodTheme[] = [
         rarity: '史诗',
         icon: <Lock className="w-8 h-8 text-yellow-300" />,
         stats: [
-          { name: '意志', value: 10 },
+          { name: '韧性', value: 10 },
           { name: '智力', value: -9 },
         ],
       },
@@ -104,7 +104,7 @@ const godsData: GodTheme[] = [
         icon: <Shield className="w-8 h-8 text-yellow-200" />,
         stats: [
           { name: '体质', value: 20 },
-          { name: '意志', value: 10 },
+          { name: '韧性', value: 10 },
         ],
       },
       {
@@ -133,11 +133,11 @@ const godsData: GodTheme[] = [
         id: 'okran_6',
         title: '绝念清修',
         description:
-          '拒绝肉体欢愉与一切黑暗诱惑，造物主的爱赋予你超越世俗的坚定意志与洞察力，但你愈发难以共情凡人的情感交涉。',
+          '拒绝肉体欢愉与一切黑暗诱惑，造物主的爱赋予你超越世俗的坚定韧性与洞察力，但你愈发难以共情凡人的情感交涉。',
         rarity: '传说',
         icon: <Heart className="w-8 h-8 text-yellow-300" />,
         stats: [
-          { name: '意志', value: 12 },
+          { name: '韧性', value: 12 },
           { name: '感知', value: 8 },
           { name: '魅力', value: -10 },
         ],
@@ -151,7 +151,7 @@ const godsData: GodTheme[] = [
         icon: <Users className="w-8 h-8 text-amber-200" />,
         stats: [
           { name: '体质', value: 20 },
-          { name: '意志', value: 8 },
+          { name: '韧性', value: 8 },
           { name: '力量', value: -15 },
         ],
       },
@@ -163,7 +163,7 @@ const godsData: GodTheme[] = [
         rarity: '稀有',
         icon: <WineOff className="w-8 h-8 text-yellow-400" />,
         stats: [
-          { name: '意志', value: 20 },
+          { name: '韧性', value: 20 },
           { name: '敏捷', value: -12 },
         ],
       },
@@ -175,7 +175,7 @@ const godsData: GodTheme[] = [
         icon: <Sword className="w-8 h-8 text-amber-400" />,
         stats: [
           { name: '力量', value: 3 },
-          { name: '意志', value: 2 },
+          { name: '韧性', value: 2 },
         ],
       },
       {
@@ -186,7 +186,7 @@ const godsData: GodTheme[] = [
         icon: <Shield className="w-8 h-8 text-yellow-300" />,
         stats: [
           { name: '体质', value: 3 },
-          { name: '意志', value: 2 },
+          { name: '韧性', value: 2 },
         ],
       },
       {
@@ -197,7 +197,7 @@ const godsData: GodTheme[] = [
         icon: <Flame className="w-8 h-8 text-amber-500" />,
         stats: [
           { name: '敏捷', value: 6 },
-          { name: '意志', value: 4 },
+          { name: '韧性', value: 4 },
         ],
       },
       {
@@ -219,7 +219,7 @@ const godsData: GodTheme[] = [
         rarity: '普通',
         icon: <Heart className="w-8 h-8 text-amber-300" />,
         stats: [
-          { name: '意志', value: 3 },
+          { name: '韧性', value: 3 },
           { name: '体质', value: 2 },
         ],
       },
@@ -231,7 +231,7 @@ const godsData: GodTheme[] = [
         icon: <Shield className="w-8 h-8 text-yellow-300" />,
         stats: [
           { name: '力量', value: 2 },
-          { name: '意志', value: 3 },
+          { name: '韧性', value: 3 },
         ],
       },
       {
@@ -243,6 +243,7 @@ const godsData: GodTheme[] = [
         displayRarity: '传说（解锁前置）',
         rarity: '传说',
         icon: <Flame className="w-8 h-8 text-amber-400" />,
+        stats: [{ name: '韧性', value: 8 }],
       },
     ],
   },
@@ -267,7 +268,7 @@ const godsData: GodTheme[] = [
         icon: <Anchor className="w-8 h-8 text-red-600" />,
         stats: [
           { name: '体质', value: 15 },
-          { name: '意志', value: 15 },
+          { name: '韧性', value: 15 },
           { name: '智力', value: -8 },
         ],
       },
@@ -293,7 +294,7 @@ const godsData: GodTheme[] = [
         stats: [
           { name: '力量', value: 20 },
           { name: '体质', value: 18 },
-          { name: '意志', value: 18 },
+          { name: '韧性', value: 18 },
           { name: '智力', value: -14 },
           { name: '魅力', value: -18 },
         ],
@@ -325,11 +326,11 @@ const godsData: GodTheme[] = [
         id: 'kral_7',
         title: '破釜的狂吼',
         description:
-          '逃兵是克拉尔信徒最大的耻辱。你截断了自己一切逃跑的念头，即使面对深渊也能爆发出不可撼动的狂热意志，但也由于永不退缩而丧失了机动拉扯的能力。',
+          '逃兵是克拉尔信徒最大的耻辱。你截断了自己一切逃跑的念头，即使面对深渊也能爆发出不可撼动的狂热韧性，但也由于永不退缩而丧失了机动拉扯的能力。',
         rarity: '传说',
         icon: <Activity className="w-8 h-8 text-red-500" />,
         stats: [
-          { name: '意志', value: 30 },
+          { name: '韧性', value: 30 },
           { name: '敏捷', value: -15 },
         ],
       },
@@ -382,19 +383,19 @@ const godsData: GodTheme[] = [
         icon: <Sword className="w-8 h-8 text-red-600" />,
         stats: [
           { name: '力量', value: 10 },
-          { name: '意志', value: 5 },
+          { name: '韧性', value: 5 },
         ],
       },
       {
         id: 'kral_13',
         title: '孤狼浴血',
         description:
-          '继承了克拉尔率领数人殿后面对数万大军的孤高死战意志。敌人越多你反而越不怕，越能在战斗中厮杀敌军，你的痛觉会完全被昂扬战意阻断，然而，这种孤僻的自负也令你脾气暴烈排外。',
+          '继承了克拉尔率领数人殿后面对数万大军的孤高死战韧性。敌人越多你反而越不怕，越能在战斗中厮杀敌军，你的痛觉会完全被昂扬战意阻断，然而，这种孤僻的自负也令你脾气暴烈排外。',
         rarity: '史诗',
         icon: <Skull className="w-8 h-8 text-red-500" />,
         stats: [
           { name: '体质', value: 6 },
-          { name: '意志', value: 12 },
+          { name: '韧性', value: 12 },
           { name: '魅力', value: -14 },
         ],
       },
@@ -416,7 +417,7 @@ const godsData: GodTheme[] = [
         rarity: '普通',
         icon: <Skull className="w-8 h-8 text-orange-300" />,
         stats: [
-          { name: '意志', value: 3 },
+          { name: '韧性', value: 3 },
           { name: '力量', value: 3 },
         ],
       },
@@ -430,6 +431,7 @@ const godsData: GodTheme[] = [
         displayRarity: '传说（解锁前置）',
         rarity: '传说',
         icon: <Skull className="w-8 h-8 text-red-500" />,
+        stats: [{ name: '力量', value: 8 }],
       },
     ],
   },
@@ -470,12 +472,12 @@ const godsData: GodTheme[] = [
         id: 'narko_3',
         title: '原罪诱惑',
         description:
-          '你散发着迷人又危险的深渊气息，能轻易蛊惑意志薄弱的敌人听命于你，但也会引起狂热者的欲望，对你进行过度占有，占有你的一切。',
+          '你散发着迷人又危险的深渊气息，能轻易蛊惑韧性薄弱的敌人听命于你，但也会引起狂热者的欲望，对你进行过度占有，占有你的一切。',
         rarity: '稀有',
         icon: <Activity className="w-8 h-8 text-violet-300" />,
         stats: [
           { name: '魅力', value: 12 },
-          { name: '意志', value: -8 },
+          { name: '韧性', value: -8 },
         ],
       },
       {
@@ -517,7 +519,7 @@ const godsData: GodTheme[] = [
         icon: <Smile className="w-8 h-8 text-fuchsia-400" />,
         stats: [
           { name: '魅力', value: 24 },
-          { name: '意志', value: -15 },
+          { name: '韧性', value: -15 },
         ],
       },
       {
@@ -612,7 +614,7 @@ const godsData: GodTheme[] = [
         icon: <Eye className="w-8 h-8 text-indigo-300" />,
         stats: [
           { name: '感知', value: 5 },
-          { name: '意志', value: 1 },
+          { name: '韧性', value: 1 },
         ],
       },
       {
@@ -624,16 +626,17 @@ const godsData: GodTheme[] = [
         displayRarity: '传说（解锁前置）',
         rarity: '传说',
         icon: <Ghost className="w-8 h-8 text-indigo-300" />,
+        stats: [{ name: '敏捷', value: 8 }],
       },
     ],
   },
   {
     id: 'chitrin',
     name: '奇特林',
-    title: '拾荒者',
-    description: '迷失于旧帝国废墟中的幽魂，掌握着被遗忘的伟大科技。',
+    title: '顶级骨人工匠',
+    description: '游荡于旧帝国废墟中的顶级骨人工匠，掌握着被遗忘的机械技艺与生存智慧。',
     fullDescription:
-      '血肉苦弱，唯有顶级工匠得以永存！奇特林并非神明，而是文明的残响。他将指引你发掘旧日的主宰，寻求技巧，拥抱机械意志。',
+      '血肉苦弱，唯有匠艺与钢铁更接近永存。奇特林并非神明，而是旧帝国工艺残响中的顶级骨人工匠。他将指引你发掘遗构、修补残骸、重铸装备，并以最冷静务实的方式在废土上活下去。',
     colorFrom: 'from-emerald-950',
     colorTo: 'to-teal-400',
     borderGlow: 'hover:border-teal-400',
@@ -649,7 +652,7 @@ const godsData: GodTheme[] = [
         stats: [
           { name: '智力', value: 30 },
           { name: '力量', value: -12 },
-          { name: '意志', value: -12 },
+          { name: '韧性', value: -12 },
         ],
       },
       {
@@ -775,6 +778,18 @@ const godsData: GodTheme[] = [
           { name: '力量', value: 3 },
         ],
       },
+      {
+        id: 'chitrin_15',
+        title: '机魂接驳印',
+        description:
+          '让奇特林将旧帝国的机魂接驳印刻入你的神经与骨骼。奖励：自此获得承载奇特林传说赐福的资格。代价：你对情感、温情与他人心绪的理解会逐渐变得迟钝，未来将难以再被奥克兰、克拉尔、娜尔可与比拉克真正接纳。此项不消耗特质点，请在赐予角色时再次确认。',
+        traitDescription:
+          '奇特林的机魂接驳印已刻入你的神经与骨骼。你对情感与人心的理解开始淡薄，自此获得承载奇特林传说赐福的资格。',
+        displayRarity: '传说（解锁前置）',
+        rarity: '传说',
+        icon: <Cpu className="w-8 h-8 text-teal-300" />,
+        stats: [{ name: '智力', value: 8 }],
+      },
     ],
   },
   {
@@ -838,7 +853,7 @@ const godsData: GodTheme[] = [
         icon: <Activity className="w-8 h-8 text-fuchsia-500" />,
         stats: [
           { name: '体质', value: 25 },
-          { name: '意志', value: -14 },
+          { name: '韧性', value: -14 },
           { name: '魅力', value: -25 },
         ],
       },
@@ -863,7 +878,7 @@ const godsData: GodTheme[] = [
         icon: <Shield className="w-8 h-8 text-pink-500" />,
         stats: [
           { name: '体质', value: 15 },
-          { name: '意志', value: 10 },
+          { name: '韧性', value: 10 },
           { name: '敏捷', value: -12 },
         ],
       },
@@ -877,7 +892,7 @@ const godsData: GodTheme[] = [
         stats: [
           { name: '力量', value: 28 },
           { name: '体质', value: 24 },
-          { name: '意志', value: 24 },
+          { name: '韧性', value: 24 },
           { name: '魅力', value: -40 },
           { name: '智力', value: -40 },
         ],
@@ -903,8 +918,7 @@ const godsData: GodTheme[] = [
       {
         id: 'yuri_9',
         title: '裂吻狂噬',
-        description:
-          '以身体突兀裂开的骨刺大嘴或是狂狂生长的畸形副手，生生卡死劈来的长枪大剑。在骨骼的剧烈滑擦火花中暴虐反嘴撕裂对方筋膜。',
+        description: '以身体突兀裂开的骨刺大嘴或是狂狂生长的畸形副手，生生卡死劈来的长枪大剑。',
         rarity: '史诗',
         icon: <Skull className="w-8 h-8 text-pink-400" />,
         stats: [
@@ -922,6 +936,18 @@ const godsData: GodTheme[] = [
         stats: [
           { name: '体质', value: 10 },
           { name: '力量', value: 5 },
+        ],
+      },
+      {
+        id: 'yuri_10b',
+        title: '逆骨荆身',
+        description:
+          '比拉克让你的胸腹、肋侧与脊背埋入一层会在受压时暴起的逆生骨刺。敌人一旦贴身扑杀、抱缠或重击压上，这些尖骨便会自你体内爆突而出，顺着血肉与甲缝反扎入对方身体，像活着的反甲般在承伤的同时回敬残忍创口。',
+        rarity: '史诗',
+        icon: <Bone className="w-8 h-8 text-pink-400" />,
+        stats: [
+          { name: '体质', value: 8 },
+          { name: '力量', value: 4 },
         ],
       },
       {
@@ -983,6 +1009,7 @@ const godsData: GodTheme[] = [
         displayRarity: '传说（解锁前置）',
         rarity: '传说',
         icon: <HeartCrack className="w-8 h-8 text-pink-400" />,
+        stats: [{ name: '体质', value: 8 }],
       },
     ],
   },
@@ -1013,11 +1040,11 @@ const godsData: GodTheme[] = [
       {
         id: 'beep_chitrin_2',
         title: '机械飞升狂热症',
-        description: '你坚信“血肉苦弱，机械飞升”，用钢铁意志强迫自己无视痛苦，但也因此搞垮了脆弱的肉体。',
+        description: '你坚信“血肉苦弱，机械飞升”，用钢铁韧性强迫自己无视痛苦，但也因此搞垮了脆弱的肉体。',
         rarity: '史诗',
         icon: <Hammer className="w-8 h-8 text-teal-400" />,
         stats: [
-          { name: '意志', value: 9 },
+          { name: '韧性', value: 9 },
           { name: '体质', value: -8 },
         ],
       },
@@ -1073,7 +1100,7 @@ const godsData: GodTheme[] = [
         icon: <Activity className="w-8 h-8 text-green-500" />,
         stats: [
           { name: '魅力', value: 10 },
-          { name: '意志', value: -8 },
+          { name: '韧性', value: -8 },
         ],
       },
       {
@@ -1084,7 +1111,7 @@ const godsData: GodTheme[] = [
         icon: <Eye className="w-8 h-8 text-lime-400" />,
         stats: [
           { name: '感知', value: 10 },
-          { name: '意志', value: -10 },
+          { name: '韧性', value: -10 },
         ],
       },
       {
@@ -1150,7 +1177,7 @@ const godsData: GodTheme[] = [
         stats: [
           { name: '魅力', value: 4 },
           { name: '感知', value: 2 },
-          { name: '意志', value: -2 },
+          { name: '韧性', value: -2 },
         ],
       },
       {
@@ -1161,7 +1188,7 @@ const godsData: GodTheme[] = [
         icon: <Activity className="w-8 h-8 text-green-400" />,
         stats: [
           { name: '敏捷', value: 3 },
-          { name: '意志', value: 2 },
+          { name: '韧性', value: 2 },
           { name: '智力', value: -2 },
         ],
       },
@@ -1185,7 +1212,7 @@ const godsData: GodTheme[] = [
         icon: <Hammer className="w-8 h-8 text-green-500" />,
         stats: [
           { name: '力量', value: 4 },
-          { name: '意志', value: 1 },
+          { name: '韧性', value: 1 },
           { name: '魅力', value: -2 },
         ],
       },
@@ -1198,7 +1225,7 @@ const godsData: GodTheme[] = [
         stats: [
           { name: '感知', value: 3 },
           { name: '智力', value: 2 },
-          { name: '意志', value: -2 },
+          { name: '韧性', value: -2 },
         ],
       },
       {
@@ -1220,7 +1247,7 @@ const godsData: GodTheme[] = [
         icon: <Flame className="w-8 h-8 text-green-400" />,
         stats: [
           { name: '智力', value: 3 },
-          { name: '意志', value: 2 },
+          { name: '韧性', value: 2 },
           { name: '体质', value: -2 },
         ],
       },
@@ -1232,7 +1259,7 @@ const godsData: GodTheme[] = [
         icon: <Skull className="w-8 h-8 text-lime-400" />,
         stats: [
           { name: '体质', value: 4 },
-          { name: '意志', value: 1 },
+          { name: '韧性', value: 1 },
           { name: '智力', value: -2 },
         ],
       },
@@ -1245,7 +1272,7 @@ const godsData: GodTheme[] = [
         stats: [
           { name: '魅力', value: 4 },
           { name: '敏捷', value: 1 },
-          { name: '意志', value: -2 },
+          { name: '韧性', value: -2 },
         ],
       },
       {
@@ -1318,7 +1345,7 @@ const godsData: GodTheme[] = [
         rarity: '传说',
         icon: <Hexagon className="w-8 h-8 text-blue-400" />,
         stats: [
-          { name: '意志', value: 20 },
+          { name: '韧性', value: 20 },
           { name: '魅力', value: 10 },
           { name: '感知', value: -15 },
         ],
@@ -1331,7 +1358,7 @@ const godsData: GodTheme[] = [
         rarity: '史诗',
         icon: <Ghost className="w-8 h-8 text-cyan-200" />,
         stats: [
-          { name: '意志', value: 15 },
+          { name: '韧性', value: 15 },
           { name: '体质', value: 12 },
           { name: '智力', value: -12 },
         ],
@@ -1343,7 +1370,7 @@ const godsData: GodTheme[] = [
           '在刀剑寒芒亮起时走马灯地闪过古战场不传剑谱，鬼使神差、神游物外地使出恰置虚空的一记平淡斩击，优雅且轻巧地破除死局。',
         rarity: '普通',
         icon: <Ghost className="w-8 h-8 text-cyan-300" />,
-        stats: [{ name: '意志', value: 5 }],
+        stats: [{ name: '韧性', value: 5 }],
       },
       {
         id: 'ken_7',
@@ -1353,7 +1380,7 @@ const godsData: GodTheme[] = [
         rarity: '史诗',
         icon: <Lock className="w-8 h-8 text-blue-300" />,
         stats: [
-          { name: '意志', value: 15 },
+          { name: '韧性', value: 15 },
           { name: '体质', value: 5 },
           { name: '敏捷', value: 10 },
         ],
@@ -1367,7 +1394,7 @@ const godsData: GodTheme[] = [
         icon: <Sword className="w-8 h-8 text-cyan-400" />,
         stats: [
           { name: '敏捷', value: 6 },
-          { name: '意志', value: 4 },
+          { name: '韧性', value: 4 },
         ],
       },
       {
@@ -1378,7 +1405,7 @@ const godsData: GodTheme[] = [
         rarity: '传说',
         icon: <Ghost className="w-8 h-8 text-blue-200" />,
         stats: [
-          { name: '意志', value: 8 },
+          { name: '韧性', value: 8 },
           { name: '感知', value: 8 },
           { name: '敏捷', value: 8 },
         ],
@@ -1413,7 +1440,7 @@ const godsData: GodTheme[] = [
         icon: <Bug className="w-8 h-8 text-cyan-300" />,
         stats: [
           { name: '体质', value: 7 },
-          { name: '意志', value: 3 },
+          { name: '韧性', value: 3 },
           { name: '智力', value: -4 },
         ],
       },
@@ -1426,7 +1453,7 @@ const godsData: GodTheme[] = [
         stats: [
           { name: '魅力', value: 7 },
           { name: '感知', value: 3 },
-          { name: '意志', value: -3 },
+          { name: '韧性', value: -3 },
         ],
       },
       {
@@ -1437,7 +1464,7 @@ const godsData: GodTheme[] = [
         icon: <Heart className="w-8 h-8 text-cyan-300" />,
         stats: [
           { name: '智力', value: 6 },
-          { name: '意志', value: 2 },
+          { name: '韧性', value: 2 },
           { name: '魅力', value: -2 },
         ],
       },
@@ -1450,7 +1477,7 @@ const godsData: GodTheme[] = [
         stats: [
           { name: '魅力', value: 5 },
           { name: '敏捷', value: 4 },
-          { name: '意志', value: 2 },
+          { name: '韧性', value: 2 },
         ],
       },
       {
@@ -1493,7 +1520,7 @@ const godsData: GodTheme[] = [
           { name: '力量', value: 45 },
           { name: '敏捷', value: 45 },
           { name: '体质', value: 45 },
-          { name: '意志', value: 45 },
+          { name: '韧性', value: 45 },
           { name: '感知', value: 45 },
           { name: '智力', value: 45 },
           { name: '魅力', value: -50 },
@@ -1524,7 +1551,7 @@ const godsData: GodTheme[] = [
         icon: <Activity className="w-8 h-8 text-pink-400" />,
         stats: [
           { name: '敏捷', value: 45 },
-          { name: '意志', value: -25 },
+          { name: '韧性', value: -25 },
         ],
       },
       {
@@ -1566,7 +1593,7 @@ const godsData: GodTheme[] = [
         icon: <Smile className="w-8 h-8 text-fuchsia-300" />,
         stats: [
           { name: '魅力', value: 50 },
-          { name: '意志', value: -30 },
+          { name: '韧性', value: -30 },
         ],
       },
       {
@@ -1579,7 +1606,7 @@ const godsData: GodTheme[] = [
         rarity: '传说',
         icon: <Anchor className="w-8 h-8 text-pink-400" />,
         stats: [
-          { name: '意志', value: 50 },
+          { name: '韧性', value: 50 },
           { name: '敏捷', value: -30 },
         ],
       },
@@ -1753,13 +1780,6 @@ interface RitualWarning {
   content: string;
 }
 
-const initialSquad: SquadMember[] = [
-  { id: 'char_1', name: '无名 (你)', role: '流浪者' },
-  { id: 'char_2', name: '雷恩', role: '坚韧的佣兵' },
-  { id: 'char_3', name: '伊拉', role: '独眼射手' },
-  { id: 'char_4', name: '阿木', role: '拾荒窃贼' },
-];
-
 const TargetSelectModal = ({
   god,
   blessing,
@@ -1886,9 +1906,8 @@ export default function App() {
   const [pickedBlessings, setPickedBlessings] = useState<
     { god: GodTheme; blessing: BlessingOption; characterId: string; sacrificeId?: string }[]
   >([]);
-  const [runtimeSquad, setRuntimeSquad] = useState<RuntimeSquadMember[]>(
-    initialSquad.map(m => ({ ...m, squadName: '', memberName: '' })),
-  );
+  const [runtimeSquad, setRuntimeSquad] = useState<RuntimeSquadMember[]>([]);
+  const [isRuntimeSquadLoading, setIsRuntimeSquadLoading] = useState(true);
   const [isJourneyStarted, setIsJourneyStarted] = useState(false);
   const [ritualWarning, setRitualWarning] = useState<RitualWarning | null>(null);
   const [fixedBlessingPool, setFixedBlessingPool] = useState<Record<string, BlessingOption[]>>({});
@@ -1935,7 +1954,7 @@ export default function App() {
       敏捷: '敏捷',
       感知: '感知',
       体质: '体质',
-      意志: '意志',
+      韧性: '韧性',
       智力: '智力',
       魅力: '魅力',
     };
@@ -1955,7 +1974,7 @@ export default function App() {
       敏捷: 'DEX',
       感知: 'PER',
       体质: 'TGH',
-      意志: 'WIL',
+      韧性: 'WIL',
       智力: 'INT',
       魅力: 'CHA',
     };
@@ -1983,8 +2002,12 @@ export default function App() {
         const currentAttr = _.get(mvuData, attrPath);
 
         if (_.isPlainObject(currentAttr)) {
-          const currentBonus = Number(_.get(currentAttr, '加成', 0)) || 0;
-          _.set(mvuData, `${attrPath}.加成`, currentBonus + stat.value);
+          const currentManualBonus = Number(_.get(currentAttr, '手动加成', 0));
+          _.set(
+            mvuData,
+            `${attrPath}.手动加成`,
+            (Number.isFinite(currentManualBonus) ? currentManualBonus : 0) + stat.value,
+          );
           return;
         }
 
@@ -2068,7 +2091,7 @@ export default function App() {
   };
 
   const getAllowedRaritiesByPersonalLevel = (level: number): BlessingOption['rarity'][] => {
-    if (level < 40) return ['普通'];
+    if (level < 30) return ['普通'];
     if (level <= 50) return ['普通', '史诗'];
     return ['普通', '史诗', '传说'];
   };
@@ -2093,6 +2116,12 @@ export default function App() {
       traitTitle: '暗夜圣痕',
       rejectTitle: '黑夜厌弃伪信者',
       rejectText: '娜尔可的黑夜已经看见你影子里寄宿的旧誓。向别神屈膝过的人，学不会真正的隐没。',
+    },
+    chitrin: {
+      unlockId: 'chitrin_15',
+      traitTitle: '机魂接驳印',
+      rejectTitle: '机魂断开异质接口',
+      rejectText: '奇特林的机魂检测到了你灵魂中已有的异质烙印。被别神写入过的载体，无法再稳定接驳旧帝国的深层协议。',
     },
     yuri: {
       unlockId: 'yuri_15',
@@ -2395,8 +2424,13 @@ export default function App() {
         const raw = _.get(memberData, ['属性', key]);
         if (_.isPlainObject(raw)) {
           const base = Number(_.get(raw, '基础', 0));
+          const manualBonus = Number(_.get(raw, '手动加成', 0));
           const bonus = Number(_.get(raw, '加成', 0));
-          return (Number.isFinite(base) ? base : 0) + (Number.isFinite(bonus) ? bonus : 0);
+          return (
+            (Number.isFinite(base) ? base : 0) +
+            (Number.isFinite(manualBonus) ? manualBonus : 0) +
+            (Number.isFinite(bonus) ? bonus : 0)
+          );
         }
         const num = Number(raw);
         return Number.isFinite(num) ? num : 0;
@@ -2475,7 +2509,7 @@ export default function App() {
           minFavor: 120,
           minAttr: 50,
           title: '怠惰之梦条件未达成',
-          req: '需祭品满足：好感>120，且意志>50。',
+          req: '需祭品满足：好感>120，且韧性>50。',
         },
       };
 
@@ -2526,15 +2560,17 @@ export default function App() {
     setIsJourneyStarted(true);
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
+    setIsRuntimeSquadLoading(true);
     getRuntimeSquadFromMvu()
       .then(members => {
-        if (members.length > 0) {
-          setRuntimeSquad(members);
-        }
+        setRuntimeSquad(members.length > 0 ? members : []);
       })
       .catch(() => {
-        setRuntimeSquad(initialSquad.map(m => ({ ...m, squadName: '主角小队', memberName: m.name })));
+        setRuntimeSquad([]);
+      })
+      .finally(() => {
+        setIsRuntimeSquadLoading(false);
       });
   }, []);
 
@@ -2563,6 +2599,31 @@ export default function App() {
           className="absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_center,rgba(196,164,132,0.1)_0%,transparent_70%)] opacity-30 animate-pulse"
           style={{ animationDuration: '4s' }}
         ></div>
+      </div>
+    );
+  }
+
+  if (isRuntimeSquadLoading || runtimeSquad.length === 0) {
+    return (
+      <div className="kenshi-frame min-h-screen flex flex-col items-center justify-center p-4 bg-black overflow-hidden relative selection:bg-zinc-800">
+        <div className="ornament ornament-tl"></div>
+        <div className="ornament ornament-br"></div>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.8, ease: 'easeOut' }}
+          className="relative z-10 w-full max-w-xl reward-card p-8 md:p-10 border border-zinc-800/90 bg-gradient-to-b from-zinc-950/70 to-black text-center"
+        >
+          <p className="text-[10px] tracking-[0.3em] uppercase text-zinc-500 mb-3">神谕未能锚定变量</p>
+          <h2
+            className="text-3xl md:text-4xl font-black mb-4"
+            style={{ fontFamily: "'Zhi Mang Xing', cursive", color: 'var(--kenshi-gold)' }}
+          >
+            请点击重新处理变量
+          </h2>
+          <div className="h-px w-32 bg-gradient-to-r from-transparent via-[var(--kenshi-gold)] to-transparent mx-auto opacity-30"></div>
+        </motion.div>
+        <div className="absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_center,rgba(196,164,132,0.08)_0%,transparent_70%)] opacity-40"></div>
       </div>
     );
   }
@@ -2732,15 +2793,15 @@ export default function App() {
 队伍最高等级 >50：刷新普通+史诗+传说
 
 个人选择规则：
-个人等级 <40：仅可选择普通
-个人等级 40~50：可选择普通+史诗
+个人等级 <30：仅可选择普通
+个人等级 30~50：可选择普通+史诗
 个人等级 >50：可选择全部
 
 比普/恶念：始终显示全稀有度；恶念需队伍最高等级≥20才能进入。
 
 特质点规则：每个赐福消耗1点特质点；若目标角色特质点为0，则无法赐福。
 
-四神传说前置：奥克兰 / 克拉尔 / 娜尔可 / 比拉克 各自拥有“传说（解锁前置）”。
+五系传说前置：奥克兰 / 克拉尔 / 娜尔可 / 奇特林 / 比拉克 各自拥有“传说（解锁前置）”。
 该前置不消耗特质点，但只有角色等级 >50 才能承受；未取得此前置者，不能选择对应神系的真正传说赐福。`}
               </p>
               <div className="text-center mt-6">

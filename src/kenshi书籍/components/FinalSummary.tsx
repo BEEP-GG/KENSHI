@@ -1,4 +1,4 @@
-import { waitUntil } from 'async-wait-until';
+﻿import { waitUntil } from 'async-wait-until';
 import _ from 'lodash';
 import { motion } from 'motion/react';
 import React from 'react';
@@ -114,7 +114,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
 这里是臭名昭著的雾岛，而你正困在这片死地中心的孤城——蒙格勒。
 凄厉的惨叫声时不时穿透浓雾刺入耳膜，那是被雾人活生生啃食的倒霉蛋发出的绝望哀嚎。
 你不知道自己是如何迷失在这片恐怖地带的，但城外的每一寸土地都潜伏着那些盲目、贪婪的蓝色食人怪物。
-留在城里只能慢慢发疯；而想要活下去，你就必须握紧武器，依靠残存的理智与钢铁般的意志，在雾人的无尽包围中杀出一条血路又或者在这个城中衰老腐烂致死。`,
+留在城里只能慢慢发疯；而想要活下去，你就必须握紧武器，依靠残存的理智与钢铁般的韧性，在雾人的无尽包围中杀出一条血路又或者在这个城中衰老腐烂致死。`,
     kral_choice: `沙克的血液在你体内沸腾，先祖克拉尔的英魂在向你呼唤！
 传说你是战神克拉尔的直系后裔，沙克王国真正的、也是唯一的合法领袖。
 然而如今，懦弱的女皇却坐在宝座上瑟瑟发抖，面对奥克兰人的步步紧逼，她唯一的计划竟是坐以待毙！
@@ -139,7 +139,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
     dexterity: '敏捷',
     perception: '感知',
     constitution: '体质',
-    will: '意志',
+    will: '韧性',
     intelligence: '智力',
     charisma: '魅力',
   };
@@ -380,7 +380,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
       intelligence: 0,
       charisma: 0,
     };
-    const regex = /(力量|敏捷|感知|体质|意志|智力|魅力)\s*([+-]\s*\d+)/g;
+    const regex = /(力量|敏捷|感知|体质|韧性|智力|魅力)\s*([+-]\s*\d+)/g;
     let match: RegExpExecArray | null = null;
     while ((match = regex.exec(text)) !== null) {
       const key = match[1];
@@ -389,7 +389,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
       if (key === '敏捷') modifiers.dexterity += value;
       if (key === '感知') modifiers.perception += value;
       if (key === '体质') modifiers.constitution += value;
-      if (key === '意志') modifiers.will += value;
+      if (key === '韧性') modifiers.will += value;
       if (key === '智力') modifiers.intelligence += value;
       if (key === '魅力') modifiers.charisma += value;
     }

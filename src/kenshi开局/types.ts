@@ -64,6 +64,7 @@ export interface CharacterData {
   subrace: string;
   attributes: Attributes;
   name: string;
+  mainSquadName: string;
   gender: 'male' | 'female' | 'other';
   age: number;
   appearance: {
@@ -164,6 +165,7 @@ export const INITIAL_CHARACTER: CharacterData = {
   subrace: '',
   attributes: INITIAL_ATTRIBUTES,
   name: '',
+  mainSquadName: '小队1',
   gender: 'male',
   age: 25,
   appearance: {

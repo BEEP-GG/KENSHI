@@ -1,4 +1,4 @@
-import { waitUntil } from 'async-wait-until';
+﻿import { waitUntil } from 'async-wait-until';
 import _ from 'lodash';
 import {
   Activity,
@@ -121,6 +121,8 @@ type BattleOutcome =
   | '史诗大捷'
   | '投降';
 
+type SquadRecord = Record<string, { 成员?: Record<string, any>; 视野?: Record<string, any> } | undefined>;
+
 const OUTCOME_DESCRIPTIONS: Record<BattleOutcome, string> = {
   酣畅大胜: '我军势如破竹，以极微伤亡将敌主力全线击溃，赢得酣畅淋漓。',
   略处上风: '大战后互有折损，我军最终将敌阵逼退，艰难掌控了战场主动权。',
@@ -235,7 +237,7 @@ const BATTLE_RULES = `战斗轮结构:
 
 特殊规则:
 - 连击机制: 若角色拥有多次攻击次数，防御方在同一轮内防御后续攻击时，【最终防御成功率】每下累积 -8。
-- 意志减伤: 对所有成员生效；采用线性减伤，公式为“max(0, 意志 - 20) * 0.15”。
+- 韧性减伤: 对所有成员生效；采用线性减伤，公式为“max(0, 韧性 - 20) * 0.15”。
 - 魅力俘虏: 仅AI生效。若攻击者 INT >= 35，且本次攻击本可杀死目标，则掷1D100。
     - 判定值: “round(目标CHA * 0.5)”；若目标为女性则额外 +20。
     - 若 D100 <= 判定值，则目标不会被杀死，HP最低保留10，并进入【已被制服】状态。
@@ -314,7 +316,7 @@ const WEAPON_CATEGORY_GUIDE = `武器类别详解：
 - 识别种类为“武术”。
 - 速度型（DEX>=STR）：基础攻速3；大成功区间93-100，触发额外攻击1次。
 - 重击型（STR>DEX）：基础攻速2；无视5点DR；大成功区间93-100，伤害x2。
-- 武术伤害骰加成：每20点力量+1伤害骰、每30点敏捷+1伤害骰、每40点意志+1伤害骰，均向下取整。
+- 武术伤害骰加成：每20点力量+1伤害骰、每30点敏捷+1伤害骰、每40点韧性+1伤害骰，均向下取整。
 - 两种武术的伤害比例均沿用变量中的伤害比例。
 - 大失败与其他武器一致。`;
 
@@ -340,7 +342,7 @@ const TRAUMA_RULES = `创伤与状态详解：
 - 3 重创：臂命中/防御-25；腿躲避/逃跑-25
 - 4 断肢：左臂失去副武器/右臂失去主武器；腿无法躲避/逃跑
 
-士气规则（意志WIL）：
+士气规则（韧性WIL）：
 - WIL>80：士气不下降，不会逃跑/投降。
 - 判定时机：每回合开始 + 受伤后。
 - 士气= 20 + WIL*1 + HP比例*35 − 创伤惩罚(1:-3/2:-7/3:-12/4:-18) − 损失惩罚(死亡-13/休克-8/逃跑-6)。
@@ -720,8 +722,9 @@ const getTraumaThresholdByLevel = (tgh: number, level: number) => {
 const getAttributeValue = (value: unknown, fallback = 30) => {
   if (value && typeof value === 'object') {
     const base = toNumber(_.get(value, ['基础']), 0);
+    const manualBonus = toNumber(_.get(value, ['手动加成']), 0);
     const bonus = toNumber(_.get(value, ['加成']), 0);
-    const total = base + bonus;
+    const total = base + manualBonus + bonus;
     return Number.isFinite(total) && total > 0 ? total : fallback;
   }
   return toNumber(value, fallback);
@@ -860,6 +863,31 @@ const normalizeCharacter = (
   };
 };
 
+const getMainSquadName = (stat: any) => {
+  const explicitMainSquad = String(_.get(stat, ['主控'], '') || '').trim();
+  const squadData = _.get(stat, ['小队成员'], {}) as SquadRecord;
+
+  if (explicitMainSquad && _.has(squadData, explicitMainSquad)) return explicitMainSquad;
+  return Object.keys(squadData || {})[0] || '';
+};
+
+const getMainSquadData = (stat: any) => {
+  const squadName = getMainSquadName(stat);
+  return squadName ? _.get(stat, ['小队成员', squadName], {}) : {};
+};
+
+const getMainControllerName = (stat: any) => {
+  const squad = getMainSquadData(stat);
+  const members = _.get(squad, ['成员'], {});
+  return Object.keys(members || {})[0] || '';
+};
+
+const getMainControllerData = (stat: any) => {
+  const squad = getMainSquadData(stat);
+  const controllerName = getMainControllerName(stat);
+  return controllerName ? _.get(squad, ['成员', controllerName], null) : null;
+};
+
 const buildUnitsFromStat = (stat: any) => {
   const units: BattleCharacter[] = [];
   const usedIds = new Set<string>();
@@ -872,18 +900,23 @@ const buildUnitsFromStat = (stat: any) => {
     units.push(unit);
   };
 
-  const current = _.get(stat, ['当前角色']);
+  const mainSquadName = getMainSquadName(stat);
+  const mainSquad = getMainSquadData(stat);
+  const current = getMainControllerData(stat);
+  const controllerName = getMainControllerName(stat);
   const currentName =
-    _.get(current, ['名字'], _.get(current, ['名称'], _.get(current, ['id'], '当前角色'))) || '当前角色';
+    _.get(current, ['名字'], _.get(current, ['名称'], _.get(current, ['id'], controllerName || '主控成员'))) ||
+    controllerName ||
+    '主控成员';
   pushUnit(normalizeCharacter(current, currentName, 'friendly', 'squad'));
 
-  const squad = _.get(stat, ['小队成员'], {});
-  _.forEach(squad, (value, key) => {
+  const squadMembers = _.get(mainSquad, ['成员'], {});
+  _.forEach(squadMembers, (value, key) => {
     if (value === '待初始化') return;
     pushUnit(normalizeCharacter(value, String(key), 'friendly', 'squad'));
   });
 
-  const vision = _.get(stat, ['视野'], {});
+  const vision = _.get(mainSquad, ['视野'], {});
   _.forEach(vision, (value, key) => {
     if (value === '待初始化') return;
     const stance = _.get(value, ['立场'], '中立');
@@ -896,7 +929,8 @@ const buildUnitsFromStat = (stat: any) => {
 
   return {
     units,
-    playerId: String(_.get(current, ['id'], currentName || '当前角色')),
+    playerId: String(_.get(current, ['id'], currentName || '主控成员')),
+    mainSquadName,
   };
 };
 
@@ -2032,7 +2066,7 @@ export default function App() {
     const myBonus = Math.round(attacker.attributes.STR / 20) + Math.round(attacker.attributes.CHA / 5);
     const myTotal = Math.round(myRoll + myBonus);
 
-    // 敌方加成: D100 + 意志(每10属性+1修正) + 体质(每20属性+1修正) + 额外难度 - 双方等级差
+    // 敌方加成: D100 + 韧性(每10属性+1修正) + 体质(每20属性+1修正) + 额外难度 - 双方等级差
     const enemyRoll = d100();
     const enemyBonus = Math.round(defender.attributes.WIL / 10) + Math.round(defender.attributes.TGH / 20);
     const enemyTotal = Math.round(enemyRoll + enemyBonus + hpDifficulty - levelDiff);
@@ -3865,7 +3899,7 @@ export default function App() {
                         : 'text-stone-300 hover:bg-stone-800/60'
                     }`}
                   >
-                    当前角色开启
+                    当前成员开启
                   </button>
                   <button
                     onClick={() => {
@@ -3886,7 +3920,7 @@ export default function App() {
                         : 'text-stone-300 hover:bg-stone-800/60'
                     }`}
                   >
-                    当前角色关闭
+                    当前成员关闭
                   </button>
                 </div>
               </div>

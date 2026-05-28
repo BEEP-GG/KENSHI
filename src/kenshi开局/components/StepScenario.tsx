@@ -49,6 +49,7 @@ export const StepScenario: React.FC<StepScenarioProps> = ({ data, updateData, on
     fish_island_refugee: 573,
     bast_stray: 549,
     unknown_dream: 749,
+    heretic_fire: 959,
     slave_master: 798,
     human_torso: 799,
     monster_hunter: 800,

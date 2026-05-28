@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="options-root">
     <div v-if="options.length" class="interactive-options-container" :class="`option-count-${options.length}`">
       <div class="actor-selector" :class="{ active: isActorMenuOpen }">
@@ -242,7 +242,7 @@ const ATTRIBUTE_KEY_MAP: Record<string, string> = {
   敏捷: 'DEX',
   感知: 'PER',
   体质: 'TGH',
-  意志: 'WIL',
+  韧性: 'WIL',
   智力: 'INT',
   魅力: 'CHA',
 };
@@ -290,17 +290,29 @@ function getActorName(actor: Record<string, any> | null, fallback: string): stri
   return String(name || fallback);
 }
 
+function getMainSquadName(statData: Record<string, any> | null): string {
+  const explicitMainSquad = String(statData?.主控 ?? '').trim();
+  const squadMap = statData?.小队成员;
+  if (explicitMainSquad && squadMap && typeof squadMap === 'object' && explicitMainSquad in squadMap) {
+    return explicitMainSquad;
+  }
+  return squadMap && typeof squadMap === 'object' ? (Object.keys(squadMap)[0] ?? '') : '';
+}
+
+function getMainSquadData(statData: Record<string, any> | null): Record<string, any> | null {
+  const mainSquadName = getMainSquadName(statData);
+  if (!mainSquadName) return null;
+  return (statData?.小队成员?.[mainSquadName] as Record<string, any> | undefined) ?? null;
+}
+
 function refreshActorOptions() {
   const statData = getVariableData();
   const nextActors: ActorOption[] = [];
-  const currentCharacter = statData?.当前角色;
-  if (currentCharacter && currentCharacter !== '待初始化') {
-    nextActors.push({ name: getActorName(currentCharacter, '当前角色'), data: currentCharacter });
-  }
+  const mainSquad = getMainSquadData(statData);
+  const members = mainSquad?.成员;
 
-  const teammates = statData?.小队成员;
-  if (teammates && typeof teammates === 'object') {
-    for (const [fallbackName, teammate] of Object.entries(teammates)) {
+  if (members && typeof members === 'object') {
+    for (const [fallbackName, teammate] of Object.entries(members)) {
       if (!teammate || teammate === '待初始化') continue;
       const actorData = teammate as Record<string, any>;
       const name = getActorName(actorData, fallbackName);
@@ -312,7 +324,7 @@ function refreshActorOptions() {
 
   actorOptions.value = nextActors;
   if (!selectedActorName.value || !nextActors.some(actor => actor.name === selectedActorName.value)) {
-    selectedActorName.value = nextActors[0]?.name ?? '当前角色';
+    selectedActorName.value = nextActors[0]?.name ?? '当前成员';
   }
 }
 
@@ -321,7 +333,7 @@ const selectedActor = computed(() => {
 });
 
 function getCurrentCharacterData(): Record<string, any> | null {
-  return selectedActor.value?.data ?? getVariableData()?.当前角色 ?? null;
+  return selectedActor.value?.data ?? getMainSquadData(getVariableData())?.成员?.[selectedActorName.value] ?? null;
 }
 
 function getAttributeModifier(attributeName: string, characterData: Record<string, any> | null): number {

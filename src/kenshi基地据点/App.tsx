@@ -1,4 +1,3 @@
-import waitFor from 'async-wait-until';
 import _ from 'lodash';
 import { CheckCircle } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -20,11 +19,11 @@ const DEFAULT_EMPLOYEE_STATS: EmployeeStats = {
   感知: 10,
   体质: 10,
   智力: 10,
-  意志: 10,
+  韧性: 10,
   魅力: 10,
 };
 
-const NPC_ATTRIBUTE_KEYS: Array<keyof EmployeeStats> = ['力量', '敏捷', '感知', '体质', '智力', '意志', '魅力'];
+const NPC_ATTRIBUTE_KEYS: Array<keyof EmployeeStats> = ['力量', '敏捷', '感知', '体质', '智力', '韧性', '魅力'];
 
 const NPC_LEVEL_BASELINES = [
   { level: 1, value: 25 },
@@ -421,25 +420,6 @@ const appendTriggeredEventSight = (mvuData: any, state: GameState) => {
   return mvuData;
 };
 
-const ensurePendingEvent = (events: GameEvent[], input: PendingEventInput) => {
-  if (events.some(event => event.title === input.title && !event.resolved)) {
-    return events;
-  }
-
-  return [
-    {
-      id: `evt-${Date.now()}`,
-      title: input.title,
-      description: input.description,
-      rollRequired: true,
-      type: input.type,
-      resolved: false,
-      target: input.target,
-    },
-    ...events,
-  ];
-};
-
 const FACILITY_CATEGORY_HINTS: Record<string, string[]> = {
   'defensive-gate': ['大门'],
   'defensive-wall': ['墙'],
@@ -515,13 +495,6 @@ type RuntimeContextGetter = () => { messageId?: number } | undefined;
 type RuntimeWorld = { 天数?: number };
 type RuntimeVariables = { stat_data?: { 世界?: RuntimeWorld } };
 
-type PendingEventInput = {
-  title: string;
-  description: string;
-  type: GameEvent['type'];
-  target: number;
-};
-
 type StoryLog = {
   kind: 'rename' | 'work' | 'event';
   outpostId?: string;
@@ -532,13 +505,6 @@ type StoryLog = {
 };
 
 const buildEventKey = (title: string, target?: number) => `${title}::${Math.max(0, Number(target || 0))}`;
-
-const createBanditInvasionEvent = (): PendingEventInput => ({
-  title: '土匪入侵',
-  description: '一伙无派系土匪正在逼近据点，预计两天后发起入侵。',
-  type: 'bad',
-  target: 2,
-});
 
 const inferEmployeeRole = (member: MvuMember, facilityName?: string) => {
   if (normalizeText(member?.身份)) return normalizeText(member.身份);
@@ -700,7 +666,7 @@ const buildStateFromMvuOutposts = (
           感知: normalizeValue(member?.属性?.PER?.基础 ?? member?.属性?.感知?.基础, DEFAULT_EMPLOYEE_STATS.感知),
           体质: normalizeValue(member?.属性?.TGH?.基础 ?? member?.属性?.体质?.基础, DEFAULT_EMPLOYEE_STATS.体质),
           智力: normalizeValue(member?.属性?.INT?.基础 ?? member?.属性?.智力?.基础, DEFAULT_EMPLOYEE_STATS.智力),
-          意志: normalizeValue(member?.属性?.WIL?.基础 ?? member?.属性?.意志?.基础, DEFAULT_EMPLOYEE_STATS.意志),
+          韧性: normalizeValue(member?.属性?.WIL?.基础 ?? member?.属性?.韧性?.基础, DEFAULT_EMPLOYEE_STATS.韧性),
           魅力: normalizeValue(member?.属性?.CHA?.基础 ?? member?.属性?.魅力?.基础, DEFAULT_EMPLOYEE_STATS.魅力),
         },
       });
@@ -852,7 +818,7 @@ export default function App() {
     感知: { 基础: Number(stats.感知 || 0), 加成: 0 },
     体质: { 基础: Number(stats.体质 || 0), 加成: 0 },
     智力: { 基础: Number(stats.智力 || 0), 加成: 0 },
-    意志: { 基础: Number(stats.意志 || 0), 加成: 0 },
+    韧性: { 基础: Number(stats.韧性 || 0), 加成: 0 },
     魅力: { 基础: Number(stats.魅力 || 0), 加成: 0 },
   });
 
@@ -933,6 +899,7 @@ export default function App() {
   const buildDestinyEvents = (events: GameEvent[]) => {
     const mappedEvents: Record<string, string> = {};
     events.forEach((event, index) => {
+      if ((event.target || 0) <= 0) return;
       const title = event.title || `事件${index + 1}`;
       mappedEvents[title] = formatEventDescriptionWithDays(event.description || '', event.target || 0);
     });
@@ -992,12 +959,108 @@ export default function App() {
     settlementDay = getCurrentWorldDay(messageId),
   ) => {
     await waitGlobalInitialized('Mvu');
-    await waitFor(() => _.has(getVariables({ type: 'message', message_id: messageId }), 'stat_data'));
 
     const mvuData = Mvu.getMvuData({ type: 'message', message_id: messageId });
+    if (!_.has(mvuData, 'stat_data')) {
+      _.set(mvuData, 'stat_data', {});
+    }
     _.set(mvuData, 'stat_data.据点', buildOutpostVariables(state, settlementDay));
     appendTriggeredEventSight(mvuData, state);
     await Mvu.replaceMvuData(mvuData, { type: 'message', message_id: messageId });
+  };
+
+  const getResourceUnitValue = (name: string) => {
+    if (/古代科技书|AI核心|工程图|蓝图/i.test(name)) return 1000;
+    if (/电子元件|铜合金/i.test(name)) return 120;
+    if (/钢筋/i.test(name)) return 80;
+    if (/铁原板|建筑材料|皮革/i.test(name)) return 50;
+    if (/大麻膏|酒|格洛格|朗姆|清酒/i.test(name)) return 75;
+    if (/布料|麻叶|小麦|面粉|棉花/i.test(name)) return 25;
+    if (/食物|肉|口粮|面包|米饭|水/i.test(name)) return 15;
+    return 10;
+  };
+
+  const getWarehouseValue = (resources: Record<string, number>) =>
+    Math.max(
+      0,
+      Math.round(
+        Object.entries(resources || {}).reduce(
+          (total, [name, amount]) => total + Math.max(0, Number(amount || 0)) * getResourceUnitValue(name),
+          0,
+        ),
+      ),
+    );
+
+  const getOutpostLevelTitle = (level: number) =>
+    ({ 1: '房屋', 2: '哨站', 3: '村庄', 4: '村庄', 5: '城镇' })[_.clamp(Math.round(level || 1), 1, 5)] || '房屋';
+
+  const getOutpostStatusByLevel = (level: number) => {
+    const safeLevel = _.clamp(Math.round(level || 1), 1, 5);
+    if (safeLevel === 1) return '新建据点，仍处于脆弱的立足阶段';
+    if (safeLevel === 2) return '小型哨站，已经具备基础防御与固定生活秩序';
+    if (safeLevel === 3) return '成熟村庄，拥有稳定设施、常驻人口与区域影响力';
+    if (safeLevel === 4) return '区域堡垒，防务、生产和管理体系已经成型';
+    return '城镇级据点，已成为玩家派系在当地的重要权力中心';
+  };
+
+  const getPlayerFactionName = (messageId: number | 'latest' = getCurrentMessageId()) => {
+    const rootState = readMvuRootState(messageId) as any;
+    return String(rootState?.stat_data?.我方派系名称 || '').trim() || '无派系';
+  };
+
+  const buildOutpostWorldbookContent = (outpost: Outpost, state: GameState, factionName: string) => {
+    const outpostName = outpost.name || '无名据点';
+    const outpostLevel = Number(outpost.level || 1);
+    const outpostFacilities = state.facilities.filter(facility => facility.outpostId === outpost.id);
+    const outpostEmployees = state.employees.filter(employee => employee.outpostId === outpost.id);
+    const getFacilityDescription = (facility: Facility) => {
+      const blueprint = FACILITY_BLUEPRINTS.find(item => item.id === facility.blueprintId);
+      const levelData = blueprint?.levels[facility.level];
+      return levelData?.description || blueprint?.category || '暂无描述';
+    };
+    const facilityText = outpostFacilities.length
+      ? `\n${outpostFacilities
+          .map(facility => `     -${getFacilityDisplayName(facility)}：${getFacilityDescription(facility)}`)
+          .join('\n')}`
+      : '暂无登记设施';
+    const wallNames = outpostFacilities
+      .filter(facility => /防御墙|墙|城墙|大门|门/i.test(getFacilityDisplayName(facility)))
+      .map(getFacilityDisplayName);
+    const turretNames = outpostFacilities
+      .filter(facility => /炮塔|弩炮|鱼叉/i.test(getFacilityDisplayName(facility)))
+      .map(getFacilityDisplayName);
+    const defenseText = `${wallNames.length ? wallNames.join('、') : '无防御墙'},${turretNames.length ? turretNames.join('、') : '无炮塔'}`;
+
+    return `当前登记据点是：${factionName}派系的【${outpostName}】
+  -据点区域：${outpost.location || '未知区域'}
+  -据点等级：Lv.${outpostLevel} ${getOutpostLevelTitle(outpostLevel)}
+  -据点状态：${getOutpostStatusByLevel(outpostLevel)}
+  -据点统御：最高统御阶层称为【老大】
+  -据点防御：${defenseText}
+  -据点设施：${facilityText}
+  -据点人口：${outpostEmployees.length}人
+  -据点财富：${getWarehouseValue(state.resources)} Cats（仓库价值）`;
+  };
+
+  const syncOutpostWorldbookEntry = async (outpost: Outpost, state: GameState) => {
+    try {
+      if (typeof getCharWorldbookNames !== 'function' || typeof updateWorldbookWith !== 'function') return;
+      const outpostName = String(outpost.name || '').trim();
+      if (!outpostName) return;
+
+      const charWorldbook = getCharWorldbookNames('current');
+      const wbName = String(charWorldbook?.primary || '').trim();
+      if (!wbName) return;
+
+      const entryName = `据点：${outpostName}`;
+      const entryContent = buildOutpostWorldbookContent(outpost, state, getPlayerFactionName());
+
+      await updateWorldbookWith(wbName, entries =>
+        entries.map(entry => (entry.name === entryName ? { ...entry, enabled: true, content: entryContent } : entry)),
+      );
+    } catch (error) {
+      console.error('同步据点世界书条目失败，已跳过', error);
+    }
   };
 
   const appendStoryLog = (log: StoryLog) => {
@@ -1019,7 +1082,10 @@ export default function App() {
 
     const renameLogs = relevantLogs.filter(log => log.kind === 'rename');
     const workLogs = relevantLogs.filter(log => log.kind === 'work');
-    const eventLogs = relevantLogs.filter(log => log.kind === 'event');
+    const arrivedEventTitles = new Set(
+      state.events.filter(event => (event.target || 0) <= 0).map(event => event.title || ''),
+    );
+    const eventLogs = relevantLogs.filter(log => log.kind === 'event' && arrivedEventTitles.has(log.title));
 
     const lines: string[] = [];
     lines.push('【据点总结】');
@@ -1255,6 +1321,9 @@ export default function App() {
   };
 
   const handleCreateOutpost = (name: string, location: string) => {
+    const trimmedName = name.trim();
+    const trimmedLocation = location.trim();
+
     setGameState(prev => {
       const costCats = 3000;
       let nextCats = prev.cats;
@@ -1267,74 +1336,96 @@ export default function App() {
 
       const newOutpost: Outpost = {
         id: `out-${Date.now()}`,
-        name: name,
-        location: location,
+        name: trimmedName,
+        location: trimmedLocation,
         status: 'operational',
         description: '一处新建的房屋基地，您的废土传奇由此续写。',
         level: 1,
       };
 
-      return {
+      const nextState = {
         ...prev,
         cats: nextCats,
         resources: nextResources,
         outposts: [...prev.outposts, newOutpost],
         currentOutpostId: newOutpost.id,
       };
+
+      updateMvuVariables(nextState).catch(error => console.error('创建据点后同步变量失败', error));
+
+      return nextState;
     });
     setActiveTab('dashboard');
   };
 
   const handleGenerateCode = async () => {
-    const settlementDay = getCurrentWorldDay();
-    const nextEvents = ensurePendingEvent(gameState.events, createBanditInvasionEvent());
-    const nextStateForSubmission: GameState = {
-      ...gameState,
-      events: nextEvents,
-    };
+    let nextEvents = gameState.events;
+    let nextStateForSubmission: GameState = gameState;
+    let settlementDay = gameState.day || initialGameState.day;
 
-    const minState = {
-      day: nextStateForSubmission.day,
-      cats: nextStateForSubmission.cats,
-      res: nextStateForSubmission.resources,
-      fac: nextStateForSubmission.facilities.map(f => ({
-        id: f.id,
-        bp: f.blueprintId,
-        lvl: f.level,
-        st: f.status,
-      })),
-      emp: nextStateForSubmission.employees.map(e => ({
-        id: e.id,
-        n: e.name,
-        r: e.role,
-        hp: e.hp,
-        maxHp: e.maxHp,
-        fac: e.facilityId || 0,
-        s: e.stats,
-        t: e.traits,
-      })),
-    };
+    try {
+      settlementDay = getCurrentWorldDay();
+      nextEvents = gameState.events;
+      nextStateForSubmission = {
+        ...gameState,
+        events: nextEvents,
+      };
 
-    const rawJson = JSON.stringify(minState);
-    const base64Code = btoa(unescape(encodeURIComponent(rawJson)));
-    const formattedCode = `KNS-${base64Code}`;
+      const minState = {
+        day: nextStateForSubmission.day,
+        cats: nextStateForSubmission.cats,
+        res: nextStateForSubmission.resources,
+        fac: nextStateForSubmission.facilities.map(f => ({
+          id: f.id,
+          bp: f.blueprintId,
+          lvl: f.level,
+          st: f.status,
+        })),
+        emp: nextStateForSubmission.employees.map(e => ({
+          id: e.id,
+          n: e.name,
+          r: e.role,
+          hp: e.hp,
+          maxHp: e.maxHp,
+          fac: e.facilityId || 0,
+          s: e.stats,
+          t: e.traits,
+        })),
+      };
 
-    console.log('[Dev] 提报至后台的状态数据:', formattedCode);
+      const rawJson = JSON.stringify(minState);
+      const base64Code = btoa(unescape(encodeURIComponent(rawJson)));
+      const formattedCode = `KNS-${base64Code}`;
 
-    await updateMvuVariables(nextStateForSubmission, getCurrentMessageId(), settlementDay);
+      console.log('[Dev] 提报至后台的状态数据:', formattedCode);
 
-    const submissionEventKeys = new Set(gameState.events.map(event => buildEventKey(event.title, event.target)));
-    const pendingEventLogs = nextEvents
-      .filter(event => !submissionEventKeys.has(buildEventKey(event.title, event.target)))
+      await updateMvuVariables(nextStateForSubmission, getCurrentMessageId(), settlementDay);
+      const submissionOutpost =
+        nextStateForSubmission.outposts.find(outpost => outpost.id === nextStateForSubmission.currentOutpostId) ||
+        nextStateForSubmission.outposts[0];
+      if (submissionOutpost) {
+        syncOutpostWorldbookEntry(submissionOutpost, nextStateForSubmission);
+      }
+    } catch (error) {
+      console.error('同步据点变量失败，仍继续发送据点故事', error);
+    }
+
+    const previousArrivedEventKeys = new Set(
+      gameState.events.filter(event => (event.target || 0) <= 0).map(event => buildEventKey(event.title, event.target)),
+    );
+    const arrivedEventLogs = nextEvents
+      .filter(
+        event => (event.target || 0) <= 0 && !previousArrivedEventKeys.has(buildEventKey(event.title, event.target)),
+      )
       .map(event => ({
         kind: 'event' as const,
         outpostId: gameState.currentOutpostId,
         title: event.title,
-        detail: `遇到了${event.title}，${event.description}`,
+        detail: `遭遇了${event.title}，${event.description}`,
       }));
 
     const summary = buildSettlementStoryText(
-      [...storyLogs, ...pendingEventLogs],
+      [...storyLogs, ...arrivedEventLogs],
       nextStateForSubmission,
       settlementDay,
     );

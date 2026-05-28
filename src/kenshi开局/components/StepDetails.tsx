@@ -2,6 +2,7 @@ import {
   Activity,
   ChevronDown,
   ChevronRight,
+  Download,
   Eye,
   Heart,
   Minus,
@@ -9,6 +10,7 @@ import {
   RotateCcw,
   Shield,
   Sparkles,
+  Upload,
   Users,
   Wrench,
   Zap,
@@ -37,7 +39,7 @@ const ATTRIBUTE_CONFIG: Record<Attribute, { label: string; icon: any; desc: stri
   dexterity: { label: '敏捷', icon: Zap, desc: '影响攻击速度和格挡几率' },
   perception: { label: '感知', icon: Eye, desc: '影响远程精度和侦察能力' },
   constitution: { label: '体质', icon: Heart, desc: '影响生命值和抗击打能力' },
-  will: { label: '意志', icon: Sparkles, desc: '影响心情值和胆量' },
+  will: { label: '韧性', icon: Sparkles, desc: '增加伤害减免与战斗承受力' },
   intelligence: { label: '智力', icon: Sparkles, desc: '影响科研速度和医疗效率' },
   charisma: { label: '魅力', icon: Activity, desc: '影响交易价格和招募成功率' },
 };
@@ -56,6 +58,14 @@ const CONTINUOUS_TICK_INTERVAL = 90;
 const CONTINUOUS_START_DELAY = 120;
 const CONTINUOUS_MAX_BATCH_STEPS = 3;
 
+const SCENARIO_START_LEVELS: Record<string, number> = {
+  monster_hunter: 30,
+  apex_hunter: 40,
+  officer_son: 20,
+  holy_crusade: 20,
+  false_savior: 30,
+};
+
 const getDefaultHeightByRaceSubrace = (raceId: string, subraceId: string) => {
   if (raceId === 'ailu' || subraceId === 'ailu' || subraceId === 'ailu_folk') return 100;
   if (subraceId === 'ratfolk') return 140;
@@ -73,6 +83,11 @@ const SCENARIO_EXCLUSIVE_TRAITS: Record<
   slave_master: {
     name: '奴隶主',
     description: '你深谙驱使与驯化他人的手段，对脏乱贫苦的难民群体抱有天然的轻蔑与疏离。',
+  },
+  heretic_fire: {
+    name: '异端之火',
+    description:
+      '你见证过异族被人类文明猎杀、奴役与羞辱的惨剧。如今远古血盟接纳了你，复仇信念让你面对人类势力时更加冷硬而决绝。',
   },
   officer_son: {
     name: '贵族之子',
@@ -136,7 +151,7 @@ const ATTRIBUTE_LABEL_TO_KEY: Record<string, Attribute> = {
   敏捷: 'dexterity',
   感知: 'perception',
   体质: 'constitution',
-  意志: 'will',
+  韧性: 'will',
   智力: 'intelligence',
   魅力: 'charisma',
 };
@@ -199,6 +214,66 @@ const UTILITY_TOOL_OPTIONS = [
 ] as const;
 const UNKNOWN_DREAM_WEAPON_TYPES = ['武士刀类', '钝器类', '军刀类', '砍刀类', '长柄刀类', '大型类', '弓', '弩'];
 const UNKNOWN_DREAM_ARMOR_TYPES = ['轻甲', '中甲', '重甲'];
+const CHARACTER_TEMPLATE_VERSION = 1;
+const CHARACTER_TEMPLATE_FILE_PREFIX = 'kenshi-character-template';
+
+type CharacterTemplateData = Pick<
+  CharacterData,
+  | 'race'
+  | 'subrace'
+  | 'attributes'
+  | 'name'
+  | 'gender'
+  | 'age'
+  | 'appearance'
+  | 'traits'
+  | 'customTraitName'
+  | 'customTraitDescription'
+> & {
+  raceTraitName?: string;
+  raceTraitDescription?: string;
+};
+
+const sanitizeFilenamePart = (value: string) =>
+  (value || '无名角色')
+    .trim()
+    .replace(/[\\/:*?"<>|]/g, '_')
+    .replace(/\s+/g, '_')
+    .slice(0, 40) || '无名角色';
+
+const buildCharacterTemplatePayload = (template: CharacterTemplateData) => ({
+  type: 'kenshi-character-template',
+  version: CHARACTER_TEMPLATE_VERSION,
+  savedAt: new Date().toISOString(),
+  character: template,
+});
+
+const normalizeImportedTemplate = (raw: unknown): CharacterTemplateData => {
+  const source =
+    raw && typeof raw === 'object' && 'character' in raw && (raw as { character?: unknown }).character
+      ? (raw as { character: unknown }).character
+      : raw;
+
+  if (!source || typeof source !== 'object') {
+    throw new Error('invalid character template');
+  }
+
+  const value = source as Partial<CharacterTemplateData>;
+  return {
+    race: typeof value.race === 'string' ? value.race : '',
+    subrace: typeof value.subrace === 'string' ? value.subrace : '',
+    attributes: { ...INITIAL_ATTRIBUTES, ...(value.attributes ?? {}) },
+    name: typeof value.name === 'string' ? value.name : '',
+    gender: value.gender === 'female' || value.gender === 'other' ? value.gender : 'male',
+    age: Math.max(1, Math.min(100, Number(value.age) || 25)),
+    appearance: { ...INITIAL_APPEARANCE, ...(value.appearance ?? {}) },
+    traits: Array.isArray(value.traits) ? value.traits.filter(item => typeof item === 'string') : [],
+    customTraitName: typeof value.customTraitName === 'string' ? value.customTraitName : '',
+    customTraitDescription: typeof value.customTraitDescription === 'string' ? value.customTraitDescription : '',
+    raceTraitName: typeof value.raceTraitName === 'string' ? value.raceTraitName : '',
+    raceTraitDescription: typeof value.raceTraitDescription === 'string' ? value.raceTraitDescription : '',
+  };
+};
 const UNKNOWN_DREAM_TUTORIAL_STEPS = [
   {
     title: '武器名称',
@@ -298,6 +373,13 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
       traits.push(
         { title: '脆弱肢体', description: '十分灵敏但肢体在战斗中更容易受损' },
         { title: '经商头脑', description: '对于交易更敏感，不愿吃亏' },
+      );
+    }
+
+    if (raceId === 'xeno_hive') {
+      traits.push(
+        { title: '脆弱肢体', description: '十分灵敏但肢体在战斗中更容易受损' },
+        { title: '坚韧虫壳', description: '暗紫色表壳比普通蜂巢族更坚硬，更能承受正面冲击。' },
       );
     }
 
@@ -406,12 +488,14 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
     return traits;
   }, []);
   const baseAttributePoints = isSkeleton ? SKELETON_ATTRIBUTE_POINTS : TOTAL_ATTRIBUTE_POINTS;
+  const scenarioStartLevel = SCENARIO_START_LEVELS[data.scenario] ?? 1;
   const godModeLevel = Math.max(
     GOD_MODE_MIN_LEVEL,
     Math.min(GOD_MODE_MAX_LEVEL, data.godModeLevel || GOD_MODE_MIN_LEVEL),
   );
-  const godModeBonusPoints = data.godModeEnabled ? (godModeLevel - 1) * GOD_MODE_POINTS_PER_LEVEL : 0;
-  const totalAttributePoints = baseAttributePoints + godModeBonusPoints;
+  const effectiveLevel = data.godModeEnabled ? godModeLevel : scenarioStartLevel;
+  const levelBonusPoints = (effectiveLevel - 1) * GOD_MODE_POINTS_PER_LEVEL;
+  const totalAttributePoints = baseAttributePoints + levelBonusPoints;
   const attributeUpperLimit = data.godModeEnabled ? GOD_MODE_ATTRIBUTE_MAX : ATTRIBUTE_MAX;
   const usedPoints = Object.entries(data.attributes).reduce((sum, [key, value]) => {
     if (isSkeleton && key === 'will') return sum;
@@ -446,7 +530,7 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
       subraceSummary,
     ].join(' ');
 
-    const regex = /(力量|敏捷|感知|体质|意志|智力|魅力)\s*([+-]\s*\d+)/g;
+    const regex = /(力量|敏捷|感知|体质|韧性|智力|魅力)\s*([+-]\s*\d+)/g;
     let match = regex.exec(textSource);
     while (match) {
       const attrKey = ATTRIBUTE_LABEL_TO_KEY[match[1]];
@@ -498,7 +582,7 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
     data.traits.forEach(traitId => {
       const trait = [...TRAITS.attribute, ...TRAITS.life, ...TRAITS.fun].find(item => item.id === traitId);
       if (!trait) return;
-      const regex = /(力量|敏捷|感知|体质|意志|智力|魅力)\s*([+-]\s*\d+)/g;
+      const regex = /(力量|敏捷|感知|体质|韧性|智力|魅力)\s*([+-]\s*\d+)/g;
       let match = regex.exec(trait.description);
       while (match) {
         const attrKey = ATTRIBUTE_LABEL_TO_KEY[match[1]];
@@ -890,6 +974,12 @@ ${names}`;
     return `这是对于【未知梦想】剧本的自定义背景故事：\n${script}`;
   };
 
+  const buildMainPerspectiveWorldbookContent = React.useCallback(() => {
+    const mainCharacterName = data.name?.trim() || '无名氏';
+    const mainSquadName = data.mainSquadName?.trim() || '小队1';
+    return `主控小队的派系名字是：无名者\n  -派系描述：无\n  -派系主旨：无\n  -派系规矩：无\n当前主角是：【${mainCharacterName}】\n\n后续所有故事情节基于小队【${mainSquadName}】的视角来进行`;
+  }, [data.name, data.mainSquadName]);
+
   const saveUnknownDreamScript = async () => {
     if (!isUnknownDream || isSavingUnknownDreamScript) return;
     setIsSavingUnknownDreamScript(true);
@@ -916,6 +1006,31 @@ ${names}`;
       setIsSavingUnknownDreamScript(false);
     }
   };
+
+  React.useEffect(() => {
+    const syncMainPerspectiveWorldbook = async () => {
+      try {
+        const charWorldbook = getCharWorldbookNames('current');
+        const wbName = charWorldbook.primary;
+        if (!wbName) return;
+
+        const content = buildMainPerspectiveWorldbookContent();
+        await updateWorldbookWith(wbName, entries =>
+          entries.map(entry => {
+            if (Number(entry.uid) === 953) {
+              return { ...entry, enabled: true, content };
+            }
+            return entry;
+          }),
+        );
+      } catch (error) {
+        console.error('同步主控视角 UID953 失败', error);
+      }
+    };
+
+    const timer = window.setTimeout(syncMainPerspectiveWorldbook, 300);
+    return () => window.clearTimeout(timer);
+  }, [buildMainPerspectiveWorldbookContent]);
 
   React.useEffect(() => {
     const isFalseSaviorSubrace = data.subrace === 'skeleton_false_savior';
@@ -1082,10 +1197,120 @@ ${names}`;
     });
   };
 
-  const buildRandomMemberAttributes = (memberLevel: number): Attributes => {
+  const buildRandomMemberAttributes = (memberLevel: number, lockWillTo100 = false): Attributes => {
     const clampedLevel = Math.max(1, Math.min(100, Number(memberLevel || 1)));
-    const memberTotalPoints = TOTAL_ATTRIBUTE_POINTS + (clampedLevel - 1) * SQUAD_LEVEL_POINTS_PER_LEVEL;
-    return buildRandomAttributesByTotalPoints(memberTotalPoints, false, ATTRIBUTE_MAX);
+    const memberBasePoints = lockWillTo100 ? SKELETON_ATTRIBUTE_POINTS : TOTAL_ATTRIBUTE_POINTS;
+    const memberTotalPoints = memberBasePoints + (clampedLevel - 1) * SQUAD_LEVEL_POINTS_PER_LEVEL;
+    return buildRandomAttributesByTotalPoints(memberTotalPoints, lockWillTo100, GOD_MODE_ATTRIBUTE_MAX);
+  };
+
+  const buildMainCharacterTemplate = (): CharacterTemplateData => ({
+    race: data.race,
+    subrace: data.subrace,
+    attributes: { ...data.attributes },
+    name: data.name,
+    gender: data.gender,
+    age: data.age,
+    appearance: { ...data.appearance },
+    traits: [...data.traits],
+    customTraitName: data.customTraitName,
+    customTraitDescription: data.customTraitDescription,
+  });
+
+  const buildSquadMemberTemplate = (member: SquadMemberData): CharacterTemplateData => ({
+    race: member.race,
+    subrace: member.subrace,
+    attributes: { ...member.attributes },
+    name: member.name,
+    gender: member.gender,
+    age: member.age,
+    appearance: { ...member.appearance },
+    traits: [...member.traits],
+    customTraitName: member.customTraitName,
+    customTraitDescription: member.customTraitDescription,
+  });
+
+  const downloadCharacterTemplate = (template: CharacterTemplateData, suffix = '') => {
+    const payload = buildCharacterTemplatePayload(template);
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `${CHARACTER_TEMPLATE_FILE_PREFIX}-${sanitizeFilenamePart(template.name)}${suffix}.json`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const applyTemplateToMainCharacter = (template: CharacterTemplateData) => {
+    updateData({
+      race: template.race,
+      subrace: template.subrace,
+      attributes: { ...template.attributes },
+      name: template.name,
+      gender: template.gender,
+      age: template.age,
+      appearance: { ...template.appearance },
+      traits: [...template.traits],
+      customTraitName: template.customTraitName,
+      customTraitDescription: template.customTraitDescription,
+    });
+  };
+
+  const applyTemplateToSquadMember = (index: number, template: CharacterTemplateData) => {
+    const raceTraits = getRaceExclusiveTraits(template.race, template.subrace);
+    const templateIsSkeleton = template.race === 'skeleton';
+    updateSquadMember(index, {
+      race: template.race,
+      subrace: template.subrace,
+      attributes: {
+        ...template.attributes,
+        will: templateIsSkeleton ? 100 : Math.min(template.attributes.will, GOD_MODE_ATTRIBUTE_MAX),
+      },
+      name: template.name,
+      gender: templateIsSkeleton ? 'other' : template.gender,
+      age: template.age,
+      appearance: { ...template.appearance },
+      traits: [...template.traits],
+      customTraitName: template.customTraitName,
+      customTraitDescription: template.customTraitDescription,
+      scenarioTraitName: raceTraits.map(item => item.title).join('、'),
+      scenarioTraitDescription: raceTraits.map(item => `${item.title}：${item.description}`).join('；'),
+    });
+  };
+
+  const readCharacterTemplateFile = async (file: File) => {
+    const text = await file.text();
+    return normalizeImportedTemplate(JSON.parse(text));
+  };
+
+  const handleImportMainCharacter = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    try {
+      applyTemplateToMainCharacter(await readCharacterTemplateFile(file));
+      toastr.success('已导入到当前角色');
+    } catch (error) {
+      console.error('导入当前角色模板失败', error);
+      toastr.error('导入失败：文件格式不正确');
+    }
+  };
+
+  const handleImportSquadMember = async (index: number, event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    try {
+      applyTemplateToSquadMember(index, await readCharacterTemplateFile(file));
+      toastr.success(`已导入到队员 ${index + 1}`);
+    } catch (error) {
+      console.error('导入队员模板失败', error);
+      toastr.error('导入失败：文件格式不正确');
+    }
   };
 
   return (
@@ -1094,10 +1319,36 @@ ${names}`;
       <div className="space-y-8">
         {/* Attributes Section */}
         <div className="bg-black/40 border border-white/10 rounded-xl p-6">
-          <h3 className="text-2xl font-serif text-[#C2B280] mb-6 flex items-center gap-2">
-            <Activity className="text-[#C2B280]" />
-            七维属性
-          </h3>
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+            <h3 className="text-2xl font-serif text-[#C2B280] flex items-center gap-2">
+              <Activity className="text-[#C2B280]" />
+              七维属性
+            </h3>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => downloadCharacterTemplate(buildMainCharacterTemplate())}
+                className="inline-flex items-center gap-1 rounded border border-[#C2B280]/50 px-3 py-1.5 text-xs text-[#C2B280] transition-colors hover:bg-[#C2B280]/10"
+                title="保存详细设定，并按当前种族记录种族特质；不保存剧本专属特质"
+              >
+                <Download size={13} />
+                保存当前角色
+              </button>
+              <label
+                className="inline-flex cursor-pointer items-center gap-1 rounded border border-white/25 px-3 py-1.5 text-xs text-white/75 transition-colors hover:border-[#C2B280]/60 hover:text-[#C2B280]"
+                title="导入到当前角色；种族特质会按导入角色的种族自动生成，不导入剧本专属特质"
+              >
+                <Upload size={13} />
+                导入当前角色
+                <input
+                  type="file"
+                  accept="application/json,.json"
+                  onChange={handleImportMainCharacter}
+                  className="hidden"
+                />
+              </label>
+            </div>
+          </div>
 
           <div className="mb-4 space-y-3 rounded-lg border border-white/10 bg-black/30 p-3">
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
@@ -1118,7 +1369,7 @@ ${names}`;
               </label>
               {data.godModeEnabled && (
                 <>
-                  <label className="text-white/60">等级</label>
+                  <label className="text-white/60">自定义等级</label>
                   <input
                     type="number"
                     min={GOD_MODE_MIN_LEVEL}
@@ -1134,9 +1385,21 @@ ${names}`;
                     className="w-20 rounded border border-white/20 bg-black/50 px-2 py-1 text-white focus:border-[#C2B280] focus:outline-none"
                   />
                   <span className="text-white/50">(1-100)</span>
-                  <span className="text-green-400">额外 +{godModeBonusPoints} 属性点</span>
+                  <span className="text-green-400">
+                    实际等级 {effectiveLevel}，额外 +{levelBonusPoints} 属性点
+                  </span>
                 </>
               )}
+            </div>
+            <div className="rounded border border-white/10 bg-black/30 px-3 py-2 text-[10px] leading-relaxed text-white/45">
+              <div className="text-[#C2B280]">
+                初始等级：{scenarioStartLevel} 级{scenarioStartLevel > 1 ? '（由当前剧本赋予）' : '（无剧本加成）'}
+                ；等级会影响可分配属性点。
+              </div>
+              <div>
+                注意：废土不会把起跑线当作功绩。故事探索中每提升 10
+                级可获得特质点，用于某些特殊地方；开局等级不发放特质点。
+              </div>
             </div>
             <div className="flex flex-wrap gap-2">
               {ATTRIBUTE_PRESETS.map(preset => (
@@ -1156,14 +1419,22 @@ ${names}`;
               </button>
             </div>
             <p className="text-[10px] text-white/40">
-              按游戏加点逻辑：默认 1 点，+1 消耗 1 点，-1 返还 1 点；普通模式无单项上限。上帝模式可设置等级 1-100， 每升
-              1 级额外 +5 属性点，单项上限为 130，且可直接输入数值分配。长按 +/- 可连续加点。
+              按游戏加点逻辑：默认 1 点，+1 消耗 1 点，-1 返还 1 点；普通模式使用剧本初始等级。上帝模式可设置自定义等级
+              1-100，并以自定义等级为准；例如怪物猎人可改回 1 级来减少开局属性点。上帝模式单项上限为
+              130，且可直接输入数值分配。长按 +/- 可连续加点。
             </p>
-            {(isMonsterHunterScenario || isApexHunterScenario) && (
+            {(isMonsterHunterScenario ||
+              isApexHunterScenario ||
+              data.scenario === 'officer_son' ||
+              data.scenario === 'holy_crusade' ||
+              data.scenario === 'false_savior') && (
               <p className="text-[10px] text-[#C2B280]">
-                推荐等级：{isMonsterHunterScenario ? '怪物猎人主角 30 级' : ''}
-                {isMonsterHunterScenario && isApexHunterScenario ? '；' : ''}
-                {isApexHunterScenario ? '赏金猎人主角 40 级' : ''}（仅推荐，不锁定）
+                剧本初始等级：
+                {isMonsterHunterScenario ? '利维坦猎人 30 级' : ''}
+                {isApexHunterScenario ? '顶级猎手 40 级' : ''}
+                {data.scenario === 'officer_son' ? '贵族之子 20 级' : ''}
+                {data.scenario === 'holy_crusade' ? '十字军 20 级' : ''}
+                {data.scenario === 'false_savior' ? '虚伪者 30 级' : ''}
               </p>
             )}
           </div>
@@ -1254,7 +1525,7 @@ ${names}`;
                       <Plus size={16} className="mx-auto" />
                     </button>
                   </div>
-                  {isLocked && <div className="text-[10px] text-white/40 mt-1">骨人意志固定为 100</div>}
+                  {isLocked && <div className="text-[10px] text-white/40 mt-1">骨人韧性固定为 100</div>}
 
                   <p className="text-[10px] text-white/40 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     {config.desc}
@@ -1322,12 +1593,16 @@ ${names}`;
                   });
                   const memberSubrace = memberSubraces.find(subrace => subrace.id === member.subrace);
                   const memberLevel = Math.max(1, Math.min(100, Number(member.level || 1)));
+                  const memberIsSkeleton = member.race === 'skeleton';
+                  const memberBaseAttributePoints = memberIsSkeleton
+                    ? SKELETON_ATTRIBUTE_POINTS
+                    : TOTAL_ATTRIBUTE_POINTS;
                   const memberTotalAttributePoints =
-                    TOTAL_ATTRIBUTE_POINTS + (memberLevel - 1) * SQUAD_LEVEL_POINTS_PER_LEVEL;
-                  const memberUsedPoints = Object.values(member.attributes).reduce(
-                    (sum, value) => sum + (value - ATTRIBUTE_MIN),
-                    0,
-                  );
+                    memberBaseAttributePoints + (memberLevel - 1) * SQUAD_LEVEL_POINTS_PER_LEVEL;
+                  const memberUsedPoints = (Object.keys(member.attributes) as Attribute[]).reduce((sum, attr) => {
+                    if (memberIsSkeleton && attr === 'will') return sum;
+                    return sum + (member.attributes[attr] - ATTRIBUTE_MIN);
+                  }, 0);
                   const memberRemainingPoints = Math.max(0, memberTotalAttributePoints - memberUsedPoints);
                   const memberSubraceAllowedGenders = (
                     memberSubrace as { allowedGenders?: Array<CharacterData['gender']> }
@@ -1349,7 +1624,7 @@ ${names}`;
                               )
                               .flatMap(description =>
                                 Array.from(
-                                  description.matchAll(/(力量|敏捷|感知|体质|意志|智力|魅力)\s*[+-]\s*\d+/g),
+                                  description.matchAll(/(力量|敏捷|感知|体质|韧性|智力|魅力)\s*[+-]\s*\d+/g),
                                 ).map(match => match[0].replace(/\s+/g, '')),
                               )
                               .join('、');
@@ -1360,15 +1635,67 @@ ${names}`;
                           })()}
                         </div>
                         {companionMembers.length > 0 ? (
-                          <span className="text-xs text-white/40">固定成员</span>
+                          <div className="flex flex-wrap items-center justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                downloadCharacterTemplate(buildSquadMemberTemplate(member), `-队员${realIndex + 1}`)
+                              }
+                              className="inline-flex items-center gap-1 rounded border border-[#C2B280]/40 px-2 py-1 text-xs text-[#C2B280] transition-colors hover:bg-[#C2B280]/10"
+                              title="保存该队员详细设定，并按当前种族记录种族特质；不保存剧本专属特质"
+                            >
+                              <Download size={12} />
+                              保存
+                            </button>
+                            <label
+                              className="inline-flex cursor-pointer items-center gap-1 rounded border border-white/20 px-2 py-1 text-xs text-white/60 transition-colors hover:border-[#C2B280]/60 hover:text-[#C2B280]"
+                              title="导入到该队员；种族特质会按导入角色的种族自动生成，不导入剧本专属特质"
+                            >
+                              <Upload size={12} />
+                              导入
+                              <input
+                                type="file"
+                                accept="application/json,.json"
+                                onChange={event => handleImportSquadMember(realIndex, event)}
+                                className="hidden"
+                              />
+                            </label>
+                            <span className="text-xs text-white/40">固定成员</span>
+                          </div>
                         ) : (
-                          <button
-                            type="button"
-                            onClick={() => resetSquadMember(realIndex)}
-                            className="text-xs text-white/40 hover:text-white transition-colors"
-                          >
-                            重置
-                          </button>
+                          <div className="flex flex-wrap items-center justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                downloadCharacterTemplate(buildSquadMemberTemplate(member), `-队员${realIndex + 1}`)
+                              }
+                              className="inline-flex items-center gap-1 rounded border border-[#C2B280]/40 px-2 py-1 text-xs text-[#C2B280] transition-colors hover:bg-[#C2B280]/10"
+                              title="保存该队员详细设定，并按当前种族记录种族特质；不保存剧本专属特质"
+                            >
+                              <Download size={12} />
+                              保存
+                            </button>
+                            <label
+                              className="inline-flex cursor-pointer items-center gap-1 rounded border border-white/20 px-2 py-1 text-xs text-white/60 transition-colors hover:border-[#C2B280]/60 hover:text-[#C2B280]"
+                              title="导入到该队员；种族特质会按导入角色的种族自动生成，不导入剧本专属特质"
+                            >
+                              <Upload size={12} />
+                              导入
+                              <input
+                                type="file"
+                                accept="application/json,.json"
+                                onChange={event => handleImportSquadMember(realIndex, event)}
+                                className="hidden"
+                              />
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => resetSquadMember(realIndex)}
+                              className="text-xs text-white/40 hover:text-white transition-colors"
+                            >
+                              重置
+                            </button>
+                          </div>
                         )}
                       </div>
 
@@ -1463,6 +1790,14 @@ ${names}`;
                               updateSquadMember(realIndex, {
                                 race: nextRace,
                                 subrace: '',
+                                attributes: {
+                                  ...member.attributes,
+                                  will:
+                                    nextRace === 'skeleton'
+                                      ? 100
+                                      : Math.min(member.attributes.will, GOD_MODE_ATTRIBUTE_MAX),
+                                },
+                                gender: nextRace === 'skeleton' ? 'other' : member.gender,
                                 appearance: {
                                   ...member.appearance,
                                   height: getDefaultHeightByRaceSubrace(nextRace, ''),
@@ -1496,7 +1831,14 @@ ${names}`;
                                 allowed && !allowed.includes(member.gender) ? allowed[0] : member.gender;
                               updateSquadMember(realIndex, {
                                 subrace: nextSubrace,
-                                gender: nextGender,
+                                attributes: {
+                                  ...member.attributes,
+                                  will:
+                                    member.race === 'skeleton'
+                                      ? 100
+                                      : Math.min(member.attributes.will, GOD_MODE_ATTRIBUTE_MAX),
+                                },
+                                gender: member.race === 'skeleton' ? 'other' : nextGender,
                                 appearance: {
                                   ...member.appearance,
                                   height: getDefaultHeightByRaceSubrace(member.race, nextSubrace),
@@ -1526,7 +1868,7 @@ ${names}`;
                             type="button"
                             onClick={() =>
                               updateSquadMember(realIndex, {
-                                attributes: buildRandomMemberAttributes(memberLevel),
+                                attributes: buildRandomMemberAttributes(memberLevel, memberIsSkeleton),
                               })
                             }
                             className="rounded border border-[#C2B280]/40 px-2 py-1 text-[10px] text-[#C2B280] transition-colors hover:bg-[#C2B280]/10"
@@ -1543,30 +1885,31 @@ ${names}`;
                               <input
                                 type="number"
                                 min={ATTRIBUTE_MIN}
-                                max={ATTRIBUTE_MAX}
-                                value={member.attributes[attr]}
+                                max={GOD_MODE_ATTRIBUTE_MAX}
+                                value={memberIsSkeleton && attr === 'will' ? 100 : member.attributes[attr]}
+                                disabled={memberIsSkeleton && attr === 'will'}
                                 onChange={e =>
                                   updateSquadMemberAttributes(realIndex, {
                                     [attr]: Math.max(
                                       ATTRIBUTE_MIN,
-                                      Math.min(ATTRIBUTE_MAX, parseInt(e.target.value) || ATTRIBUTE_MIN),
+                                      Math.min(GOD_MODE_ATTRIBUTE_MAX, parseInt(e.target.value) || ATTRIBUTE_MIN),
                                     ),
                                   })
                                 }
-                                className="w-full bg-black/50 border border-white/20 rounded p-2 text-white focus:border-[#C2B280] focus:outline-none"
+                                className="w-full bg-black/50 border border-white/20 rounded p-2 text-white focus:border-[#C2B280] focus:outline-none disabled:opacity-60"
                               />
                             </div>
                           ))}
                         </div>
                         <p className="text-[10px] text-white/40 mt-2">
-                          每位队员基础 168 点属性；等级每提升 1 级额外 +5 点（当前等级 {memberLevel}，总计{' '}
-                          {memberTotalAttributePoints}
-                          点）；可手动分配，或点击“随机该队员”生成。
+                          每位队员基础 {memberBaseAttributePoints} 点属性；等级每提升 1 级额外 +5 点（当前等级{' '}
+                          {memberLevel}，总计 {memberTotalAttributePoints}
+                          点）；单项上限 130，骨人韧性固定为 100 且不消耗属性点；可手动分配，或点击“随机该队员”生成。
                         </p>
                       </div>
 
                       <div className="mt-4">
-                        <div className="text-xs text-white/60 mb-2">外貌</div>
+                        <div className="text-xs text-white/60 mb-2">外貌与性格</div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <input
                             type="text"
@@ -1587,7 +1930,7 @@ ${names}`;
                             value={member.appearance.bodyType}
                             onChange={e => updateSquadMemberAppearance(realIndex, { bodyType: e.target.value })}
                             className="w-full bg-black/50 border border-white/20 rounded p-2 text-white focus:border-[#C2B280] focus:outline-none"
-                            placeholder="体态"
+                            placeholder="性格"
                           />
                           <input
                             type="text"
@@ -2089,6 +2432,37 @@ ${names}`;
           )}
         </div>
 
+        <div className="bg-black/40 border border-[#C2B280]/25 rounded-xl p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="text-2xl font-serif text-[#C2B280]">角色模板</h3>
+              <p className="mt-1 text-xs text-white/45">
+                手动点击按钮才会保存或导入；填写内容本身不会自动保存。会保存当前种族对应的种族特质，不保存剧本专属特质。
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => downloadCharacterTemplate(buildMainCharacterTemplate())}
+                className="inline-flex items-center gap-1 rounded border border-[#C2B280]/60 px-4 py-2 text-sm text-[#C2B280] transition-colors hover:bg-[#C2B280]/10"
+              >
+                <Download size={14} />
+                保存角色
+              </button>
+              <label className="inline-flex cursor-pointer items-center gap-1 rounded border border-white/25 px-4 py-2 text-sm text-white/75 transition-colors hover:border-[#C2B280]/60 hover:text-[#C2B280]">
+                <Upload size={14} />
+                导入角色
+                <input
+                  type="file"
+                  accept="application/json,.json"
+                  onChange={handleImportMainCharacter}
+                  className="hidden"
+                />
+              </label>
+            </div>
+          </div>
+        </div>
+
         <div className="bg-black/40 border border-white/10 rounded-xl p-6">
           <h3 className="text-2xl font-serif text-[#C2B280] mb-6">身份设定</h3>
 
@@ -2103,6 +2477,20 @@ ${names}`;
                 className="w-full bg-black/50 border border-white/20 rounded p-3 text-white focus:border-[#C2B280] focus:outline-none font-serif tracking-wide"
                 placeholder="输入角色姓名..."
               />
+            </div>
+
+            <div>
+              <label className="block text-sm text-white/60 mb-2">主控小队名字</label>
+              <input
+                type="text"
+                value={data.mainSquadName}
+                onChange={e => updateData({ mainSquadName: e.target.value })}
+                className="w-full bg-black/50 border border-white/20 rounded p-3 text-white focus:border-[#C2B280] focus:outline-none font-serif tracking-wide"
+                placeholder="例如：小队1、流亡者、第一远征队"
+              />
+              <div className="text-[10px] text-white/40 mt-1">
+                启程后会写入主控变量、小队名称，并同步到 953 世界书的小队视角。
+              </div>
             </div>
 
             {/* Gender & Age */}
@@ -2380,13 +2768,13 @@ ${names}`;
                 />
               </div>
               <div>
-                <label className="block text-sm text-white/60 mb-2">体态</label>
+                <label className="block text-sm text-white/60 mb-2">性格</label>
                 <input
                   type="text"
                   value={data.appearance.bodyType}
                   onChange={e => updateData({ appearance: { ...data.appearance, bodyType: e.target.value } })}
                   className="w-full bg-black/50 border border-white/20 rounded p-3 text-white focus:border-[#C2B280] focus:outline-none"
-                  placeholder="例如：弯腰、驼背"
+                  placeholder="例如：谨慎、暴躁、沉默寡言"
                 />
               </div>
               <div>

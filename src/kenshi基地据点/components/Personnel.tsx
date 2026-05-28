@@ -1,4 +1,4 @@
-import { GameState } from '../types';
+﻿import { GameState } from '../types';
 import { Users, Briefcase, Zap, AlertTriangle, ArrowUpDown, Filter } from 'lucide-react';
 import { useState } from 'react';
 import Modal from './Modal';
@@ -17,7 +17,7 @@ export default function Personnel({ state }: { state: GameState }) {
   const allRacesInState = Array.from(new Set(state.employees.map(e => presetRaces.includes(e.race) ? e.race : '其他')));
   const availableRaces = ['all', ...presetRaces.filter(r => state.employees.some(e => e.race === r)), '其他'];
 
-  const STATS_LIST = ['力量', '敏捷', '感知', '体质', '智力', '意志', '魅力'];
+  const STATS_LIST = ['力量', '敏捷', '感知', '体质', '智力', '韧性', '魅力'];
   const [selectedStatCol, setSelectedStatCol] = useState('力量');
 
   let filteredEmployees = filterMode === 'current' 

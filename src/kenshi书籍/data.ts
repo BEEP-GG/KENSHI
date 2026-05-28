@@ -1,4 +1,4 @@
-export const SCENARIOS = [
+﻿export const SCENARIOS = [
   {
     id: 'wanderer',
     title: '流浪者 (The Wanderer)',
@@ -164,7 +164,7 @@ export const SCENARIOS = [
   {
     id: 'mongrel_wanderer',
     title: '蒙格勒迷途者',
-    description: '浓雾笼罩的雾岛之中，你在迷途中求生，依靠残存的意志寻找出路。',
+    description: '浓雾笼罩的雾岛之中，你在迷途中求生，依靠残存的韧性寻找出路。',
     difficulty: '困难',
     icon: 'Compass',
     equipment: ['破旧披风', '干粮'],
@@ -783,7 +783,7 @@ export const TRAITS = {
     {
       id: 'unyielding',
       title: '不屈',
-      description: '意志像钢铁般坚定。意志 +5',
+      description: '韧性像钢铁般坚定。韧性 +5',
       category: 'attribute',
     },
     {

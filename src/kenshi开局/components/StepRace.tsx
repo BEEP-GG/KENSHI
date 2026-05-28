@@ -37,7 +37,11 @@ export const StepRace: React.FC<StepRaceProps> = ({ data, updateData }) => {
   const availableRaces = (allowedRaceIds ? RACES.filter(r => allowedRaceIds.includes(r.id)) : RACES)
     .filter(race => !(race as { hidden?: boolean }).hidden)
     .filter(race => !forbiddenRaceIds.includes(race.id))
-    .filter(race => !scenarioForbiddenRaces.includes(race.id));
+    .filter(race => !scenarioForbiddenRaces.includes(race.id))
+    .filter(race => {
+      const unlockScenarios = (race as { unlockScenarios?: string[] }).unlockScenarios;
+      return !unlockScenarios || unlockScenarios.includes(data.scenario);
+    });
 
   const getVisibleSubraces = React.useCallback(
     (raceId: string) => {
