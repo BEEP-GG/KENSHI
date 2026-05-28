@@ -324,7 +324,7 @@ export default function App() {
           className="relative z-10 text-center flex flex-col items-center"
         >
           <h1 className="text-7xl md:text-9xl font-serif text-[#C2B280] tracking-widest mb-4 drop-shadow-lg">KENSHI</h1>
-          <p className="text-xl md:text-2xl text-white/60 font-serif tracking-[0.35em] mb-12">终末之诗</p>
+          <p className="text-xl md:text-2xl text-white/60 font-serif tracking-[0.35em] mb-12">终末之诗：罪孽之书</p>
 
           <motion.button
             whileHover={{ scale: 1.05, backgroundColor: 'rgba(194, 178, 128, 0.1)' }}
@@ -355,7 +355,7 @@ export default function App() {
           </motion.button>
 
           <div className="mt-8 flex gap-4 text-xs text-white/30 font-mono">
-            <span>VER 1.0.0</span>
+            <span>VER 1.5.0</span>
             <span>•</span>
             <span>LLM INTERFACE READY</span>
           </div>
