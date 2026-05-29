@@ -1377,13 +1377,54 @@
 
       function getStrongholdItemUnitValue(name) {
         if (/古代科技书|AI核心|工程图|蓝图/i.test(name)) return 1000;
-        if (/电子元件|铜合金/i.test(name)) return 120;
+        if (/金属材料/i.test(name)) return 120;
         if (/钢筋/i.test(name)) return 80;
-        if (/铁原板|建筑材料|皮革/i.test(name)) return 50;
+        if (/铁原板|皮革/i.test(name)) return 50;
         if (/大麻膏|酒|格洛格|朗姆|清酒/i.test(name)) return 75;
         if (/布料|麻叶|小麦|面粉|棉花/i.test(name)) return 25;
         if (/食物|肉|口粮|面包|米饭|水/i.test(name)) return 15;
         return 10;
+      }
+
+      function getItemAmount(item) {
+        return Math.max(0, Number(_.get(item, '数量', 0)) || 0);
+      }
+
+      function isMetalMaterialItem(item) {
+        return String(_.get(item, '分类', '') || '').trim() === '金属材料';
+      }
+
+      function getSquadMetalMaterialAmount(squad) {
+        return Object.values(_.get(squad, '成员', {}) || {}).reduce((total, member) => {
+          const items = _.get(member, '背包.物品', {}) || {};
+          return (
+            total +
+            Object.values(items).reduce(
+              (itemTotal, item) => itemTotal + (isMetalMaterialItem(item) ? getItemAmount(item) : 0),
+              0,
+            )
+          );
+        }, 0);
+      }
+
+      function consumeSquadMetalMaterials(mvuData, mainSquadName, amount) {
+        let remaining = Math.max(0, Number(amount) || 0);
+        const members = _.get(mvuData, ['stat_data', '小队成员', mainSquadName, '成员'], {}) || {};
+        Object.entries(members).some(([memberName, member]) => {
+          const items = _.get(member, '背包.物品', {}) || {};
+          return Object.entries(items).some(([itemName, item]) => {
+            if (!isMetalMaterialItem(item)) return false;
+            const currentAmount = getItemAmount(item);
+            const used = Math.min(currentAmount, remaining);
+            const nextAmount = currentAmount - used;
+            const itemPath = ['stat_data', '小队成员', mainSquadName, '成员', memberName, '背包', '物品', itemName];
+            if (nextAmount > 0) _.set(mvuData, [...itemPath, '数量'], nextAmount);
+            else _.unset(mvuData, itemPath);
+            remaining -= used;
+            return remaining <= 0;
+          });
+        });
+        return remaining <= 0;
       }
 
       function getStrongholdWarehouseValue(stronghold) {
@@ -1909,6 +1950,15 @@
         if (savedName === NO_MAIN_CONTROLLER_TOKEN) return '';
         if (savedName && _.has(members, savedName)) return savedName;
         return Object.keys(members)[0] || '';
+      }
+
+      function appendMainPerspectiveSwitchText(squadName, controllerName) {
+        const squadText = String(squadName || '').trim();
+        if (!squadText) return;
+        const controllerText = String(controllerName || '').trim();
+        appendTextToPlayerInput(
+          controllerText ? `现在视角切换到${squadText}小队的${controllerText}` : `现在视角切换到${squadText}小队`,
+        );
       }
 
       function getMainControllerData(data) {
@@ -3376,11 +3426,25 @@
           }
           $('#confirm-modal .confirm-title').text(title);
           $('#confirm-modal .confirm-title').next('div').text(desc);
+          $('#confirm-input').val('').hide();
+          $('#confirm-select').hide().empty();
           $('#confirm-ok').text('确认').removeClass('danger');
-          $('#confirm-cancel').text('取消');
+          $('#confirm-cancel').text('取消').show();
+          $('#confirm-third').css('display', 'none');
           $('#confirm-modal').css('display', 'flex');
         }
         window.openMoveConfirm = openMoveConfirm;
+
+        function openInfoModal(title, desc) {
+          $('#confirm-modal .confirm-title').text(title);
+          $('#confirm-modal .confirm-title').next('div').text(desc);
+          $('#confirm-input').val('').hide();
+          $('#confirm-select').hide().empty();
+          $('#confirm-ok').text('知道了').removeClass('danger');
+          $('#confirm-cancel').text('取消').hide();
+          $('#confirm-third').css('display', 'none');
+          $('#confirm-modal').css('display', 'flex');
+        }
 
         function closeConfirmModal() {
           pendingPastDeleteIndex = null;
@@ -3393,7 +3457,7 @@
           window.pendingMoveTarget = '';
           $('#confirm-input').val('').hide();
           $('#confirm-select').hide().empty();
-          $('#confirm-cancel').text('取消');
+          $('#confirm-cancel').text('取消').show();
           $('#confirm-ok').text('删除').addClass('danger');
           $('#confirm-third').css('display', 'none');
           $('#confirm-modal').hide();
@@ -3884,11 +3948,13 @@
           if (!name) return;
           const option = { type: 'message', message_id: getCurrentMessageId() };
           const mvuData = Mvu.getMvuData(option) || {};
-          const viewData = _.get(mvuData, 'stat_data.视野', {});
+          const statData = _.get(mvuData, 'stat_data', {});
+          const mainSquadName = getMainSquadName(statData);
+          const viewData = _.get(mvuData, ['stat_data', '小队成员', mainSquadName, '视野'], {});
           if (!viewData || typeof viewData !== 'object') return;
 
           const nextViewData = _.omit(viewData, [name]);
-          _.set(mvuData, 'stat_data.视野', nextViewData);
+          _.set(mvuData, ['stat_data', '小队成员', mainSquadName, '视野'], nextViewData);
           await Mvu.replaceMvuData(mvuData, option);
           if (
             currentModalEntity &&
@@ -3951,23 +4017,34 @@
           if (!name) return;
           const option = { type: 'message', message_id: getCurrentMessageId() };
           const mvuData = Mvu.getMvuData(option) || {};
-          const squadData = _.get(mvuData, 'stat_data.小队成员', {});
-          if (!squadData || typeof squadData !== 'object') return;
+          const statData = _.get(mvuData, 'stat_data', {});
+          const mainSquadName = getMainSquadName(statData);
+          const squadMembers = _.get(mvuData, ['stat_data', '小队成员', mainSquadName, '成员'], {});
+          if (!squadMembers || typeof squadMembers !== 'object') return;
 
-          const member = squadData[name];
+          const member = squadMembers[name];
           if (!member) return;
 
-          const region = _.get(mvuData, 'stat_data.世界.区域', '未知区域');
-          const town = _.get(mvuData, 'stat_data.世界.城镇', '荒野');
+          const mainSquad = _.get(mvuData, ['stat_data', '小队成员', mainSquadName], {});
+          const region = _.get(
+            mainSquad,
+            '区域',
+            _.get(mainSquad, '所处位置.区域', _.get(mvuData, 'stat_data.世界.区域', '未知区域')),
+          );
+          const town = _.get(
+            mainSquad,
+            '城镇',
+            _.get(mainSquad, '所处位置.城镇', _.get(mvuData, 'stat_data.世界.城镇', '荒野')),
+          );
           const defaultAddress = `${region}+${town}`;
           const nextMember = _.cloneDeep(member);
           if (nextMember && typeof nextMember === 'object') {
             _.set(nextMember, '所处地址', _.get(nextMember, '所处地址', '') || defaultAddress);
           }
 
-          const nextSquadData = _.omit(squadData, [name]);
-          _.set(mvuData, 'stat_data.小队成员', nextSquadData);
-          _.set(mvuData, `stat_data.异地.${name}`, nextMember);
+          const nextSquadMembers = _.omit(squadMembers, [name]);
+          _.set(mvuData, ['stat_data', '小队成员', mainSquadName, '成员'], nextSquadMembers);
+          _.set(mvuData, ['stat_data', '异地', name], nextMember);
           await Mvu.replaceMvuData(mvuData, option);
           if (
             currentModalEntity &&
@@ -3984,22 +4061,33 @@
           if (!name) return;
           const option = { type: 'message', message_id: getCurrentMessageId() };
           const mvuData = Mvu.getMvuData(option) || {};
-          const viewData = _.get(mvuData, 'stat_data.视野', {});
+          const statData = _.get(mvuData, 'stat_data', {});
+          const mainSquadName = getMainSquadName(statData);
+          const viewData = _.get(mvuData, ['stat_data', '小队成员', mainSquadName, '视野'], {});
           if (!viewData || typeof viewData !== 'object') return;
 
           const char = viewData[name];
           if (!char) return;
 
-          const region = _.get(mvuData, 'stat_data.世界.区域', '未知区域');
-          const town = _.get(mvuData, 'stat_data.世界.城镇', '荒野');
+          const mainSquad = _.get(mvuData, ['stat_data', '小队成员', mainSquadName], {});
+          const region = _.get(
+            mainSquad,
+            '区域',
+            _.get(mainSquad, '所处位置.区域', _.get(mvuData, 'stat_data.世界.区域', '未知区域')),
+          );
+          const town = _.get(
+            mainSquad,
+            '城镇',
+            _.get(mainSquad, '所处位置.城镇', _.get(mvuData, 'stat_data.世界.城镇', '荒野')),
+          );
           const nextChar = _.cloneDeep(char);
           if (nextChar && typeof nextChar === 'object') {
             _.set(nextChar, '所处地址', `${region}+${town}`);
           }
 
           const nextViewData = _.omit(viewData, [name]);
-          _.set(mvuData, 'stat_data.视野', nextViewData);
-          _.set(mvuData, `stat_data.异地.${name}`, nextChar);
+          _.set(mvuData, ['stat_data', '小队成员', mainSquadName, '视野'], nextViewData);
+          _.set(mvuData, ['stat_data', '异地', name], nextChar);
           await Mvu.replaceMvuData(mvuData, option);
           if (
             currentModalEntity &&
@@ -4041,6 +4129,8 @@
           if (!name) return;
           const option = { type: 'message', message_id: getCurrentMessageId() };
           const mvuData = Mvu.getMvuData(option) || {};
+          const statData = _.get(mvuData, 'stat_data', {});
+          const mainSquadName = getMainSquadName(statData);
           const otherData = _.get(mvuData, 'stat_data.异地', {});
           if (!otherData || typeof otherData !== 'object') return;
 
@@ -4049,7 +4139,7 @@
 
           const nextOtherData = _.omit(otherData, [name]);
           _.set(mvuData, 'stat_data.异地', nextOtherData);
-          _.set(mvuData, `stat_data.小队成员.${name}`, char);
+          _.set(mvuData, ['stat_data', '小队成员', mainSquadName, '成员', name], char);
           await Mvu.replaceMvuData(mvuData, option);
           if (
             currentModalEntity &&
@@ -4114,7 +4204,17 @@
           const mvuData = Mvu.getMvuData(option) || {};
           const statData = _.get(mvuData, 'stat_data', {});
           const strongholdData = _.get(statData, '据点', {});
+          const mainSquadName = getMainSquadName(statData);
           const mainSquad = getMainSquadData(statData) || {};
+          const squadMoney = Math.max(0, Number(_.get(mainSquad, '金钱', 0)) || 0);
+          const metalAmount = getSquadMetalMaterialAmount(mainSquad);
+          const missing = [];
+          if (squadMoney < 3000) missing.push(`资金不足：需要 3000 c.cat，当前 ${squadMoney} c.cat`);
+          if (metalAmount < 10) missing.push(`金属材料不足：需要 10 个，当前 ${metalAmount} 个`);
+          if (missing.length > 0) {
+            openInfoModal('无法建造据点', `${missing.join('\n')}\n\n建造据点需要主控小队准备足够资金与金属材料。`);
+            return;
+          }
           const currentRegion = _.get(mainSquad, '区域', _.get(mainSquad, '所处位置.区域', '未知区域'));
           let index = 1;
           while (strongholdData[`据点${index}`]) index += 1;
@@ -4132,6 +4232,8 @@
             设施: {},
             到来事件: {},
           };
+          _.set(mvuData, ['stat_data', '小队成员', mainSquadName, '金钱'], squadMoney - 3000);
+          consumeSquadMetalMaterials(mvuData, mainSquadName, 10);
           _.set(mvuData, ['stat_data', '据点', strongholdName], newStronghold);
           await Mvu.replaceMvuData(mvuData, option);
           await syncStrongholdWorldBookEntry(strongholdName, newStronghold, _.get(mvuData, 'stat_data', {}));
@@ -4141,25 +4243,27 @@
         async function setMainSquad(squadName) {
           const option = { type: 'message', message_id: getCurrentMessageId() };
           const mvuData = Mvu.getMvuData(option) || {};
-          _.set(mvuData, 'stat_data.主控', String(squadName || '').trim());
+          const nextSquadName = String(squadName || '').trim();
+          _.set(mvuData, 'stat_data.主控', nextSquadName);
           await Mvu.replaceMvuData(mvuData, option);
 
           const settings = loadSettings();
-          settings[SETTINGS_KEYS.MAIN_SQUAD] = squadName;
+          settings[SETTINGS_KEYS.MAIN_SQUAD] = nextSquadName;
           settings[SETTINGS_KEYS.MAIN_CONTROLLER] = NO_MAIN_CONTROLLER_TOKEN;
           saveSettings(settings);
           const raw = getAllVariables();
           const statData = _.get(raw, 'stat_data', {});
-          const nextMainControllerName = getMainControllerName(
-            _.set(_.cloneDeep(statData), ['小队成员'], _.get(statData, '小队成员', {})),
-          );
-          await syncMainPerspectiveWorldBook(nextMainControllerName, squadName);
+          const nextStatData = _.set(_.cloneDeep(statData), '主控', nextSquadName);
+          const nextMainControllerName = getMainControllerName(nextStatData);
+          await syncMainPerspectiveWorldBook(nextMainControllerName, nextSquadName);
+          appendMainPerspectiveSwitchText(nextSquadName, nextMainControllerName);
           update();
         }
 
         async function setMainController(squadName, memberName) {
           const settings = loadSettings();
-          settings[SETTINGS_KEYS.MAIN_SQUAD] = squadName;
+          const nextSquadName = String(squadName || '').trim();
+          settings[SETTINGS_KEYS.MAIN_SQUAD] = nextSquadName;
           const nextControllerName = String(memberName || '').trim();
           settings[SETTINGS_KEYS.MAIN_CONTROLLER] = nextControllerName || NO_MAIN_CONTROLLER_TOKEN;
           saveSettings(settings);
@@ -4173,11 +4277,15 @@
               _.set(mvuData, 'stat_data', fallbackData);
             }
           }
-          _.set(mvuData, ['stat_data', '主控'], String(squadName || '').trim());
+          const oldSquadName = getMainSquadName(_.get(mvuData, 'stat_data', {}));
+          _.set(mvuData, ['stat_data', '主控'], nextSquadName);
           await Mvu.replaceMvuData(mvuData, option);
 
           const latestStatData = _.get(mvuData, 'stat_data', {});
-          await syncMainPerspectiveWorldBook(getMainControllerName(latestStatData), squadName);
+          await syncMainPerspectiveWorldBook(getMainControllerName(latestStatData), nextSquadName);
+          if (oldSquadName !== nextSquadName) {
+            appendMainPerspectiveSwitchText(nextSquadName, getMainControllerName(latestStatData));
+          }
           update();
         }
 
