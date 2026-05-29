@@ -5,6 +5,28 @@ import React from 'react';
 import { RACES, REGIONS, SCENARIOS, TRAITS } from '../data';
 import { CharacterData, SquadMemberData } from '../types';
 
+type ItemCategory =
+  | '武器'
+  | '装备'
+  | '食物'
+  | '饮品'
+  | '医疗用品'
+  | '科研道具'
+  | '任务道具'
+  | '矿石'
+  | '布料'
+  | '金属材料'
+  | '农作物'
+  | '其他';
+
+type BackpackItemEntry = {
+  分类: ItemCategory;
+  介绍: string;
+  数量: number;
+  重量: number;
+  价值: number;
+};
+
 const TOTAL_ATTRIBUTE_POINTS = 168;
 const SKELETON_ATTRIBUTE_POINTS = 144;
 const ATTRIBUTE_MIN = 1;
@@ -353,7 +375,6 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
           介绍: weaponDesc,
           伤害骰: `1d${diceSides}`,
           伤害类型: `切割:${cut.toFixed(2)}/钝伤:${blunt.toFixed(2)}`,
-          特效: {},
           重量: getWeaponWeight(customWeaponType, weaponName),
           价值: weaponValue,
         },
@@ -364,7 +385,6 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
           介绍: '',
           伤害骰: '1d4',
           伤害类型: '钝伤:1.0',
-          特效: {},
           重量: 0,
           价值: 0,
         },
@@ -372,10 +392,9 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
           种类: customArmorType,
           '防护能力(DR)': armorDr,
           介绍: `自定义护甲（${data.customStart.armorType || '轻甲'}）`,
-          特性: {},
           重量: getArmorWeight(customArmorType),
         },
-        背包物品: [],
+        背包物品: [] as string[],
       };
     }
 
@@ -666,7 +685,6 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
             介绍: '一把传奇之剑',
             伤害骰: '1d30',
             伤害类型: '切割:0.2/钝伤:0.8',
-            特效: {},
             重量: getWeaponWeight('大型类', '大剑'),
             价值: 99999,
           }
@@ -683,7 +701,6 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
                   : (weaponItem ?? ''),
             伤害骰: weaponMeta.dice,
             伤害类型: weaponMeta.damage,
-            特效: {},
             重量: getWeaponWeight(weaponMeta.type, weaponMeta.name),
             价值: 0,
           };
@@ -700,7 +717,6 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
         介绍: '',
         伤害骰: '1d4',
         伤害类型: '钝伤:1.0',
-        特效: {},
         重量: 0,
         价值: 0,
       },
@@ -708,7 +724,6 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
         种类: armorMeta.type,
         '防护能力(DR)': armorMeta.dr,
         介绍: armorMeta.desc,
-        特性: {},
         重量: getArmorWeight(armorMeta.type, armorItem),
       },
       背包物品: cleanedBackpackItems,
@@ -802,7 +817,6 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
         介绍: weaponItem ?? '',
         伤害骰: weaponMeta.dice,
         伤害类型: weaponMeta.damage,
-        特效: {},
         重量: getWeaponWeight(weaponMeta.type, weaponMeta.name),
         价值: 0,
       },
@@ -813,7 +827,6 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
         介绍: '',
         伤害骰: '1d4',
         伤害类型: '钝伤:1.0',
-        特效: {},
         重量: 0,
         价值: 0,
       },
@@ -821,7 +834,6 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
         种类: armorMeta.type,
         '防护能力(DR)': armorMeta.dr,
         介绍: armorMeta.desc,
-        特性: {},
         重量: getArmorWeight(armorMeta.type, armorItem),
       },
       背包物品: cleanedBackpackItems,
@@ -1229,24 +1241,43 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
     }
 
     if (equipment.背包物品.length > 0) {
-      const backpackItems: Record<string, { 介绍: string; 数量: number; 重量: number; 价值: number }> = {};
+      const inferItemCategory = (itemName: string): ItemCategory => {
+        if (/急救包|修理包|夹板包/.test(itemName)) return '医疗用品';
+        if (/口粮|干肉|干粮|食物/.test(itemName)) return '食物';
+        if (/葡萄酒/.test(itemName)) return '饮品';
+        if (/勋章|《.*》|钥匙|通缉令/.test(itemName)) return '任务道具';
+        if (/材料|铁丝|铰链|矿石/.test(itemName)) return '金属材料';
+        return '其他';
+      };
+      const inferItemIntro = (itemName: string) => {
+        if (/高级急救包/.test(itemName)) {
+          return '由无菌绷带、止血粉、消毒剂、缝合针线与应急夹板组件构成的综合急救包，适用于重度失血与撕裂伤的战地处置。';
+        }
+        if (/高能口粮/.test(itemName)) {
+          return '香软顶饿应急口粮。';
+        }
+        if (/骨人修理包/.test(itemName)) {
+          return '修理骨人的医疗物品。';
+        }
+        if (/高级夹板包/.test(itemName)) {
+          return '包括定型金属支架、拉伸绷带以及用于骨骼复位的辅助耗材，针对复杂的骨折与关节脱位。';
+        }
+        return itemName;
+      };
+      const backpackItems: Record<string, BackpackItemEntry> = {};
       equipment.背包物品.forEach(item => {
         if (data.scenario === 'merchant' && /商人的背包|驼牛/.test(item)) {
           return;
         }
-        const normalizedName = item.trim();
-        const finalName = normalizedName;
+        const finalName = item.trim();
         if (!backpackItems[finalName]) {
-          const intro = /高级急救包/.test(finalName)
-            ? '由无菌绷带、止血粉、消毒剂、缝合针线与应急夹板组件构成的综合急救包，适用于重度失血与撕裂伤的战地处置。'
-            : /高能口粮/.test(finalName)
-              ? '香软顶饿应急口粮。'
-              : /骨人修理包/.test(finalName)
-                ? '修理骨人的医疗物品。'
-                : /高级夹板包/.test(finalName)
-                  ? '包括定型金属支架、拉伸绷带以及用于骨骼复位的辅助耗材，针对复杂的骨折与关节脱位。'
-                  : finalName;
-          backpackItems[finalName] = { 介绍: intro, 数量: 0, 重量: 0, 价值: 0 };
+          backpackItems[finalName] = {
+            分类: inferItemCategory(finalName),
+            介绍: inferItemIntro(finalName),
+            数量: 0,
+            重量: 0,
+            价值: 0,
+          };
         }
         backpackItems[finalName].数量 += 1;
       });

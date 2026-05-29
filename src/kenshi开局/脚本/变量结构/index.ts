@@ -29,6 +29,16 @@ const parseDamageType = damageTypeStr => {
     .join('/');
 };
 
+// 定义“人际关系”条目的结构
+const RelationshipSchema = z.object({
+  好感度: z.coerce
+    .number()
+    .transform(v => _.clamp(v, -500, 500))
+    .prefault(0),
+  关系: z.string().prefault('陌生人'),
+  看法: z.string().prefault(''),
+});
+
 // 定义武器结构
 const WeaponSchema = z.object({
   名字: z.string().prefault(''),
@@ -37,8 +47,8 @@ const WeaponSchema = z.object({
   介绍: z.string().prefault(''),
   伤害骰: z.string().prefault('1d4'),
   伤害类型: z.string().transform(parseDamageType).prefault('钝伤:1.0'),
-  重量: z.coerce.number().prefault(0),
   价值: z.coerce.number().prefault(0),
+  重量: z.coerce.number().prefault(1),
 });
 
 // 定义护甲结构
@@ -46,8 +56,41 @@ const ArmorSchema = z.object({
   种类: z.enum(['重甲', '中甲', '轻甲', '无甲']).prefault('无甲'),
   '防护能力(DR)': z.coerce.number().prefault(0),
   介绍: z.string().prefault(''),
-  重量: z.coerce.number().prefault(0),
+  价值: z.coerce.number().prefault(0),
+  重量: z.coerce.number().prefault(1),
 });
+
+// ========= 背包物品的特殊结构定义开始 =========
+
+// 1. 为背包中的“武器”定义结构
+const BackpackWeaponSchema = WeaponSchema.extend({
+  分类: z.literal('武器'),
+  数量: z.coerce.number().prefault(1),
+  重量: z.coerce.number().prefault(1),
+});
+
+// 2. 为背包中的“装备”定义结构
+const BackpackArmorSchema = ArmorSchema.extend({
+  分类: z.literal('装备'),
+  数量: z.coerce.number().prefault(1),
+  重量: z.coerce.number().prefault(1),
+});
+
+// 3. 为其他通用物品定义结构
+const GenericItemSchema = z.object({
+  分类: z
+    .enum(['食物', '饮品', '医疗用品', '科研道具', '任务道具', '矿石', '布料', '金属材料', '农作物', '其他'])
+    .prefault('其他'),
+  介绍: z.string().prefault(''),
+  数量: z.coerce.number().prefault(1),
+  重量: z.coerce.number().prefault(0),
+  价值: z.coerce.number().prefault(0),
+});
+
+// 4. 使用 z.discriminatedUnion 将它们智能地组合起来
+const ItemSchema = z.discriminatedUnion('分类', [BackpackWeaponSchema, BackpackArmorSchema, GenericItemSchema]);
+
+// ========= 背包物品的特殊结构定义结束 =========
 
 // 定义属性详细结构
 const AttributeDetailSchema = z
@@ -77,6 +120,36 @@ const TemporaryTraitSchema = z
   })
   .prefault({ 描述: '', 消除: '' });
 
+const recalculateMaxHp = (data, finalAttrs, allDescriptions) => {
+  if (!data.血量) {
+    data.血量 = { 当前: 1000, 最大: 1000 };
+  }
+
+  let hpTraitModifier = 0;
+  const hpModifierRegex = /(?:最大生命值|最大血量|HP|血量)\s*[^\d\r\n]*([+-]?\s*\d+)/i;
+  allDescriptions.forEach(desc => {
+    if (!desc) return;
+    const match = desc.match(hpModifierRegex);
+    if (match && match[1] && !/属性/.test(desc) && !/(?:固定为|固定|设定为|就是)/.test(desc)) {
+      hpTraitModifier += parseInt(match[1].replace(/\s/g, ''), 10);
+    }
+  });
+
+  let maxHp = Math.floor(100 + finalAttrs.TGH * 2 + data.等级 * 1.5 + hpTraitModifier);
+  const hpFixedRegex = /(?:最大生命值|最大血量|HP|血量).*(?:固定为|固定|设定为|就是)\s*(\d+)/i;
+  for (const desc of allDescriptions) {
+    if (!desc) continue;
+    const match = desc.match(hpFixedRegex);
+    if (match && match[1]) {
+      maxHp = parseInt(match[1], 10);
+      break;
+    }
+  }
+
+  data.血量.最大 = maxHp;
+  data.血量.当前 = _.clamp(data.血量.当前, 0, data.血量.最大);
+};
+
 // 角色基础“蓝图”定义
 const CharacterSchemaBase = z.object({
   名字: z.string().prefault(''),
@@ -88,8 +161,6 @@ const CharacterSchemaBase = z.object({
   状态: z.string().prefault('正常'),
   立场: z.enum(['友方', '中立', '敌方']).prefault('中立'),
   派系: z.string().prefault('无派系'),
-  好感度: z.coerce.number().prefault(0),
-  态度: z.string().prefault('陌生'),
   等级: z.coerce
     .number()
     .transform(v => _.clamp(v, 1, 100))
@@ -97,28 +168,23 @@ const CharacterSchemaBase = z.object({
   经验值: z
     .object({
       当前: z.coerce.number().prefault(0),
-      升级所需: z.coerce.number().prefault(110),
+      升级所需: z.coerce.number().prefault(145),
     })
-    .prefault({ 当前: 0, 升级所需: 110 }),
+    .prefault({ 当前: 0, 升级所需: 145 }),
   属性点: z.coerce.number().prefault(0),
   特质点: z.coerce.number().prefault(0),
   攻击次数: z.coerce.number().prefault(1),
+  心理想法: z.string().prefault(''),
+  人际关系: z.record(z.string().describe('角色名'), RelationshipSchema).prefault({}),
   主武器: WeaponSchema.prefault({}),
   副武器: WeaponSchema.prefault({}),
-  护甲: ArmorSchema.prefault({}),
+  护甲: ArmorSchema.omit({ 价值: true }).prefault({}),
   血量: z
     .object({
       当前: z.coerce.number().prefault(1000),
       最大: z.coerce.number().prefault(1000),
     })
     .prefault({ 当前: 1000, 最大: 1000 }),
-  心情: z
-    .object({
-      当前: z.coerce.number().prefault(100),
-      最大: z.coerce.number().prefault(100),
-      变化描述: z.array(z.string()).prefault([]),
-    })
-    .prefault({ 当前: 100, 最大: 100, 变化描述: [] }),
   种族: z
     .object({
       名称: z.string().prefault('人类'),
@@ -126,6 +192,9 @@ const CharacterSchemaBase = z.object({
     .prefault({ 名称: '人类' }),
   属性: z
     .record(z.string(), z.union([z.coerce.number(), AttributeDetailSchema]))
+    .describe(
+      '角色七项核心属性。韧性对应内部字段 WIL，代表抗击打能力、伤害减免与临战勇气，数值越高越能承受重创并在危险中保持战意。',
+    )
     .transform(input => {
       const defaultAttrs = { STR: 30, DEX: 30, PER: 30, TGH: 30, WIL: 30, INT: 30, CHA: 30 };
       const attrMap = { 力量: 'STR', 敏捷: 'DEX', 感知: 'PER', 体质: 'TGH', 韧性: 'WIL', 智力: 'INT', 魅力: 'CHA' };
@@ -163,31 +232,7 @@ const CharacterSchemaBase = z.object({
         })
         .prefault({ 当前: 0, 最大: 100 }),
       物品: z
-        .record(
-          z.string().describe('物品名'),
-          z.object({
-            子分类: z
-              .enum([
-                '食物',
-                '饮品',
-                '武器',
-                '装备',
-                '医疗用品',
-                '科研道具',
-                '任务道具',
-                '矿石',
-                '布料',
-                '金属材料',
-                '农作物',
-                '其他',
-              ])
-              .prefault('其他'),
-            介绍: z.string().prefault(''),
-            数量: z.coerce.number().prefault(1),
-            重量: z.coerce.number().prefault(0),
-            价值: z.coerce.number().prefault(0),
-          }),
-        )
+        .record(z.string().describe('物品名'), ItemSchema)
         .transform(data => _.pickBy(data, ({ 数量 }) => 数量 > 0))
         .prefault({}),
     })
@@ -235,39 +280,24 @@ const characterTransform = data => {
 
   if (!data.临时特质) data.临时特质 = {};
 
-  // 根据当前心情动态分配特质
-  delete data.临时特质['心情低落'];
-  delete data.临时特质['濒临崩溃'];
-  delete data.临时特质['绝望'];
-  delete data.临时特质['心情愉悦'];
-
-  const currentMood = data.心情?.当前 !== undefined ? data.心情.当前 : 100;
-  const maxMood = data.心情?.最大 !== undefined ? data.心情.最大 : 100;
-
-  if (currentMood <= 10) {
-    data.临时特质['绝望'] = { 描述: '全属性-50', 消除: '心情恢复到大于10' };
-  } else if (currentMood < 25) {
-    data.临时特质['濒临崩溃'] = { 描述: '全属性-30', 消除: '心情恢复到20及以上' };
-  } else if (currentMood < 40) {
-    data.临时特质['心情低落'] = { 描述: '全属性-15', 消除: '心情恢复到40及以上' };
-  } else if (currentMood > maxMood * 0.9) {
-    data.临时特质['心情愉悦'] = { 描述: '全属性+5', 消除: '心情比例降至90%及以下' };
-  }
-
   // 根据护甲种类动态分配护甲重量特质
+  const armor = data.护甲 || {};
   delete data.临时特质['重甲妨碍'];
   delete data.临时特质['中甲妨碍'];
   delete data.临时特质['轻甲妨碍'];
   delete data.临时特质['无甲灵动'];
+  delete data.临时特质['轻度超重'];
+  delete data.临时特质['中度超重'];
+  delete data.临时特质['重度超重'];
 
-  const armorType = data.护甲?.种类;
+  const armorType = armor.种类;
   if (armorType === '重甲') {
     data.临时特质['重甲妨碍'] = { 描述: '敏捷-30', 消除: '卸下或更换重甲' };
   } else if (armorType === '中甲') {
     data.临时特质['中甲妨碍'] = { 描述: '敏捷-15', 消除: '卸下或更换中甲' };
   } else if (armorType === '轻甲') {
     data.临时特质['轻甲妨碍'] = { 描述: '敏捷-5', 消除: '卸下或更换轻甲' };
-  } else if (armorType === '无甲') {
+  } else if (armorType === '无甲' || !armorType) {
     data.临时特质['无甲灵动'] = { 描述: '敏捷+5', 消除: '穿上护甲' };
   }
 
@@ -276,8 +306,47 @@ const characterTransform = data => {
   const temporaryTraitDescs = data.临时特质 ? _.map(_.values(data.临时特质), '描述') : [];
   const allDescriptions = [...permanentTraitDescs, ...temporaryTraitDescs];
 
+  const baseMaxWeight = Math.floor(
+    ((data.属性?.STR?.基础 || 0) + (data.属性?.STR?.手动加成 || 0) + (data.属性?.STR?.加成 || 0)) * 1.5,
+  );
+  const traitWeightModifier = _.sumBy(allDescriptions, desc => {
+    if (!desc) return 0;
+    const match = desc.match(/(?:最大负重|负重上限)\s*([+-]\s*\d+)/);
+    return match ? parseInt(match[1].replace(/\s/g, ''), 10) : 0;
+  });
+  const derivedMaxCarryWeight = baseMaxWeight + traitWeightModifier;
+  const itemsWeight = _.sumBy(_.values(data.背包?.物品 || {}), item => (item.重量 || 0) * (item.数量 || 0));
+  const equippedWeight = (data.主武器?.重量 || 0) + (data.副武器?.重量 || 0) + (data.护甲?.重量 || 0);
+  const derivedCurrentCarryWeight = _.round(itemsWeight + equippedWeight, 2);
+  const dexBeforeOverweight =
+    (data.属性?.DEX?.基础 || 0) + (data.属性?.DEX?.手动加成 || 0) + (data.属性?.DEX?.加成 || 0);
+
+  if (derivedMaxCarryWeight > 0) {
+    const overweightRatio = (derivedCurrentCarryWeight - derivedMaxCarryWeight) / derivedMaxCarryWeight;
+    if (overweightRatio > 0.25) {
+      data.临时特质['重度超重'] = {
+        描述: `敏捷-${Math.floor(dexBeforeOverweight * 0.8)}`,
+        消除: '负重恢复至最大负重125%及以下',
+      };
+    } else if (overweightRatio > 0.2) {
+      data.临时特质['中度超重'] = {
+        描述: `敏捷-${Math.floor(dexBeforeOverweight * 0.6)}`,
+        消除: '负重恢复至最大负重120%及以下',
+      };
+    } else if (overweightRatio > 0.15) {
+      data.临时特质['轻度超重'] = {
+        描述: `敏捷-${Math.floor(dexBeforeOverweight * 0.2)}`,
+        消除: '负重恢复至最大负重115%及以下',
+      };
+    }
+  }
+
+  // 统一提取所有特质
+  const finalTemporaryTraitDescs = data.临时特质 ? _.map(_.values(data.临时特质), '描述') : [];
+  const finalDescriptions = [...permanentTraitDescs, ...finalTemporaryTraitDescs];
+
   // 汇总来自特质的属性加成
-  for (const desc of allDescriptions) {
+  for (const desc of finalDescriptions) {
     if (!desc) continue;
     MODIFIER_REGEX.lastIndex = 0;
     let match;
@@ -305,20 +374,20 @@ const characterTransform = data => {
     finalAttrs[key] = (data.属性[key]?.基础 || 0) + (data.属性[key]?.手动加成 || 0) + (data.属性[key]?.加成 || 0);
   }
 
-  // 骨人种族特殊规则：强制韧性为100
+  // 骨人种族特殊规则：强制最低韧性为100
   if ((data.种族?.名称 || '').includes('骨人')) {
-    finalAttrs.WIL = 100;
+    finalAttrs.WIL = Math.max(finalAttrs.WIL || 0, 100);
   }
 
   // 升级逻辑与经验值校准
   if (data.经验值) {
-    data.经验值.升级所需 = Math.floor(data.等级 * 10 + 100);
+    data.经验值.升级所需 = Math.floor(data.等级 * 15 + 130);
     while (data.经验值.当前 >= data.经验值.升级所需 && data.等级 < 100) {
       data.经验值.当前 -= data.经验值.升级所需;
       data.等级 += 1;
-      data.属性点 += 7;
+      data.属性点 += 5;
       if (data.等级 % 10 === 0) data.特质点 += 1;
-      data.经验值.升级所需 = Math.floor(data.等级 * 10 + 100);
+      data.经验值.升级所需 = Math.floor(data.等级 * 15 + 130);
     }
   }
 
@@ -333,7 +402,7 @@ const characterTransform = data => {
     else if (dex < 85) baseAttacks = 3;
     else baseAttacks = 4;
   } else if (['钝器类', '大型类', '弩'].includes(weaponType)) {
-    if (dex < 85) baseAttacks = 1;
+    if (dex < 80) baseAttacks = 1;
     else baseAttacks = 2;
   } else if (dex < 60) baseAttacks = 1;
   else if (dex < 80) baseAttacks = 2;
@@ -345,7 +414,7 @@ const characterTransform = data => {
 
   let attackModifier = 0;
   const attackModifierRegex = /攻击次数\s*([+-]\s*\d+)/i;
-  allDescriptions.forEach(desc => {
+  finalDescriptions.forEach(desc => {
     if (!desc) return;
     const match = desc.match(attackModifierRegex);
     if (match && match[1]) {
@@ -355,93 +424,56 @@ const characterTransform = data => {
   data.攻击次数 = _.clamp(baseAttacks + attackModifier, 1, 99);
 
   // 最大生命值计算
-  const getBodySizeModifier = sizeStr => {
-    const size = parseFloat(sizeStr) || 0;
-    if (size < 1.3) return -15;
-    if (size < 1.6) return -8;
-    if (size < 1.9) return 0;
-    if (size < 2.2) return 8;
-    return 15;
-  };
-  const bodySizeHpModifier = getBodySizeModifier(data.体型);
-  let hpTraitModifier = 0;
-  const hpModifierRegex = /(?:最大生命值|最大血量|HP|血量)\s*[^\d\r\n]*([+-]?\s*\d+)/i;
-  allDescriptions.forEach(desc => {
-    if (!desc) return;
-    const match = desc.match(hpModifierRegex);
-    if (match && match[1] && !/属性/.test(desc) && !/(?:固定为|固定|设定为|就是)/.test(desc)) {
-      hpTraitModifier += parseInt(match[1].replace(/\s/g, ''), 10);
-    }
-  });
-  data.血量.最大 = Math.floor(50 + finalAttrs.TGH * 2 + data.等级 * 1 + bodySizeHpModifier + hpTraitModifier);
-
-  // 仅在“明确声明固定值”时才覆盖动态计算，避免把普通叙述里的数字误判为固定血量。
-  // 例如必须是“最大血量固定为121 / HP设定为121”这类句式，
-  // 不再接受宽松的“血量...就是121”模糊匹配。
-  const hpFixedRegex = /(?:最大生命值|最大血量|HP)\s*(?:固定为|固定|设定为)\s*(\d+)/i;
-  for (const desc of allDescriptions) {
-    if (!desc) continue;
-    const match = desc.match(hpFixedRegex);
-    if (match && match[1]) {
-      data.血量.最大 = parseInt(match[1], 10);
-      break;
-    }
-  }
-
-  // 最大心情值计算
-  let moodTraitModifier = 0;
-  const moodModifierRegex = /(?:最大心情值|心情上限)\s*[^\d\r\n]*([+-]?\s*\d+)/i;
-  allDescriptions.forEach(desc => {
-    if (!desc) return;
-    const match = desc.match(moodModifierRegex);
-    if (match && match[1] && !/属性/.test(desc) && !/(?:固定为|固定|设定为|就是)/.test(desc)) {
-      moodTraitModifier += parseInt(match[1].replace(/\s/g, ''), 10);
-    }
-  });
-  data.心情.最大 = Math.floor(50 + finalAttrs.WIL * 1.5 + moodTraitModifier);
-  const moodFixedRegex = /(?:最大心情值|心情).*(?:固定为|固定|设定为|就是)\s*(\d+)/i;
-  for (const desc of allDescriptions) {
-    if (!desc) continue;
-    const match = desc.match(moodFixedRegex);
-    if (match && match[1]) {
-      data.心情.最大 = parseInt(match[1], 10);
-      break;
-    }
-  }
+  recalculateMaxHp(data, finalAttrs, finalDescriptions);
 
   // 负重计算
-  const baseMaxWeight = Math.floor(finalAttrs.STR * 1.5);
-  const traitWeightModifier = _.sumBy(allDescriptions, desc => {
-    if (!desc) return 0;
-    const match = desc.match(/(?:最大负重|负重上限)\s*([+-]\s*\d+)/);
-    return match ? parseInt(match[1].replace(/\s/g, ''), 10) : 0;
-  });
-  data.背包.负重.最大 = baseMaxWeight + traitWeightModifier;
-  data.背包.负重.当前 = _.round(
-    _.sumBy(_.values(data.背包.物品), item => (item.重量 || 0) * (item.数量 || 0)),
-    2,
-  );
+  data.背包.负重.最大 = derivedMaxCarryWeight;
+  data.背包.负重.当前 = derivedCurrentCarryWeight;
 
   // 最终数值约束
   data.血量.当前 = _.clamp(data.血量.当前, 0, data.血量.最大);
-  data.心情.当前 = _.clamp(data.心情.当前, 0, data.心情.最大);
-
-  // --- 骨人心智锁定特殊规则 ---
-  // 覆盖计算，确保骨人不受其他特质和情绪计算影响
-  if ((data.种族?.名称 || '').includes('骨人')) {
-    data.心情.最大 = 100;
-    data.心情.当前 = 100;
-  }
 
   return data;
 };
-
 // 为视野内角色/通用NPC/小队成员定义的Schema
 const CharacterSchema = CharacterSchemaBase.transform(characterTransform);
 const TeammateCharacterSchema = CharacterSchema;
 const RemoteCharacterSchema = CharacterSchemaBase.extend({
   所处地址: z.string().prefault('未知'),
 }).transform(characterTransform);
+
+// ========= 据点系统结构定义开始 =========
+const StrongholdFacilitySchema = z
+  .object({
+    等级: z.coerce.number().prefault(1),
+    工作成员: z.array(z.string()).prefault([]),
+  })
+  .prefault({ 等级: 1, 工作成员: [] });
+
+const StrongholdSchema = z
+  .object({
+    等级: z.coerce
+      .number()
+      .transform(v => _.clamp(v, 1, 5))
+      .prefault(1),
+    收益天数: z.coerce.number().prefault(0),
+    所处区域: z.string().prefault('未知区域'),
+    描述: z.string().prefault(''),
+    资金: z.coerce.number().prefault(0),
+    成员: z.record(z.string().describe('成员名字'), TeammateCharacterSchema.or(z.literal('待初始化'))).prefault({}),
+    仓库: z
+      .object({
+        物品: z
+          .record(z.string().describe('物品名'), ItemSchema)
+          .transform(data => _.pickBy(data, ({ 数量 }) => 数量 > 0))
+          .prefault({}),
+      })
+      .prefault({}),
+    设施: z.record(z.string().describe('设施名字'), StrongholdFacilitySchema).prefault({}),
+    到来事件: z.record(z.string().describe('事件标题'), z.string().describe('事件描述')).prefault({}),
+  })
+  .prefault({});
+// ========= 据点系统结构定义结束 =========
 
 // 定义“往事”基础条目的结构
 const PastEventSchema = z.object({
@@ -476,8 +508,7 @@ export const Schema = z.object({
         .prefault({}),
     )
     .prefault({}),
-  据点: z.record(z.string().describe('据点名字'), z.any()).prefault({}),
-  视野: z.record(z.string(), CharacterSchema.or(z.literal('待初始化'))),
+  据点: z.record(z.string().describe('据点名字'), StrongholdSchema).prefault({}),
   异地: z.record(z.string(), RemoteCharacterSchema.or(z.literal('待初始化'))),
   局势: z.object({
     已知派系: z
