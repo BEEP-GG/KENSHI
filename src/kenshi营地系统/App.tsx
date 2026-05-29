@@ -1,4 +1,4 @@
-﻿import { waitUntil } from 'async-wait-until';
+import { waitUntil } from 'async-wait-until';
 import _ from 'lodash';
 import {
   Activity,
@@ -149,15 +149,15 @@ const craftItems: Record<string, { id: string; name: string; requirements: strin
     { id: 'a3', name: '重甲', requirements: '布料x3, 矿石x5' },
   ],
   pr7: [
-    { id: 'c1', name: '基础急救包', requirements: '原材料x2, 布料x1' },
-    { id: 'c2', name: '标准急救包', requirements: '原材料x3, 布料x2' },
-    { id: 'c3', name: '普通夹板包', requirements: '原材料x2, 布料x2, 矿石x1' },
-    { id: 'c4', name: '骨人修理包', requirements: '原材料x2, 布料x3, 矿石x3' },
+    { id: 'c1', name: '基础急救包', requirements: '金属材料x2, 布料x1' },
+    { id: 'c2', name: '标准急救包', requirements: '金属材料x3, 布料x2' },
+    { id: 'c3', name: '普通夹板包', requirements: '金属材料x2, 布料x2, 矿石x1' },
+    { id: 'c4', name: '骨人修理包', requirements: '金属材料x2, 布料x3, 矿石x3' },
   ],
   pr8: [
-    { id: 'c5', name: '高级急救包', requirements: '原材料x5, 布料x4' },
-    { id: 'c6', name: '高级夹板包', requirements: '原材料x3, 布料x3, 矿石x2' },
-    { id: 'c7', name: '骨人修理箱', requirements: '原材料x5, 布料x5, 矿石x5' },
+    { id: 'c5', name: '高级急救包', requirements: '金属材料x5, 布料x4' },
+    { id: 'c6', name: '高级夹板包', requirements: '金属材料x3, 布料x3, 矿石x2' },
+    { id: 'c7', name: '骨人修理箱', requirements: '金属材料x5, 布料x5, 矿石x5' },
   ],
   pr9: [
     { id: 'hw1', name: '武士刀类', requirements: '矿石x4, 布料x3' },
@@ -241,8 +241,9 @@ const buildMemberFromData = (value: any, fallbackId: string): Member | null => {
     const item = _.get(attr, [k]);
     if (typeof item === 'number') return item;
     const base = Number(_.get(item, ['基础'], 30)) || 30;
+    const manualBonus = Number(_.get(item, ['手动加成'], 0)) || 0;
     const bonus = Number(_.get(item, ['加成'], 0)) || 0;
-    return base + bonus;
+    return base + manualBonus + bonus;
   };
 
   return {
@@ -288,13 +289,13 @@ const calcRecoveryBonusByType = (type: TrainingResult, subId: string) => {
 const parseRequirement = (txt: string) => {
   const result = { ore: 0, cloth: 0, raw: 0 };
   if (!txt) return result;
-  const regex = /(矿石|布料|原材料)x(\d+)/g;
+  const regex = /(矿石|布料|金属材料)x(\d+)/g;
   let m: RegExpExecArray | null = null;
   while ((m = regex.exec(txt)) !== null) {
     const n = Number(m[2]) || 0;
     if (m[1] === '矿石') result.ore += n;
     if (m[1] === '布料') result.cloth += n;
-    if (m[1] === '原材料') result.raw += n;
+    if (m[1] === '金属材料') result.raw += n;
   }
   return result;
 };
@@ -1438,12 +1439,12 @@ export default function App() {
       const allPool = Object.values(memberRuntimeMap).flatMap(v => v.inventoryItems || []);
       const oreCount = allPool.filter(it => it.subCategory === '矿石').reduce((sum, it) => sum + it.quantity, 0);
       const clothCount = allPool.filter(it => it.subCategory === '布料').reduce((sum, it) => sum + it.quantity, 0);
-      const rawCount = allPool.filter(it => it.subCategory === '原材料').reduce((sum, it) => sum + it.quantity, 0);
+      const rawCount = allPool.filter(it => it.subCategory === '金属材料').reduce((sum, it) => sum + it.quantity, 0);
 
       const lacks: string[] = [];
       if (req.ore > oreCount) lacks.push(`矿石x${req.ore - oreCount}`);
       if (req.cloth > clothCount) lacks.push(`布料x${req.cloth - clothCount}`);
-      if (req.raw > rawCount) lacks.push(`原材料x${req.raw - rawCount}`);
+      if (req.raw > rawCount) lacks.push(`金属材料x${req.raw - rawCount}`);
 
       if (lacks.length > 0) {
         setToastMessage(`缺少${lacks.join('，')}`);
@@ -1798,7 +1799,7 @@ export default function App() {
         const allPool = Object.values(memberRuntimeMap).flatMap(v => v.inventoryItems || []);
         const ore = consumeFromPool(allPool, req.ore, sub => sub === '矿石');
         const cloth = consumeFromPool(allPool, req.cloth, sub => sub === '布料');
-        const raw = consumeFromPool(allPool, req.raw, sub => sub === '原材料');
+        const raw = consumeFromPool(allPool, req.raw, sub => sub === '金属材料');
 
         const usedParts: string[] = [];
         if (ore.text) usedParts.push(ore.text);

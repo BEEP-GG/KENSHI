@@ -69,9 +69,13 @@ export default function TopBar({
         >
           <Coins size={14} className="text-amber-500" />
           <div className="flex items-baseline space-x-1">
-            <span className="hidden md:inline text-slate-400 text-xs">资金:</span>
+            <span className="hidden md:inline text-slate-400 text-xs">小队:</span>
             <span className="text-amber-400 font-mono font-medium text-glow text-sm md:text-base">
-              {state.cats.toLocaleString()}
+              {state.squadCats.toLocaleString()}
+            </span>
+            <span className="hidden md:inline text-slate-400 text-xs ml-2">仓库:</span>
+            <span className="text-amber-500 font-mono font-medium text-glow text-sm md:text-base">
+              {state.warehouseCats.toLocaleString()}
             </span>
             <span className="hidden sm:inline text-amber-500/50 text-xs tracking-wider">开币</span>
           </div>

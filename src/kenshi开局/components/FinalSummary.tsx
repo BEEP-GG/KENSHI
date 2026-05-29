@@ -924,17 +924,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
     const subraceModifiers = parseAttributeModifiers(
       [subrace?.description ?? '', (subrace as { attributeSummary?: string })?.attributeSummary ?? ''].join(' '),
     );
-    const scenarioBonus = getScenarioAttributeBonus();
     const traitBonus = getSelectedTraitAttributeBonus();
-    const manualBonus = {
-      strength: scenarioBonus.strength + traitBonus.strength,
-      dexterity: scenarioBonus.dexterity + traitBonus.dexterity,
-      perception: scenarioBonus.perception + traitBonus.perception,
-      constitution: scenarioBonus.constitution + traitBonus.constitution,
-      will: scenarioBonus.will + traitBonus.will,
-      intelligence: scenarioBonus.intelligence + traitBonus.intelligence,
-      charisma: scenarioBonus.charisma + traitBonus.charisma,
-    };
     const finalStrength = data.attributes.strength + raceModifiers.strength + subraceModifiers.strength;
     const finalDexterity = data.attributes.dexterity + raceModifiers.dexterity + subraceModifiers.dexterity;
     const finalPerception = data.attributes.perception + raceModifiers.perception + subraceModifiers.perception;
@@ -943,13 +933,13 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
     const finalIntelligence = data.attributes.intelligence + raceModifiers.intelligence + subraceModifiers.intelligence;
     const finalCharisma = data.attributes.charisma + raceModifiers.charisma + subraceModifiers.charisma;
     return {
-      STR: { 基础: finalStrength, 手动加成: manualBonus.strength, 加成: 0 },
-      DEX: { 基础: finalDexterity, 手动加成: manualBonus.dexterity, 加成: 0 },
-      PER: { 基础: finalPerception, 手动加成: manualBonus.perception, 加成: 0 },
-      TGH: { 基础: finalConstitution, 手动加成: manualBonus.constitution, 加成: 0 },
-      WIL: { 基础: finalWill, 手动加成: manualBonus.will, 加成: 0 },
-      INT: { 基础: finalIntelligence, 手动加成: manualBonus.intelligence, 加成: 0 },
-      CHA: { 基础: finalCharisma, 手动加成: manualBonus.charisma, 加成: 0 },
+      STR: { 基础: finalStrength, 手动加成: traitBonus.strength, 加成: 0 },
+      DEX: { 基础: finalDexterity, 手动加成: traitBonus.dexterity, 加成: 0 },
+      PER: { 基础: finalPerception, 手动加成: traitBonus.perception, 加成: 0 },
+      TGH: { 基础: finalConstitution, 手动加成: traitBonus.constitution, 加成: 0 },
+      WIL: { 基础: finalWill, 手动加成: traitBonus.will, 加成: 0 },
+      INT: { 基础: finalIntelligence, 手动加成: traitBonus.intelligence, 加成: 0 },
+      CHA: { 基础: finalCharisma, 手动加成: traitBonus.charisma, 加成: 0 },
     };
   };
 
@@ -981,24 +971,64 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
         ' ',
       ),
     );
-    const finalStrength = member.attributes.strength + raceModifiers.strength + subraceModifiers.strength;
-    const finalDexterity = member.attributes.dexterity + raceModifiers.dexterity + subraceModifiers.dexterity;
-    const finalPerception = member.attributes.perception + raceModifiers.perception + subraceModifiers.perception;
-    const finalConstitution =
-      member.attributes.constitution + raceModifiers.constitution + subraceModifiers.constitution;
-    const finalWill = member.attributes.will + raceModifiers.will + subraceModifiers.will;
-    const finalIntelligence =
-      member.attributes.intelligence + raceModifiers.intelligence + subraceModifiers.intelligence;
-    const finalCharisma = member.attributes.charisma + raceModifiers.charisma + subraceModifiers.charisma;
+    const memberTraitBonus = {
+      strength: 0,
+      dexterity: 0,
+      perception: 0,
+      constitution: 0,
+      will: 0,
+      intelligence: 0,
+      charisma: 0,
+    };
+    member.traits.forEach(traitId => {
+      const trait = allTraits.find(t => t.id === traitId);
+      if (!trait) return;
+      const parsed = parseAttributeModifiers(trait.description);
+      memberTraitBonus.strength += parsed.strength;
+      memberTraitBonus.dexterity += parsed.dexterity;
+      memberTraitBonus.perception += parsed.perception;
+      memberTraitBonus.constitution += parsed.constitution;
+      memberTraitBonus.will += parsed.will;
+      memberTraitBonus.intelligence += parsed.intelligence;
+      memberTraitBonus.charisma += parsed.charisma;
+    });
 
     return {
-      STR: { 基础: finalStrength, 手动加成: 0, 加成: 0 },
-      DEX: { 基础: finalDexterity, 手动加成: 0, 加成: 0 },
-      PER: { 基础: finalPerception, 手动加成: 0, 加成: 0 },
-      TGH: { 基础: finalConstitution, 手动加成: 0, 加成: 0 },
-      WIL: { 基础: finalWill, 手动加成: 0, 加成: 0 },
-      INT: { 基础: finalIntelligence, 手动加成: 0, 加成: 0 },
-      CHA: { 基础: finalCharisma, 手动加成: 0, 加成: 0 },
+      STR: {
+        基础: member.attributes.strength + raceModifiers.strength + subraceModifiers.strength,
+        手动加成: memberTraitBonus.strength,
+        加成: 0,
+      },
+      DEX: {
+        基础: member.attributes.dexterity + raceModifiers.dexterity + subraceModifiers.dexterity,
+        手动加成: memberTraitBonus.dexterity,
+        加成: 0,
+      },
+      PER: {
+        基础: member.attributes.perception + raceModifiers.perception + subraceModifiers.perception,
+        手动加成: memberTraitBonus.perception,
+        加成: 0,
+      },
+      TGH: {
+        基础: member.attributes.constitution + raceModifiers.constitution + subraceModifiers.constitution,
+        手动加成: memberTraitBonus.constitution,
+        加成: 0,
+      },
+      WIL: {
+        基础: member.attributes.will + raceModifiers.will + subraceModifiers.will,
+        手动加成: memberTraitBonus.will,
+        加成: 0,
+      },
+      INT: {
+        基础: member.attributes.intelligence + raceModifiers.intelligence + subraceModifiers.intelligence,
+        手动加成: memberTraitBonus.intelligence,
+        加成: 0,
+      },
+      CHA: {
+        基础: member.attributes.charisma + raceModifiers.charisma + subraceModifiers.charisma,
+        手动加成: memberTraitBonus.charisma,
+        加成: 0,
+      },
     };
   };
 
@@ -1107,10 +1137,26 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
       Number(attrsForInit.TGH?.基础 || 0) +
         Number(attrsForInit.TGH?.手动加成 || 0) +
         Number(attrsForInit.TGH?.加成 || 0) || 1;
-    const bodyHeight = Number(data.appearance.height || 180) / 100;
-    const bodySizeHpModifier =
-      bodyHeight < 1.3 ? -15 : bodyHeight < 1.6 ? -8 : bodyHeight < 1.9 ? 0 : bodyHeight < 2.2 ? 8 : 15;
-    const hpMax = Math.floor(50 + tgh * 2 + currentLevel + bodySizeHpModifier);
+    const hpDescriptions = Object.values(buildTraitsRecord());
+    let hpTraitModifier = 0;
+    const hpModifierRegex = /(?:最大生命值|最大血量|HP|血量)\s*[^\d\r\n]*([+-]?\s*\d+)/i;
+    hpDescriptions.forEach(desc => {
+      if (!desc) return;
+      const match = desc.match(hpModifierRegex);
+      if (match && match[1] && !/属性/.test(desc) && !/(?:固定为|固定|设定为|就是)/.test(desc)) {
+        hpTraitModifier += parseInt(match[1].replace(/\s/g, ''), 10);
+      }
+    });
+    const hpFixedRegex = /(?:最大生命值|最大血量|HP|血量).*(?:固定为|固定|设定为|就是)\s*(\d+)/i;
+    let hpMax = Math.floor(100 + tgh * 2 + currentLevel * 1.5 + hpTraitModifier);
+    for (const desc of hpDescriptions) {
+      if (!desc) continue;
+      const match = desc.match(hpFixedRegex);
+      if (match && match[1]) {
+        hpMax = parseInt(match[1], 10);
+        break;
+      }
+    }
 
     const mainCharacterEntry: Record<string, any> = {
       名字: mainCharacterName,
@@ -2126,6 +2172,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
   const buildBaseSettingText = () => {
     const equipmentList = scenario?.equipment ?? [];
     const lines: string[] = [];
+    lines.push('【开局设定】');
     lines.push('主角设定');
     lines.push('基础设定');
     lines.push(`角色名：${data.name || '无名氏'}`);

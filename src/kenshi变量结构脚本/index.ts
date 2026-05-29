@@ -78,7 +78,9 @@ const BackpackArmorSchema = ArmorSchema.extend({
 
 // 3. 为其他通用物品定义结构
 const GenericItemSchema = z.object({
-  分类: z.enum(['食物', '饮品', '医疗用品', '科研道具', '任务道具', '矿石', '布料', '原材料', '其他']).prefault('其他'),
+  分类: z
+    .enum(['食物', '饮品', '医疗用品', '科研道具', '任务道具', '矿石', '布料', '金属材料', '农作物', '其他'])
+    .prefault('其他'),
   介绍: z.string().prefault(''),
   数量: z.coerce.number().prefault(1),
   重量: z.coerce.number().prefault(0),

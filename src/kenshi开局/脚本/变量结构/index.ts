@@ -1,4 +1,4 @@
-﻿/* eslint-disable */
+/* eslint-disable */
 // @ts-nocheck
 import { registerMvuSchema } from 'https://testingcf.jsdelivr.net/gh/StageDog/tavern_resource/dist/util/mvu_zod.js';
 
@@ -177,7 +177,8 @@ const CharacterSchemaBase = z.object({
                 '任务道具',
                 '矿石',
                 '布料',
-                '原材料',
+                '金属材料',
+                '农作物',
                 '其他',
               ])
               .prefault('其他'),

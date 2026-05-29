@@ -1,4 +1,4 @@
-import _ from 'lodash';
+﻿import _ from 'lodash';
 import { CheckCircle } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import Dashboard from './components/Dashboard';
@@ -533,6 +533,19 @@ const readMvuRootState = (messageId: number | 'latest' = 'latest') => {
   }
 };
 
+const getMainSquadName = (rootState: any) => {
+  const squadMap = _.get(rootState, 'stat_data.小队成员', {});
+  const explicitMainSquad = normalizeText(_.get(rootState, 'stat_data.主控', '')).trim();
+  if (explicitMainSquad && _.has(squadMap, explicitMainSquad)) return explicitMainSquad;
+  return Object.keys(squadMap)[0] || '';
+};
+
+const getMainSquadMoney = (rootState: any, fallback = 0) => {
+  const squadName = getMainSquadName(rootState);
+  if (!squadName) return fallback;
+  return normalizeValue(_.get(rootState, ['stat_data', '小队成员', squadName, '金钱']), fallback);
+};
+
 const calculateOfflineIncome = (facilities: Facility[], elapsedDays: number) => {
   let earnedCats = 0;
   const earnedResources: Record<string, number> = {};
@@ -572,6 +585,7 @@ const buildStateFromMvuOutposts = (
   rawOutposts: any,
   fallbackState: GameState,
   currentWorldDay: number,
+  rootState?: any,
 ): (GameState & { elapsedDays: number; incomeReport: { cats: number; resources: Record<string, number> } }) | null => {
   if (!rawOutposts || typeof rawOutposts !== 'object' || Array.isArray(rawOutposts)) {
     return null;
@@ -587,7 +601,7 @@ const buildStateFromMvuOutposts = (
   const facilities: Facility[] = [];
   const employees: Employee[] = [];
   const eventMap = new Map<string, GameEvent>();
-  let cats = fallbackState.cats;
+  let warehouseCats = fallbackState.warehouseCats ?? fallbackState.cats;
   let lastIncomeDay = currentWorldDay;
 
   outpostEntries.forEach(([outpostName, rawOutpost], outpostIndex) => {
@@ -603,7 +617,7 @@ const buildStateFromMvuOutposts = (
       level: Math.max(1, normalizeValue(outpostData.等级, 1)),
     });
 
-    cats = normalizeValue(outpostData.资金, cats);
+    warehouseCats = normalizeValue(outpostData.资金, warehouseCats);
     lastIncomeDay = Math.min(lastIncomeDay, Math.max(0, normalizeValue(outpostData.收益天数, currentWorldDay)));
 
     Object.entries(outpostData?.仓库?.物品 ?? {}).forEach(([itemName, itemData]) => {
@@ -712,8 +726,13 @@ const buildStateFromMvuOutposts = (
     }))
     .filter(event => (event.target || 0) > 0);
 
+  const squadCats = getMainSquadMoney(rootState, fallbackState.squadCats ?? fallbackState.cats);
+  const resolvedWarehouseCats = warehouseCats + incomeReport.cats;
+
   return {
-    cats: cats + incomeReport.cats,
+    cats: resolvedWarehouseCats,
+    squadCats,
+    warehouseCats: resolvedWarehouseCats,
     resources: resolvedResources,
     day: currentWorldDay,
     currentOutpostId: outposts[0]?.id || fallbackState.currentOutpostId,
@@ -741,7 +760,7 @@ export default function App() {
     const rootState = readMvuRootState(contextMessageId);
     const currentWorldDay = Math.max(1, normalizeValue(rootState?.stat_data?.世界?.天数, initialGameState.day));
     const mvuOutposts = _.get(rootState, 'stat_data.据点');
-    const builtState = buildStateFromMvuOutposts(mvuOutposts, initialGameState, currentWorldDay);
+    const builtState = buildStateFromMvuOutposts(mvuOutposts, initialGameState, currentWorldDay, rootState);
 
     if (builtState) {
       initialLoadRef.current = { elapsedDays: builtState.elapsedDays, incomeReport: builtState.incomeReport };
@@ -922,7 +941,7 @@ export default function App() {
             收益天数: Number(settlementDay || 1),
             所处区域: outpost.location || '未知区域',
             描述: outpost.description || '',
-            资金: Number(state.cats || 0),
+            资金: Number((state.warehouseCats ?? state.cats) || 0),
             成员: Object.fromEntries(members.map(member => [member.name, buildMemberVariable(member)])),
             仓库: {
               物品: sharedWarehouseItems,
@@ -965,6 +984,10 @@ export default function App() {
       _.set(mvuData, 'stat_data', {});
     }
     _.set(mvuData, 'stat_data.据点', buildOutpostVariables(state, settlementDay));
+    const mainSquadName = getMainSquadName(mvuData);
+    if (mainSquadName) {
+      _.set(mvuData, ['stat_data', '小队成员', mainSquadName, '金钱'], Number((state.squadCats ?? state.cats) || 0));
+    }
     appendTriggeredEventSight(mvuData, state);
     await Mvu.replaceMvuData(mvuData, { type: 'message', message_id: messageId });
   };
@@ -1326,12 +1349,12 @@ export default function App() {
 
     setGameState(prev => {
       const costCats = 3000;
-      let nextCats = prev.cats;
+      let nextSquadCats = prev.squadCats ?? prev.cats;
       const nextResources = { ...prev.resources };
 
       if (!testMode) {
-        nextCats -= costCats;
-        nextResources['建筑材料'] = (nextResources['建筑材料'] || 0) - 10;
+        nextSquadCats -= costCats;
+        nextResources['金属材料'] = (nextResources['金属材料'] || 0) - 10;
       }
 
       const newOutpost: Outpost = {
@@ -1345,7 +1368,9 @@ export default function App() {
 
       const nextState = {
         ...prev,
-        cats: nextCats,
+        cats: prev.warehouseCats ?? prev.cats,
+        squadCats: nextSquadCats,
+        warehouseCats: prev.warehouseCats ?? prev.cats,
         resources: nextResources,
         outposts: [...prev.outposts, newOutpost],
         currentOutpostId: newOutpost.id,
@@ -1373,7 +1398,9 @@ export default function App() {
 
       const minState = {
         day: nextStateForSubmission.day,
-        cats: nextStateForSubmission.cats,
+        squadCats: nextStateForSubmission.squadCats,
+        warehouseCats: nextStateForSubmission.warehouseCats,
+        cats: nextStateForSubmission.warehouseCats ?? nextStateForSubmission.cats,
         res: nextStateForSubmission.resources,
         fac: nextStateForSubmission.facilities.map(f => ({
           id: f.id,
@@ -1456,9 +1483,11 @@ export default function App() {
     const manualIncome = calculateOfflineIncome(gameState.facilities, 1);
 
     setGameState(prev => {
+      const nextWarehouseCats = (prev.warehouseCats ?? prev.cats) + manualIncome.cats;
       const nextState = {
         ...prev,
-        cats: prev.cats + manualIncome.cats,
+        cats: nextWarehouseCats,
+        warehouseCats: nextWarehouseCats,
         resources: { ...prev.resources },
       };
 

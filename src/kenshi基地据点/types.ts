@@ -15,7 +15,7 @@ export interface FacilityLevel {
   productionRate: number | string;
   productionType: string;
   maxWorkers: number;
-  upgradeCost?: Record<string, number>; // 例如: {'建筑材料': 5, '铁原板': 2}
+  upgradeCost?: Record<string, number>; // 例如: {'金属材料': 5, '铁原板': 2}
   requiredOutpostLevel?: number;
 }
 
@@ -71,7 +71,9 @@ export interface GameEvent {
 }
 
 export interface GameState {
-  cats: number; // Currency
+  cats: number; // 兼容旧字段：当前等同于仓库资金
+  squadCats: number; // 小队资金，读取自小队成员.*.金钱
+  warehouseCats: number; // 仓库资金，读取自据点.*.资金
   resources: Record<string, number>; // 存储物品及数量
   day: number;
   currentOutpostId: string;

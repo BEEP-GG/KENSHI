@@ -205,7 +205,7 @@ const BATTLE_RULES = `战斗轮结构:
       武器格挡: “(敏捷 * 0.5 + 力量 * 0.25)”
       空手闪避: “(敏捷 * 0.6 + 感知 * 0.25)”
   - 对抗修正:
-      最终防御成功 = 防御方基础值 + (防御方敏捷 - 攻击方敏捷)
+      最终防御成功 = 防御方基础值 + clamp(防御方敏捷 - 攻击方敏捷, -30, +45)
   - 长柄武器溅射: 若为长柄武器攻击造成的溅射伤害，其他受波及目标防御基础值 +4
   - 防御判定: 防御方投掷 D100 <= 最终防御。
   - 防御结果:
@@ -216,8 +216,8 @@ const BATTLE_RULES = `战斗轮结构:
 伤害结算流程:
 第一步_伤害计算:
   - 面板计算:
-      近战: “武器基础骰子结果 + max(0, (力量 * 0.65 + 敏捷 * 0.35) * 0.4)”
-      远程: “武器基础骰子结果 + max(0, (力量 * 0.6 + 感知 * 0.7) * 0.4)”
+      近战: “武器基础骰子结果 + max(0, (力量 * 0.5 + 敏捷 * 0.45) * 0.35)”
+      远程: “武器基础骰子结果 + max(0, (力量 * 0.4 + 感知 * 0.85) * 0.35)”
   - 伤害拆分: 根据武器比例，将面板伤害拆分为【切割伤害】与【钝伤伤害】。
 
 第二步_护甲过滤:
@@ -236,7 +236,7 @@ const BATTLE_RULES = `战斗轮结构:
       HP <= 0 (首次倒地): 触发韧性检定。
 
 特殊规则:
-- 连击机制: 若角色拥有多次攻击次数，防御方在同一轮内防御后续攻击时，【最终防御成功率】每下累积 -8。
+- 连击机制: 若角色拥有多次攻击次数，防御方在同一轮内防御后续攻击时，【最终防御成功率】每下累积 -6。
 - 韧性减伤: 对所有成员生效；采用线性减伤，公式为“max(0, 韧性 - 20) * 0.15”。
 - 魅力俘虏: 仅AI生效。若攻击者 INT >= 35，且本次攻击本可杀死目标，则掷1D100。
     - 判定值: “round(目标CHA * 0.5)”；若目标为女性则额外 +20。
@@ -2131,7 +2131,7 @@ export default function App() {
     const rawRoll = d100();
     const attackRoll = rawRoll + hitBonus - attackPenaltyExtra;
     const evadeBase = defender.attributes.DEX * 0.5 + defender.attributes.PER * 0.2;
-    const multiTargetPenalty = Math.max(0, (lastRoundAttackersCount[defender.id] || 0) - 1) * 8;
+    const multiTargetPenalty = Math.max(0, (lastRoundAttackersCount[defender.id] || 0) - 1) * 4;
     const evadeValue = Math.max(0, Math.min(70, evadeBase) - multiTargetPenalty);
     const isMartialArts = /武术/.test(currentWeapon.type);
     const isMartialSpeed = isMartialArts && attacker.attributes.DEX >= attacker.attributes.STR;
@@ -2157,8 +2157,8 @@ export default function App() {
             Math.max(
               0,
               isBowOrCrossbow(currentWeapon.type)
-                ? (attacker.attributes.STR * 0.45 + attacker.attributes.PER * 0.85) * 0.35
-                : (attacker.attributes.STR * 0.6 + attacker.attributes.DEX * 0.4) * 0.35,
+                ? (attacker.attributes.STR * 0.4 + attacker.attributes.PER * 0.85) * 0.35
+                : (attacker.attributes.STR * 0.5 + attacker.attributes.DEX * 0.45) * 0.35,
             );
           const rawDamage = Math.max(0, baseDamage);
           const finalDamage = rawDamage;
@@ -2221,10 +2221,10 @@ export default function App() {
 
     let useBlock = getDefenseMode(defender, currentWeapon.type);
     if (defender.noBlockNextRound) useBlock = false;
-    const defensePenalty = defenseIndex * 8;
+    const defensePenalty = defenseIndex * 6;
     const defenseBase = getDefenseBase(defender, useBlock);
     const defenseChance =
-      defenseBase + (defender.attributes.DEX - attacker.attributes.DEX) - defensePenalty - multiTargetPenalty;
+      defenseBase + Math.max(-30, Math.min(45, defender.attributes.DEX - attacker.attributes.DEX)) - defensePenalty - multiTargetPenalty;
     const defenseRoll = d100();
     const defenseSuccess = defenseRoll <= defenseChance && !(isCrit && useBlock);
 
@@ -2247,8 +2247,8 @@ export default function App() {
       Math.max(
         0,
         isBowOrCrossbow(currentWeapon.type)
-          ? (attacker.attributes.STR * 0.45 + attacker.attributes.PER * 0.85) * 0.35
-          : (attacker.attributes.STR * 0.6 + attacker.attributes.DEX * 0.4) * 0.35,
+          ? (attacker.attributes.STR * 0.4 + attacker.attributes.PER * 0.85) * 0.35
+          : (attacker.attributes.STR * 0.5 + attacker.attributes.DEX * 0.45) * 0.35,
       );
     const rawDamage = Math.max(0, baseDamage);
     const critMultiplier = isCrit ? (isMartialHeavy ? 2 : isMartialSpeed ? 1 : 1.5) : 1;
@@ -4176,3 +4176,8 @@ export default function App() {
     </div>
   );
 }
+
+
+
+
+
