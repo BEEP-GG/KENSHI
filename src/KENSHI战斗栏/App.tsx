@@ -1,4 +1,4 @@
-﻿import { waitUntil } from 'async-wait-until';
+import { waitUntil } from 'async-wait-until';
 import _ from 'lodash';
 import {
   Activity,
@@ -451,11 +451,7 @@ const rollDice = (dice: string) => {
 };
 
 const getMartialArtsBonusDice = (attributes: Attributes) => {
-  return (
-    Math.floor(attributes.STR / 20) +
-    Math.floor(attributes.DEX / 30) +
-    Math.floor(attributes.WIL / 40)
-  );
+  return Math.floor(attributes.STR / 20) + Math.floor(attributes.DEX / 30) + Math.floor(attributes.WIL / 40);
 };
 
 const parseDamageTypeRatio = (damageType: string): DamageRatio | null => {
@@ -1433,15 +1429,13 @@ export default function App() {
     if (typeof navigator === 'undefined') return false;
     const ua = navigator.userAgent || '';
     const byUa = /Mobi|Android|iPhone|iPad|iPod|Windows Phone/i.test(ua);
-    const byWidth =
-      typeof window !== 'undefined' && window.matchMedia ? window.matchMedia('(max-width: 1024px)').matches : false;
     const byTouch =
       typeof navigator !== 'undefined' &&
       typeof window !== 'undefined' &&
       (navigator.maxTouchPoints || 0) > 0 &&
       window.matchMedia &&
       window.matchMedia('(hover: none)').matches;
-    return byUa || byWidth || byTouch;
+    return byUa || byTouch;
   }, []);
   const mobileDetailExpanded = isMobile && !!expandedCharId;
   const mobileBottomExpanded = isMobile && (mobileLogCollapsed || mobileDetailExpanded);
@@ -2224,7 +2218,10 @@ export default function App() {
     const defensePenalty = defenseIndex * 6;
     const defenseBase = getDefenseBase(defender, useBlock);
     const defenseChance =
-      defenseBase + Math.max(-30, Math.min(45, defender.attributes.DEX - attacker.attributes.DEX)) - defensePenalty - multiTargetPenalty;
+      defenseBase +
+      Math.max(-30, Math.min(45, defender.attributes.DEX - attacker.attributes.DEX)) -
+      defensePenalty -
+      multiTargetPenalty;
     const defenseRoll = d100();
     const defenseSuccess = defenseRoll <= defenseChance && !(isCrit && useBlock);
 
@@ -3327,9 +3324,11 @@ export default function App() {
 
   return (
     <div
-      className={`w-full h-[100dvh] min-h-[100dvh] lg:h-auto lg:min-h-0 lg:aspect-[16/9] bg-[#050505] text-stone-300 font-sans selection:bg-stone-700 selection:text-white flex flex-col relative overflow-hidden ${
-        isMobile && isFullscreen ? 'pb-[124px]' : 'pb-[88px]'
-      } lg:pb-0`}
+      className={`w-full bg-[#050505] text-stone-300 font-sans selection:bg-stone-700 selection:text-white flex flex-col relative overflow-hidden ${
+        isMobile
+          ? `h-[100dvh] min-h-[100dvh] ${isFullscreen ? 'pb-[124px]' : 'pb-[88px]'}`
+          : 'h-auto min-h-0 aspect-[16/9] pb-0'
+      }`}
     >
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-stone-900/20 via-[#050505] to-black pointer-events-none"></div>
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-[0.03] pointer-events-none mix-blend-overlay"></div>
@@ -3356,7 +3355,7 @@ export default function App() {
       )}
 
       <header className="relative z-20 px-3 py-2.5 lg:px-8 lg:py-5 border-b border-stone-800/40 bg-black/40 backdrop-blur-md flex justify-between items-center shadow-md">
-        <div className="flex items-center gap-3 lg:gap-4">
+        <div className="flex items-center gap-3 lg:gap-4 [@media(pointer:fine)]:gap-4">
           <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-sm border border-stone-700/50 flex items-center justify-center bg-stone-900/80 shadow-[0_0_15px_rgba(255,255,255,0.05)]">
             <Sword size={14} className="text-stone-400 lg:w-4 lg:h-4" />
           </div>
@@ -3570,15 +3569,15 @@ export default function App() {
         </InfoModal>
       )}
 
-      <main className="flex-1 min-h-0 relative z-10 flex flex-col lg:flex-row overflow-hidden">
+      <main className="flex-1 min-h-0 relative z-10 flex flex-col lg:flex-row [@media(pointer:fine)]:flex-row overflow-hidden">
         {(targetingMode === 'attack' || targetingMode === 'subdue') && (
           <div className="absolute inset-0 z-20 pointer-events-none">
             <div className="absolute left-0 top-0 h-full w-[28%] min-w-[300px] bg-black/50" />
           </div>
         )}
         <div
-          className="order-1 lg:order-none shrink-0 min-h-[156px] lg:min-h-0 w-full lg:w-[28%] lg:min-w-[300px] p-2.5 lg:p-6 overflow-x-auto overflow-y-visible lg:overflow-x-hidden lg:overflow-y-auto border-b border-stone-800/30 lg:border-b-0 lg:border-r lg:border-stone-800/30 bg-gradient-to-r from-black/80 to-transparent scrollbar-hide flex flex-col min-h-0 overscroll-contain"
-          style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x' }}
+          className="order-1 lg:order-none [@media(pointer:fine)]:order-none shrink-0 min-h-[156px] lg:min-h-0 [@media(pointer:fine)]:min-h-0 w-full lg:w-[28%] [@media(pointer:fine)]:w-[28%] lg:min-w-[300px] [@media(pointer:fine)]:min-w-[300px] p-2.5 lg:p-6 [@media(pointer:fine)]:p-6 overflow-x-auto overflow-y-visible lg:overflow-x-hidden lg:overflow-y-auto [@media(pointer:fine)]:overflow-x-hidden [@media(pointer:fine)]:overflow-y-auto border-b border-stone-800/30 lg:border-b-0 [@media(pointer:fine)]:border-b-0 lg:border-r [@media(pointer:fine)]:border-r lg:border-stone-800/30 bg-gradient-to-r from-black/80 to-transparent scrollbar-hide flex flex-col min-h-0 overscroll-contain"
+          style={{ WebkitOverflowScrolling: 'touch', touchAction: isMobile ? 'pan-x' : 'pan-y' }}
         >
           <div className="flex items-center justify-between mb-3 lg:mb-6 pb-2 border-b border-stone-800/50">
             <h2 className="text-sm font-serif text-stone-400 tracking-[0.2em] flex items-center gap-3">
@@ -3589,7 +3588,7 @@ export default function App() {
               {friendlyAliveCount}/{friendlyUnits.length} 单位
             </span>
           </div>
-          <div className="flex flex-row lg:flex-col gap-3 lg:gap-4 flex-1 min-w-max lg:min-w-0 pb-1 lg:pb-0">
+          <div className="flex flex-row lg:flex-col [@media(pointer:fine)]:flex-col gap-3 lg:gap-4 [@media(pointer:fine)]:gap-4 flex-1 min-w-max lg:min-w-0 [@media(pointer:fine)]:min-w-0 pb-1 lg:pb-0 [@media(pointer:fine)]:pb-0">
             {friendlyUnits.map(unit => (
               <CharacterCard
                 key={unit.id}
@@ -3628,14 +3627,14 @@ export default function App() {
         </div>
 
         <div
-          className={`order-2 lg:order-none flex flex-col relative ${
+          className={`order-2 lg:order-none [@media(pointer:fine)]:order-none flex flex-col relative ${
             isMobile && mobileLogCollapsed
               ? 'flex-none h-[44px] min-h-0 px-2.5 pb-1'
               : mobileDetailExpanded
                 ? 'flex-none h-[136px] min-h-0 p-2.5'
                 : isMobile
                   ? 'flex-none h-[180px] min-h-0 p-2.5'
-                  : 'flex-1 min-h-0 p-2.5 lg:p-8'
+                  : 'flex-1 min-h-0 p-2.5 lg:p-8 [@media(pointer:fine)]:p-8'
           }`}
         >
           {isMobile && mobileLogCollapsed ? (
@@ -3731,18 +3730,18 @@ export default function App() {
         </div>
 
         <div
-          className={`order-3 lg:order-none w-full lg:w-[28%] lg:min-w-[300px] p-2.5 lg:p-6 border-t border-stone-800/30 lg:border-t-0 lg:border-l lg:border-stone-800/30 bg-gradient-to-l from-black/80 to-transparent scrollbar-hide flex flex-col min-h-0 overscroll-contain ${
+          className={`order-3 lg:order-none [@media(pointer:fine)]:order-none w-full lg:w-[28%] [@media(pointer:fine)]:w-[28%] lg:min-w-[300px] [@media(pointer:fine)]:min-w-[300px] p-2.5 lg:p-6 [@media(pointer:fine)]:p-6 border-t border-stone-800/30 lg:border-t-0 [@media(pointer:fine)]:border-t-0 lg:border-l [@media(pointer:fine)]:border-l lg:border-stone-800/30 bg-gradient-to-l from-black/80 to-transparent scrollbar-hide flex flex-col min-h-0 overscroll-contain ${
             mobileLogCollapsed
               ? 'flex-1 min-h-0 overflow-x-hidden overflow-y-auto'
               : mobileDetailExpanded
                 ? 'flex-none h-auto max-h-[52dvh] overflow-x-hidden overflow-y-auto'
                 : isMobile
                   ? 'shrink-0 min-h-[156px] overflow-x-auto overflow-y-visible'
-                  : 'shrink-0 h-[72px] lg:h-auto lg:min-h-0 overflow-x-auto overflow-y-visible lg:overflow-x-hidden lg:overflow-y-auto'
+                  : 'shrink-0 h-[72px] lg:h-auto [@media(pointer:fine)]:h-auto lg:min-h-0 [@media(pointer:fine)]:min-h-0 overflow-x-auto overflow-y-visible lg:overflow-x-hidden lg:overflow-y-auto [@media(pointer:fine)]:overflow-x-hidden [@media(pointer:fine)]:overflow-y-auto'
           }`}
           style={{
             WebkitOverflowScrolling: 'touch',
-            touchAction: mobileLogCollapsed || mobileDetailExpanded ? 'pan-y' : 'pan-x',
+            touchAction: !isMobile || mobileLogCollapsed || mobileDetailExpanded ? 'pan-y' : 'pan-x',
           }}
         >
           <div className="flex items-center justify-between mb-3 lg:mb-6 pb-2 border-b border-stone-800/50">
@@ -3755,7 +3754,7 @@ export default function App() {
             </h2>
           </div>
           <div
-            className={`flex flex-row lg:items-stretch lg:flex-col gap-3 min-w-max lg:min-w-0 pb-1 lg:pb-0 ${
+            className={`flex flex-row lg:items-stretch [@media(pointer:fine)]:items-stretch lg:flex-col [@media(pointer:fine)]:flex-col gap-3 min-w-max lg:min-w-0 [@media(pointer:fine)]:min-w-0 pb-1 lg:pb-0 [@media(pointer:fine)]:pb-0 ${
               mobileBottomExpanded || isMobile ? 'items-start content-start lg:gap-4' : 'flex-1 items-end lg:gap-4'
             }`}
           >
@@ -3831,13 +3830,13 @@ export default function App() {
         </div>
       </main>
 
-      <footer className="fixed bottom-0 left-0 right-0 z-30 lg:relative lg:bottom-auto lg:left-auto lg:right-auto border-t border-stone-800/50 bg-black/92 backdrop-blur-xl pb-[min(max(env(safe-area-inset-bottom),0px),8px)] shadow-[0_-8px_24px_rgba(0,0,0,0.65)]">
+      <footer className="fixed bottom-0 left-0 right-0 z-30 [@media(pointer:fine)]:static lg:relative [@media(pointer:fine)]:relative lg:bottom-auto [@media(pointer:fine)]:bottom-auto lg:left-auto [@media(pointer:fine)]:left-auto lg:right-auto [@media(pointer:fine)]:right-auto border-t border-stone-800/50 bg-black/92 [@media(pointer:fine)]:bg-black/60 backdrop-blur-xl pb-[min(max(env(safe-area-inset-bottom),0px),8px)] [@media(pointer:fine)]:pb-0 shadow-[0_-8px_24px_rgba(0,0,0,0.65)] [@media(pointer:fine)]:shadow-none">
         <div
-          className={`w-full px-2 py-2 lg:px-4 lg:py-4 ${
+          className={`w-full px-2 py-2 lg:px-4 [@media(pointer:fine)]:px-4 lg:py-4 [@media(pointer:fine)]:py-4 ${
             isMobile && isFullscreen
               ? 'grid grid-cols-12 gap-2'
               : 'flex items-center justify-center gap-2 lg:gap-6 overflow-x-auto scrollbar-hide'
-          } lg:flex lg:items-center lg:justify-center lg:gap-6`}
+          } lg:flex [@media(pointer:fine)]:flex lg:items-center [@media(pointer:fine)]:items-center lg:justify-center [@media(pointer:fine)]:justify-center lg:gap-6 [@media(pointer:fine)]:gap-6`}
         >
           <div className={`relative ${isMobile && isFullscreen ? 'col-[1/4] row-[1/2]' : 'shrink-0'}`}>
             <button
@@ -4176,8 +4175,3 @@ export default function App() {
     </div>
   );
 }
-
-
-
-
-

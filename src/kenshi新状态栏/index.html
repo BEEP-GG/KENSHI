@@ -649,6 +649,8 @@
 
       .tooltip-action-row {
         margin: 8px 0 10px;
+        pointer-events: auto;
+        user-select: none;
       }
 
       .tooltip-forget-btn {
@@ -659,6 +661,8 @@
         border-radius: 2px;
         cursor: pointer;
         font-size: 0.9em;
+        pointer-events: auto;
+        touch-action: manipulation;
       }
 
       .tooltip-forget-btn:hover {
@@ -1961,6 +1965,28 @@
         );
       }
 
+      const pendingOperations = new Set();
+
+      async function withOperationLock(key, action) {
+        if (pendingOperations.has(key)) return;
+        pendingOperations.add(key);
+        try {
+          return await action();
+        } finally {
+          pendingOperations.delete(key);
+        }
+      }
+
+      function getEditableMvuData(option) {
+        const mvuData = Mvu.getMvuData(option) || {};
+        if (!_.get(mvuData, 'stat_data')) {
+          const rawVars = getAllVariables();
+          const fallbackData = _.get(rawVars, 'stat_data', {});
+          _.set(mvuData, 'stat_data', _.isEmpty(fallbackData) ? {} : _.cloneDeep(fallbackData));
+        }
+        return mvuData;
+      }
+
       function getMainControllerData(data) {
         const squad = getMainSquadData(data);
         const members = _.get(squad, '成员', {});
@@ -2002,7 +2028,7 @@
         };
       }
 
-      function buildCharHTML(data, isMain = false, entityType = 'current', entityName = '') {
+      function buildCharHTML(data, isMain = false, entityType = 'current', entityName = '', squadName = '') {
         if (!data || typeof data !== 'object') {
           const emptyText = entityType === 'current' ? '暂无主控' : '角色数据待初始化';
           return `<div style='padding:20px; text-align:center; color:#666;'>${emptyText}</div>`;
@@ -2115,13 +2141,16 @@
         const negativeEffects = _.get(data, '负面效果', {});
         const relationData = _.get(data, '人际关系', {});
         const canForgetRelation = entityType === 'current' || entityType === 'squad';
+        const encodedRelationEntityType = encodeURIComponent(String(entityType || ''));
+        const encodedRelationEntityName = encodeURIComponent(String(entityName || ''));
+        const encodedRelationSquadName = encodeURIComponent(String(squadName || ''));
         const relationEntries = Object.entries(relationData)
           .filter(([name]) => String(name || '').trim() !== '')
           .map(([name, value]) => {
             const escapedName = _.escape(String(name));
             const encodedName = encodeURIComponent(String(name));
             const forgetAction = canForgetRelation
-              ? `<div class="tooltip-action-row"><button type="button" class="tooltip-forget-btn relation-forget-btn" data-relation-encoded="${encodedName}">遗忘</button></div>`
+              ? `<div class="tooltip-action-row"><button type="button" class="tooltip-forget-btn relation-forget-btn" data-relation-encoded="${encodedName}" data-entity-encoded="${encodedRelationEntityType}" data-name-encoded="${encodedRelationEntityName}" data-squad-encoded="${encodedRelationSquadName}">遗忘</button></div>`
               : '';
             if (value && typeof value === 'object') {
               const detailLines = Object.entries(value)
@@ -3174,6 +3203,7 @@
         let pendingOtherDeleteName = '';
         let pendingMissionDeleteName = '';
         let pendingRelationDeleteName = '';
+        let pendingRelationDeleteEntity = null;
         let pendingSquadDeleteName = '';
         let pendingStrongholdDeleteName = '';
         let pendingSquadMergeSource = '';
@@ -3384,6 +3414,13 @@
           pendingOtherDeleteName = '';
           pendingMissionDeleteName = '';
           pendingRelationDeleteName = name || '';
+          pendingRelationDeleteEntity =
+            pendingRelationDeleteEntity || (currentModalEntity ? { ...currentModalEntity } : null);
+          if (typeof window.hideKenshiTooltip === 'function') {
+            window.hideKenshiTooltip();
+          } else {
+            $('#tooltip').removeClass('tooltip-interactive').hide();
+          }
           $('#confirm-input').val('').hide();
           $('#confirm-modal .confirm-title').text('确认遗忘人际关系');
           $('#confirm-modal .confirm-title')
@@ -3565,17 +3602,17 @@
           }
         }
 
-        async function deleteSquadRelation(relationName) {
+        async function deleteSquadRelation(relationName, relationEntity = null) {
+          const targetEntity = relationEntity || currentModalEntity;
           if (
             !relationName ||
-            !currentModalEntity ||
-            (currentModalEntity.entityType !== 'current' && currentModalEntity.entityType !== 'squad')
+            !targetEntity ||
+            (targetEntity.entityType !== 'current' && targetEntity.entityType !== 'squad')
           )
             return;
-          const { entityType, entityName, squadName } = currentModalEntity;
-          if (!entityName) return;
+          const { entityType, entityName, squadName } = targetEntity;
           const option = { type: 'message', message_id: getCurrentMessageId() };
-          const mvuData = Mvu.getMvuData(option) || {};
+          const mvuData = getEditableMvuData(option);
           const basePath = getCharacterBasePath(mvuData, entityType, entityName, squadName);
           if (!basePath) return;
           const relationPath = [...basePath, '人际关系'];
@@ -4180,23 +4217,25 @@
         window.moveOtherToView = moveOtherToView;
 
         async function createSquad() {
-          const option = { type: 'message', message_id: getCurrentMessageId() };
-          const mvuData = Mvu.getMvuData(option) || {};
-          const statData = _.get(mvuData, 'stat_data', {});
-          const squadData = _.get(statData, '小队成员', {});
-          let index = 1;
-          while (squadData[`小队${index}`]) index += 1;
-          _.set(mvuData, ['stat_data', '小队成员', `小队${index}`], {
-            金钱: 0,
-            所处位置: {
-              区域: '未知区域',
-              城镇: '未知城镇',
-            },
-            成员: {},
-            视野: {},
+          await withOperationLock('createSquad', async () => {
+            const option = { type: 'message', message_id: getCurrentMessageId() };
+            const mvuData = getEditableMvuData(option);
+            const statData = _.get(mvuData, 'stat_data', {});
+            const squadData = _.get(statData, '小队成员', {});
+            let index = 1;
+            while (squadData[`小队${index}`]) index += 1;
+            _.set(mvuData, ['stat_data', '小队成员', `小队${index}`], {
+              金钱: 0,
+              所处位置: {
+                区域: '未知区域',
+                城镇: '未知城镇',
+              },
+              成员: {},
+              视野: {},
+            });
+            await Mvu.replaceMvuData(mvuData, option);
+            update();
           });
-          await Mvu.replaceMvuData(mvuData, option);
-          update();
         }
 
         async function createStronghold() {
@@ -4261,32 +4300,29 @@
         }
 
         async function setMainController(squadName, memberName) {
-          const settings = loadSettings();
           const nextSquadName = String(squadName || '').trim();
-          settings[SETTINGS_KEYS.MAIN_SQUAD] = nextSquadName;
           const nextControllerName = String(memberName || '').trim();
-          settings[SETTINGS_KEYS.MAIN_CONTROLLER] = nextControllerName || NO_MAIN_CONTROLLER_TOKEN;
-          saveSettings(settings);
+          await withOperationLock(`setMainController:${nextSquadName}:${nextControllerName}`, async () => {
+            const option = { type: 'message', message_id: getCurrentMessageId() };
+            const mvuData = getEditableMvuData(option);
+            const oldSquadName = getMainSquadName(_.get(mvuData, 'stat_data', {}));
 
-          const option = { type: 'message', message_id: getCurrentMessageId() };
-          const mvuData = Mvu.getMvuData(option) || {};
-          if (!_.get(mvuData, 'stat_data')) {
-            const rawVars = getAllVariables();
-            const fallbackData = _.get(rawVars, 'stat_data', {});
-            if (!_.isEmpty(fallbackData)) {
-              _.set(mvuData, 'stat_data', fallbackData);
+            const settings = loadSettings();
+            settings[SETTINGS_KEYS.MAIN_SQUAD] = nextSquadName;
+            settings[SETTINGS_KEYS.MAIN_CONTROLLER] = nextControllerName || NO_MAIN_CONTROLLER_TOKEN;
+            saveSettings(settings);
+
+            _.set(mvuData, ['stat_data', '主控'], nextSquadName);
+            await Mvu.replaceMvuData(mvuData, option);
+
+            const latestStatData = _.get(mvuData, 'stat_data', {});
+            const latestControllerName = getMainControllerName(latestStatData);
+            await syncMainPerspectiveWorldBook(latestControllerName, nextSquadName);
+            if (oldSquadName !== nextSquadName) {
+              appendMainPerspectiveSwitchText(nextSquadName, latestControllerName);
             }
-          }
-          const oldSquadName = getMainSquadName(_.get(mvuData, 'stat_data', {}));
-          _.set(mvuData, ['stat_data', '主控'], nextSquadName);
-          await Mvu.replaceMvuData(mvuData, option);
-
-          const latestStatData = _.get(mvuData, 'stat_data', {});
-          await syncMainPerspectiveWorldBook(getMainControllerName(latestStatData), nextSquadName);
-          if (oldSquadName !== nextSquadName) {
-            appendMainPerspectiveSwitchText(nextSquadName, getMainControllerName(latestStatData));
-          }
-          update();
+            update();
+          });
         }
 
         async function deleteSquad(squadName) {
@@ -4550,14 +4586,16 @@
         $(document).on('click', '.relation-forget-btn', function (e) {
           e.preventDefault();
           e.stopPropagation();
-          if (
-            !currentModalEntity ||
-            (currentModalEntity.entityType !== 'current' && currentModalEntity.entityType !== 'squad')
-          )
+          const entityType = decodeURIComponent(String($(this).attr('data-entity-encoded') || '').trim());
+          const entityName = decodeURIComponent(String($(this).attr('data-name-encoded') || '').trim());
+          const squadName = decodeURIComponent(String($(this).attr('data-squad-encoded') || '').trim());
+          const relationEntity = entityType ? { entityType, entityName, squadName } : currentModalEntity;
+          if (!relationEntity || (relationEntity.entityType !== 'current' && relationEntity.entityType !== 'squad'))
             return;
           const encoded = String($(this).attr('data-relation-encoded') || '').trim();
           const relationName = encoded ? decodeURIComponent(encoded) : '';
           if (!relationName) return;
+          pendingRelationDeleteEntity = relationEntity;
           openRelationDeleteConfirm(relationName);
         });
         $('#other-list').on('click', '.other-card-btn', function (e) {
@@ -4695,7 +4733,7 @@
           } else if (pendingMissionDeleteName) {
             await deleteMissionEntry(pendingMissionDeleteName);
           } else if (pendingRelationDeleteName) {
-            await deleteSquadRelation(pendingRelationDeleteName);
+            await deleteSquadRelation(pendingRelationDeleteName, pendingRelationDeleteEntity);
           } else if (window.pendingMoveName) {
             // 处理移动操作
             if (window.pendingMoveTarget === 'view') {
@@ -5043,7 +5081,16 @@
           tip.hide();
         }
 
+        window.hideKenshiTooltip = function () {
+          tipPinned = false;
+          tipOwner = null;
+          hideTip();
+        };
+
         $(document)
+          .on('pointerdown mousedown mouseup dblclick touchstart touchend', '#tooltip, #tooltip *', function (e) {
+            e.stopPropagation();
+          })
           .on('mouseenter', '.has-tooltip', function (e) {
             if (tipPinned) return;
             const html = $(this).attr('data-tooltip-html');
