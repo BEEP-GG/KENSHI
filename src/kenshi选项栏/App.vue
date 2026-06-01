@@ -367,20 +367,24 @@ function getCurrentCharacterData(): Record<string, any> | null {
   return selectedActor.value?.data ?? getMainSquadData(getVariableData())?.成员?.[selectedActorName.value] ?? null;
 }
 
+function calculateAttributeModifier(attributeValue: number): number {
+  return Math.max(0, Math.ceil((attributeValue - 25) / 10));
+}
+
 function getAttributeModifier(attributeName: string, characterData: Record<string, any> | null): number {
   const attrKey = ATTRIBUTE_KEY_MAP[attributeName];
-  const rawAttr = attrKey
-    ? (characterData?.属性?.[attrKey] ?? characterData?.属性?.[attributeName])
-    : characterData?.属性?.[attributeName];
+  if (!attrKey) return 0;
+
+  const rawAttr = characterData?.属性?.[attrKey] ?? characterData?.属性?.[attributeName];
 
   if (typeof rawAttr === 'number') {
-    return Math.floor((rawAttr - 20) / 10);
+    return calculateAttributeModifier(rawAttr);
   }
 
   const baseValue = Number(rawAttr?.基础 ?? 30) || 0;
   const manualBonusValue = Number(rawAttr?.手动加成 ?? 0) || 0;
   const bonusValue = Number(rawAttr?.加成 ?? 0) || 0;
-  return Math.floor((baseValue + manualBonusValue + bonusValue - 20) / 10);
+  return calculateAttributeModifier(baseValue + manualBonusValue + bonusValue);
 }
 
 function getCleanOptionText(text: string): string {
@@ -396,7 +400,8 @@ function buildJudgementMessage(
   total: number,
   outcome: string,
 ): string {
-  const formula = `${baseRoll}${modifier >= 0 ? '+' : ''}${modifier}(${meta.attribute})`;
+  const formula =
+    modifier === 0 ? `${baseRoll}` : `${baseRoll}${modifier >= 0 ? '+' : ''}${modifier}(${meta.attribute})`;
   return `${actorName}. 选择了：${getCleanOptionText(opt.text)}\n\n<Destiny>\n行为: ${meta.behavior}\n目的:"${meta.purpose}"\n类型:"${meta.attribute}"\n基础骰:${baseRoll}\n掷骰公式: ${formula}\n结果：${total}\nDC: ${meta.dc}\n结果: "${outcome}"\n</Destiny>`;
 }
 
