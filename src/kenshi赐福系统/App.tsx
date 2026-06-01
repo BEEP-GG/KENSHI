@@ -1,4 +1,4 @@
-﻿import { waitUntil } from 'async-wait-until';
+import { waitUntil } from 'async-wait-until';
 import _ from 'lodash';
 import {
   Activity,
@@ -1072,13 +1072,38 @@ const godsData: GodTheme[] = [
       },
       {
         id: 'beep_2',
-        title: '迫害妄想狙击手',
-        description: '你总觉得有人要害你，因此练就了鹰一般的锐利视力，但你那多疑的眼神和鬼祟的举止让所有人都躲着你。',
-        rarity: '稀有',
+        title: '被害妄想症',
+        description:
+          '你总觉得废土的风声、脚步和沉默都藏着恶意，因此总能提前察觉细微异常；但长期紧绷的神经也让你难以真正放松承受压力。',
+        rarity: '普通',
         icon: <Eye className="w-8 h-8 text-lime-300" />,
         stats: [
-          { name: '感知', value: 9 },
-          { name: '魅力', value: -9 },
+          { name: '感知', value: 6 },
+          { name: '韧性', value: -2 },
+        ],
+      },
+      {
+        id: 'beep_23',
+        title: '幻听者',
+        description:
+          '你总能听到别人未曾出口的念头：恐惧、贪婪、犹豫或杀意都会像耳语一样钻进脑海。那究竟是真正的心声，还是你幻想出来的回音，无人能够证明；但你确实因此更敏锐，也更难维持清晰理智。',
+        rarity: '史诗',
+        icon: <Eye className="w-8 h-8 text-lime-400" />,
+        stats: [
+          { name: '感知', value: 10 },
+          { name: '智力', value: -6 },
+        ],
+      },
+      {
+        id: 'beep_24',
+        title: '废土洁癖症',
+        description:
+          '在这个世界上，你总是维持整洁：擦净刀柄、整理衣角、避开污水，甚至能把破布披出体面感。别人会被你的干净气质吸引，却也很难理解你为何把有限脑力耗在清洁仪式上。',
+        rarity: '普通',
+        icon: <Shield className="w-8 h-8 text-lime-300" />,
+        stats: [
+          { name: '魅力', value: 8 },
+          { name: '智力', value: -6 },
         ],
       },
       {
@@ -1139,7 +1164,7 @@ const godsData: GodTheme[] = [
         id: 'beep_8',
         title: '侧步巧摔',
         description:
-          '在进行刀法腾挪或战术闪退时，由于步法错乱而极其狼狈地向前绊倒。但这种极具喜剧效果且出其不意的倒地姿势，却往往能奇迹般偏开头颅避开致命重斩，甚至刚好摔出去绊倒急停的追逐强敌。',
+          '在进行刀法腾挪或战术闪退时，由于步法错乱而极其狼狈地向前绊倒。但这种喜剧效果且出其不意的倒地姿势，却往往能奇迹般偏开头颅避开致命重斩，甚至刚好摔出去绊倒急停的追逐强敌。',
         rarity: '普通',
         icon: <Activity className="w-8 h-8 text-lime-300" />,
         stats: [{ name: '敏捷', value: 5 }],
@@ -1148,7 +1173,7 @@ const godsData: GodTheme[] = [
         id: 'beep_9',
         title: '至强虚架',
         description:
-          '大张旗鼓地摆出充满神秘威严的至强武学起手姿势。用不可一世的至强傲气震慑并吸引敌方的全副眼光，趁其一头雾水并试图防备你这旷世绝学的电光石火间突然出手。',
+          '大张旗鼓地摆出充满神秘威严的至强武学起手姿势。用不可一世的至强傲气震慑并吸引敌方的全副眼光，使对方捉摸不透不敢轻易出手。',
         rarity: '史诗',
         icon: <Smile className="w-8 h-8 text-lime-400" />,
         stats: [
@@ -1160,7 +1185,7 @@ const godsData: GodTheme[] = [
         id: 'beep_10',
         title: '乱阵疯魔本能舞',
         description:
-          '在退无可退的极危刹那，触发最纯粹惊慌的乱抡自保。闭上双眼拼命将手中兵刃转成风车般的无套路狂抡，由于在混沌心境中连你都全然不知下一寸劈向哪里，即便是宗师武学也常常无从剖解应对。',
+          '在退无可退的极危刹那，触发最纯粹惊慌的乱抡自保。闭上双眼拼命将手中兵刃转成风车般的无套路狂抡，连你都全然不知下一寸劈向哪里，即便是宗师武学也常常无从剖解应对。',
         rarity: '传说',
         icon: <Wind className="w-8 h-8 text-green-500" />,
         stats: [
@@ -1171,11 +1196,12 @@ const godsData: GodTheme[] = [
       {
         id: 'beep_11',
         title: '附魔师的元素之力',
-        description: '你坚信自己掌握了元素附魔，挥刃时总带着华丽幻光。威慑感上升，但心神也更容易被炫目幻象分散。',
+        description:
+          '你的武器在挥舞或射击时，会自动附带炫酷的烈焰、雷电、冰霜等多种属性拖尾特效随机触发。虽然完全没有任何额外伤害，但耍帅程度堪称第一。威慑感上升，但心神也更容易被炫目幻象分散。',
         rarity: '史诗',
         icon: <Zap className="w-8 h-8 text-lime-400" />,
         stats: [
-          { name: '魅力', value: 4 },
+          { name: '魅力', value: 6 },
           { name: '感知', value: 2 },
           { name: '韧性', value: -2 },
         ],
@@ -1183,7 +1209,8 @@ const godsData: GodTheme[] = [
       {
         id: 'beep_12',
         title: '自带BGM的幸存者',
-        description: '你的脑海里总在播放激昂战歌。节奏感让出手更果断，但也会偶尔上头冒进。',
+        description:
+          '你做任何事情都会自带背景音乐。无论是优势战斗、色情事件、悲伤剧情、捡到好东西还是与他人相爱，都会响起对应的BGM和歌声，而且所有人都听得到。',
         rarity: '普通',
         icon: <Activity className="w-8 h-8 text-green-400" />,
         stats: [
@@ -1219,13 +1246,38 @@ const godsData: GodTheme[] = [
       {
         id: 'beep_15',
         title: '异次元口袋',
-        description: '你总能从“口袋”里掏出奇怪但刚好有用的东西。临场应变变快，但专注度会被杂念拉低。',
+        description:
+          '你的背包底层仿佛连接着一个奇怪的异次元垃圾场。你时不时会在包里发现一些毫无价值且离谱的物品，比如某位圣骑士的粉色情书，或根本不属于这个世界的物品，但专注度会被杂念拉低。',
         rarity: '普通',
         icon: <Hexagon className="w-8 h-8 text-lime-400" />,
         stats: [
           { name: '感知', value: 3 },
           { name: '智力', value: 2 },
           { name: '韧性', value: -2 },
+        ],
+      },
+      {
+        id: 'beep_21',
+        title: '动物交流',
+        description:
+          '动物都喜欢你，并且你可以和它们交流。即使是喙嘴兽、野狗和沼泽猛禽，也会把你当成值得认真听两句的奇怪朋友，你们之间能互相听懂对方的话。',
+        rarity: '史诗',
+        icon: <Users className="w-8 h-8 text-lime-300" />,
+        stats: [
+          { name: '感知', value: 4 },
+          { name: '魅力', value: 10 },
+        ],
+      },
+      {
+        id: 'beep_22',
+        title: '黑暗料理大师',
+        description:
+          '你做出的料理卖相狰狞、气味诡异，端上桌时像刚从酸液池里捞出来的失败实验品。但只要鼓起勇气尝上一口，就会发现味道好吃到令人身处天堂甚至能治愈伤口，让人怀疑自己的眼睛和鼻子才是出了问题。',
+        rarity: '史诗',
+        icon: <WineOff className="w-8 h-8 text-lime-300" />,
+        stats: [
+          { name: '智力', value: 8 },
+          { name: '魅力', value: -3 },
         ],
       },
       {

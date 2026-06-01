@@ -4216,20 +4216,37 @@
         }
         window.moveOtherToView = moveOtherToView;
 
+        function getMainSquadLocation(statData, fallbackData = {}) {
+          const mainSquad = getMainSquadData(statData) || {};
+          const fallbackWorld = _.get(fallbackData, '世界', {});
+          const region = _.get(
+            mainSquad,
+            '区域',
+            _.get(mainSquad, '所处位置.区域', _.get(fallbackWorld, '区域', '未知区域')),
+          );
+          const town = _.get(
+            mainSquad,
+            '城镇',
+            _.get(mainSquad, '所处位置.城镇', _.get(fallbackWorld, '城镇', '荒野')),
+          );
+          return {
+            区域: String(region || '未知区域').trim() || '未知区域',
+            城镇: String(town || '荒野').trim() || '荒野',
+          };
+        }
+
         async function createSquad() {
           await withOperationLock('createSquad', async () => {
             const option = { type: 'message', message_id: getCurrentMessageId() };
             const mvuData = getEditableMvuData(option);
             const statData = _.get(mvuData, 'stat_data', {});
             const squadData = _.get(statData, '小队成员', {});
+            const currentLocation = getMainSquadLocation(statData, _.get(getAllVariables(), 'stat_data', {}));
             let index = 1;
             while (squadData[`小队${index}`]) index += 1;
             _.set(mvuData, ['stat_data', '小队成员', `小队${index}`], {
               金钱: 0,
-              所处位置: {
-                区域: '未知区域',
-                城镇: '未知城镇',
-              },
+              所处位置: currentLocation,
               成员: {},
               视野: {},
             });

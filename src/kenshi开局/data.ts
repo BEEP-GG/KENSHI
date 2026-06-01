@@ -1697,19 +1697,15 @@ export const TRAITS = {
     {
       id: 'tax_paranoia',
       title: '被迫害妄想症',
-      description: '你总觉得联合城的收税官躲在石头后面盯着你的钱包，每天都在数自己的开销。',
-      category: 'life',
-    },
-    {
-      id: 'animal_friend_oneway',
-      title: '动物之友（单向）',
-      description: '你总想去摸摸长颈鹿（喙嘴兽）和野狗的脑袋，完全忽略了它们只想把你当晚餐的事实。',
+      description:
+        '你总觉得废土的风声、脚步和沉默都藏着恶意，因此总能提前察觉细微异常；但长期紧绷的神经也让你难以真正放松承受压力。感知 +6，韧性 -2。',
       category: 'life',
     },
     {
       id: 'wasteland_clean_freak',
       title: '废土洁癖症',
-      description: '在苍穹之下皆是泥骨的废土，你居然有洁癖。别人打架是为了生存，你打架是为了抢肥皂。',
+      description:
+        '在血泥、酸雨和腐臭铁锈之间，你仍执拗地维持整洁：擦净刀柄、整理衣角、避开污水，甚至能把破布披出体面感。别人会被你的干净气质吸引，却也很难理解你为何把有限脑力耗在清洁仪式上。魅力 +8，智力 -6。',
       category: 'life',
     },
     {
@@ -1721,13 +1717,15 @@ export const TRAITS = {
     {
       id: 'hallucination_clicker',
       title: '幻听者',
-      description: '你总能听到天空中传来“咔哒咔哒”的声音（鼠标右键点击声），并下意识地跟着声音走。',
+      description:
+        '你总能听到别人未曾出口的念头：恐惧、贪婪、犹豫或杀意都会像耳语一样钻进脑海。那究竟是真正的心声，还是你幻想出来的回音，无人能够证明；但你确实因此更敏锐，也更难维持清晰理智。感知 +10，智力 -6。',
       category: 'life',
     },
     {
       id: 'dark_chef',
-      title: '黑暗料理界新星',
-      description: '你能把高级肉块和绿苹果炖出生化武器的味道，队友宁愿去啃仙人掌也不吃你的饭。',
+      title: '黑暗料理大师',
+      description:
+        '你做出的料理卖相狰狞、气味诡异，端上桌时像刚从酸液池里捞出来的失败实验品。但只要鼓起勇气尝上一口，就会发现味道好吃到令人身处天堂甚至能治愈伤口，让人怀疑自己的眼睛和鼻子才是出了问题。',
       category: 'life',
     },
     {
@@ -1778,12 +1776,6 @@ export const TRAITS = {
       id: 'camera_victim',
       title: '隐形摄影机',
       description: '你总觉得有个浮空的摄像头在以奇怪的俯视角度偷窥你，换衣服时你会对着空气竖中指。',
-      category: 'fun',
-    },
-    {
-      id: 'token_king',
-      title: 'TOKEN大王',
-      description: '你不喜欢说话和做事，因为那会消耗很多token。',
       category: 'fun',
     },
     {
@@ -1886,7 +1878,14 @@ export const TRAITS = {
       id: 'pocket_dimension_junkyard',
       title: '异次元口袋',
       description:
-        '你的背包底层仿佛连接着一个奇怪的异次元垃圾场。你时不时会在包里发现一些毫无价值且离谱的物品，比如某位圣骑士的粉色情书，或一块画着笑脸且怎么都擦不掉的石头。',
+        '你的背包底层仿佛连接着一个奇怪的异次元垃圾场。你时不时会在包里发现一些毫无价值且离谱的物品，比如某位圣骑士的粉色情书，或根本不属于这个世界的物品。',
+      category: 'fun',
+    },
+    {
+      id: 'animal_communication',
+      title: '动物交流',
+      description:
+        '动物都喜欢你，并且你可以和它们交流。即使是喙嘴兽、野狗和沼泽猛禽，也会把你当成值得认真听两句的奇怪朋友，你们之间能互相听懂对方的话。',
       category: 'fun',
     },
   ],
