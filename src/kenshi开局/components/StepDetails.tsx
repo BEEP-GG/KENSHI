@@ -157,7 +157,7 @@ const ATTRIBUTE_LABEL_TO_KEY: Record<string, Attribute> = {
 };
 
 const UNKNOWN_DREAM_SCENARIO_ID = 'unknown_dream';
-const UNKNOWN_DREAM_UID = 749;
+const UNKNOWN_DREAM_UID = 595473;
 const UTILITY_TOOL_OPTIONS = [
   {
     key: 'bugModeUid881',
@@ -1017,14 +1017,14 @@ ${names}`;
         const content = buildMainPerspectiveWorldbookContent();
         await updateWorldbookWith(wbName, entries =>
           entries.map(entry => {
-            if (Number(entry.uid) === 953) {
+            if (Number(entry.uid) === 524087) {
               return { ...entry, enabled: true, content };
             }
             return entry;
           }),
         );
       } catch (error) {
-        console.error('同步主控视角 UID953 失败', error);
+        console.error('同步主控视角 UID524087 失败', error);
       }
     };
 
@@ -2489,7 +2489,7 @@ ${names}`;
                 placeholder="例如：小队1、流亡者、第一远征队"
               />
               <div className="text-[10px] text-white/40 mt-1">
-                启程后会写入主控变量、小队名称，并同步到 953 世界书的小队视角。
+                启程后会写入主控变量、小队名称，并同步到 524087 世界书的小队视角。
               </div>
             </div>
 

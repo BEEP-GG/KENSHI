@@ -30,32 +30,32 @@ export const StepScenario: React.FC<StepScenarioProps> = ({ data, updateData, on
   const [gridMinHeight, setGridMinHeight] = React.useState<number | null>(null);
 
   const SCENARIO_WB_UIDS: Record<string, number> = {
-    wanderer: 558,
-    holy_sword: 559,
-    rock_bottom: 560,
-    merchant: 561,
-    officer_son: 562,
-    slave: 574,
-    male_slave: 563,
-    cannibal_hunter: 564,
-    pirate_heir: 565,
-    cannibal_unifier: 566,
-    brotherhood_prisoner: 567,
-    freedom_seekers: 568,
-    mongrel_wanderer: 569,
-    holy_commoner: 570,
-    dark_daughter: 571,
-    kral_choice: 572,
-    fish_island_refugee: 573,
-    bast_stray: 549,
-    unknown_dream: 749,
-    heretic_fire: 959,
-    slave_master: 798,
-    human_torso: 799,
-    monster_hunter: 800,
-    apex_hunter: 854,
-    false_savior: 834,
-    holy_crusade: 909,
+    wanderer: 160640,
+    holy_sword: 195144,
+    rock_bottom: 614353,
+    merchant: 474264,
+    officer_son: 268439,
+    slave: 68552,
+    male_slave: 656370,
+    cannibal_hunter: 480503,
+    pirate_heir: 455716,
+    cannibal_unifier: 912279,
+    brotherhood_prisoner: 729534,
+    freedom_seekers: 853786,
+    mongrel_wanderer: 275410,
+    holy_commoner: 533944,
+    dark_daughter: 364432,
+    kral_choice: 973796,
+    fish_island_refugee: 423465,
+    bast_stray: 582412,
+    unknown_dream: 595473,
+    heretic_fire: 442538,
+    slave_master: 763078,
+    human_torso: 80382,
+    monster_hunter: 710398,
+    apex_hunter: 722734,
+    false_savior: 399988,
+    holy_crusade: 240321,
   };
   const ALL_SCENARIO_UIDS = Object.values(SCENARIO_WB_UIDS);
   const ALL_SCENARIO_UID_SET = new Set(ALL_SCENARIO_UIDS);
@@ -71,22 +71,22 @@ export const StepScenario: React.FC<StepScenarioProps> = ({ data, updateData, on
       await updateWorldbookWith(wbName, entries =>
         entries.map(entry => {
           const entryUid = Number(entry.uid);
-          if (entryUid === 491) {
+          if (entryUid === 335773) {
             return { ...entry, enabled: scenarioId === 'false_savior' };
           }
-          if (entryUid === 900) {
+          if (entryUid === 791082) {
             return { ...entry, enabled: scenarioId !== 'false_savior' };
           }
-          if (entryUid === 833) {
+          if (entryUid === 545258) {
             return { ...entry, enabled: scenarioId !== 'false_savior' };
           }
-          if (entryUid === 838) {
+          if (entryUid === 437911) {
             return { ...entry, enabled: scenarioId !== 'false_savior' };
           }
-          if (entryUid === 835) {
+          if (entryUid === 494496) {
             return { ...entry, enabled: scenarioId !== 'officer_son' };
           }
-          if (entryUid === 854) {
+          if (entryUid === 722734) {
             return { ...entry, enabled: scenarioId === 'apex_hunter' };
           }
           if (ALL_SCENARIO_UID_SET.has(entryUid)) {

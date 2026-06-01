@@ -377,9 +377,10 @@ function getAttributeModifier(attributeName: string, characterData: Record<strin
     return Math.floor((rawAttr - 20) / 10);
   }
 
-  const baseValue = Number(rawAttr?.基础 ?? 30);
-  const bonusValue = Number(rawAttr?.加成 ?? 0);
-  return Math.floor((baseValue + bonusValue - 20) / 10);
+  const baseValue = Number(rawAttr?.基础 ?? 30) || 0;
+  const manualBonusValue = Number(rawAttr?.手动加成 ?? 0) || 0;
+  const bonusValue = Number(rawAttr?.加成 ?? 0) || 0;
+  return Math.floor((baseValue + manualBonusValue + bonusValue - 20) / 10);
 }
 
 function getCleanOptionText(text: string): string {

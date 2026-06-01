@@ -10,7 +10,7 @@ interface StepRaceProps {
 }
 
 const UNKNOWN_DREAM_SCENARIO_ID = 'unknown_dream';
-const UNKNOWN_DREAM_UID = 749;
+const UNKNOWN_DREAM_UID = 595473;
 const UNKNOWN_DREAM_CUSTOM_RACE_UID = 750;
 const CUSTOM_RACE_ID = 'custom_race';
 
