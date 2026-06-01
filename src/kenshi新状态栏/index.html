@@ -1479,11 +1479,6 @@
         return `当前登记据点是：${factionName}派系的【${name}】\n  -据点区域：${region}\n  -据点等级：Lv.${level} ${getStrongholdLevelTitle(level)}\n  -据点状态：${getStrongholdStatusByLevel(level)}\n  -据点统御：最高统御阶层称为【老大】\n  -据点防御：${defenseText}\n  -据点设施：${facilityText}\n  -据点人口：${Object.keys(members || {}).length}人\n  -据点财富：${getStrongholdWarehouseValue(stronghold)} Cats（仓库价值）`;
       }
 
-      function stripWorldbookRuntimeFields(entry) {
-        const { uid, ...rest } = entry || {};
-        return rest;
-      }
-
       async function syncStrongholdWorldBookEntry(name, stronghold, statData) {
         if (typeof window.getCharWorldbookNames !== 'function' || typeof window.updateWorldbookWith !== 'function')
           return;
@@ -1532,10 +1527,10 @@
               };
               if (existingIndex >= 0) {
                 nextEntries[existingIndex] = { ...nextEntries[existingIndex], ...patch };
-                return nextEntries.map(stripWorldbookRuntimeFields);
+                return nextEntries;
               }
               nextEntries.push(patch);
-              return nextEntries.map(stripWorldbookRuntimeFields);
+              return nextEntries;
             },
             { render: 'immediate' },
           );
@@ -1554,9 +1549,7 @@
           const wbName = charWorldbook.primary;
           if (!wbName) return;
           const entryName = `据点：${strongholdName}`;
-          await window.updateWorldbookWith(wbName, entries =>
-            entries.filter(entry => entry.name !== entryName).map(stripWorldbookRuntimeFields),
-          );
+          await window.updateWorldbookWith(wbName, entries => entries.filter(entry => entry.name !== entryName));
         } catch (error) {
           console.error('删除据点世界书失败', error);
         }
