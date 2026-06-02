@@ -162,53 +162,58 @@ const UTILITY_TOOL_OPTIONS = [
   {
     key: 'bugModeUid881',
     label: 'BUG模式',
-    uid: 881,
+    uid: 944141,
     description:
       '怎么欢乐怎么来，没有bug就捏造bug，把所有游戏bug都可以套过来，即“万物皆可BUG，特性无处不在”，请拥抱混乱。',
   },
   {
     key: 'machineTranslationWorldUid882',
     label: '机翻大世界',
-    uid: 882,
+    uid: 697213,
     description:
       '欢迎来到“机翻大世界”！本世界的所有语言协议均已损坏。所有对话、描述和名称都经过了一个极其廉价且充满错误的翻译软件进行处理。NPC们认为自己说话很正常，但实际上……祝你好运。',
   },
   {
     key: 'customCharacterNameUid883',
     label: '自定义角色名字',
-    uid: 883,
+    uid: 202872,
     description: '我希望这些角色名字，可以作为随机npc随机的出现在这个世界里，属性随机，种族随机。',
   },
-  { key: 'threeKingdomsCharacterNameUid884', label: '三国角色名字', uid: 884, description: '启用三国风格角色名字池。' },
+  {
+    key: 'threeKingdomsCharacterNameUid884',
+    label: '三国角色名字',
+    uid: 811397,
+    description: '启用三国风格角色名字池。',
+  },
   {
     key: 'celebrityCharacterNameUid885',
     label: '梁山好汉',
-    uid: 885,
+    uid: 437229,
     description: '启用梁山好汉风格角色名字池。',
   },
   {
     key: 'warhammerCharacterNameUid886',
     label: '战国七雄名字大全',
-    uid: 886,
+    uid: 88271,
     description: '启用战国七雄风格角色名字池。',
   },
   {
     key: 'cyberpunkCharacterNameUid887',
     label: '楚汉之争',
-    uid: 887,
+    uid: 131725,
     description: '启用楚汉之争风格角色名字池。',
   },
   {
     key: 'inflationUid889',
     label: '通货膨胀',
-    uid: 889,
+    uid: 54040,
     description:
       '世界经济数据库发生灾难性溢出。一个程序员在修改物价时，手滑多打了三个“0”。我们决定不修复它，并称之为“特色”。欢迎来到一个所有价格都上涨1000倍的废土。你问这合不合理？请看你的钱包，它非常不合理。',
   },
   {
     key: 'kenshiRandomNamesUid892',
     label: 'kenshi随机名字大全',
-    uid: 892,
+    uid: 890090,
     description: 'kenshiMOD的名字大全',
   },
 ] as const;
@@ -954,7 +959,7 @@ ${names}`;
       const content = buildUtilityCustomNamesWorldbookContent();
       await updateWorldbookWith(wbName, entries =>
         entries.map(entry => {
-          if (Number(entry.uid) === 883) {
+          if (Number(entry.uid) === 202872) {
             return { ...entry, enabled: Boolean(data.utilityTools.customCharacterNameUid883), content };
           }
           return entry;
@@ -1132,7 +1137,7 @@ ${names}`;
             const option = UTILITY_TOOL_OPTIONS.find(item => item.uid === uid);
             if (!option) return entry;
             const enabled = Boolean(data.utilityTools[option.key]);
-            if (uid === 883) {
+            if (uid === 202872) {
               return entry.enabled === enabled ? entry : { ...entry, enabled };
             }
             return entry.enabled === enabled ? entry : { ...entry, enabled };
@@ -2393,7 +2398,7 @@ ${names}`;
                         </div>
                       )}
 
-                      {expanded && option.uid === 883 && (
+                      {expanded && option.uid === 202872 && (
                         <div className="mt-2 space-y-2">
                           <textarea
                             value={data.utilityCustomNames}
