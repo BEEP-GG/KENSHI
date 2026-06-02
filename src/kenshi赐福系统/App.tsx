@@ -46,6 +46,22 @@ interface BlessingOption {
 
 const legendaryUnlockBlessingIds = ['okran_15', 'kral_16', 'narko_15', 'chitrin_15', 'yuri_15'];
 
+const upgradeBlessingChains = [
+  { from: '副肢痉挛', to: '副肢破茧' },
+  { from: '副肢破茧', to: '副肢暴君' },
+  { from: '血蜘蛛共生体(幼体)', to: '血蜘蛛共生体(成熟体)' },
+  { from: '血蜘蛛共生体(成熟体)', to: '血蜘蛛共生体(长者)' },
+] as const;
+
+const upgradePrerequisiteByTitle = Object.fromEntries(
+  upgradeBlessingChains.map(chain => [chain.to, chain.from]),
+) as Record<string, string>;
+
+const upgradeNextByTitle = Object.fromEntries(upgradeBlessingChains.map(chain => [chain.from, chain.to])) as Record<
+  string,
+  string
+>;
+
 interface GodTheme {
   id: string;
   name: string;
@@ -1083,6 +1099,18 @@ const godsData: GodTheme[] = [
         ],
       },
       {
+        id: 'beep_25',
+        title: '认知滤镜',
+        description:
+          '杀人对你而言不像夺走生命，更像是在敲碎玩偶、拆开糖果包装。你对暴力的认知被某种危险的滤镜扭曲了，因此下手更稳，却不太擅长进行复杂判断。',
+        rarity: '普通',
+        icon: <Skull className="w-8 h-8 text-lime-300" />,
+        stats: [
+          { name: '力量', value: 5 },
+          { name: '智力', value: -3 },
+        ],
+      },
+      {
         id: 'beep_23',
         title: '幻听者',
         description:
@@ -1486,14 +1514,43 @@ const godsData: GodTheme[] = [
       },
       {
         id: 'ken_12',
-        title: '血蜘蛛寄生共生体',
-        description: '你记得自己曾被血蜘蛛寄生后侥幸活下。那段噩梦让你的伤口愈合反应更顽强，但精神时常被饥饿幻觉啃噬。',
-        rarity: '史诗',
+        title: '血蜘蛛共生体(幼体)',
+        description:
+          '你记得自己曾被血蜘蛛幼体寄生后侥幸活下。它仍蛰伏在脊椎深处，与神经相连，带来敏锐感知与日复一日的隐痛；它真正的力量，似乎还远未被发掘。',
+        rarity: '普通',
         icon: <Bug className="w-8 h-8 text-cyan-300" />,
         stats: [
-          { name: '体质', value: 7 },
-          { name: '韧性', value: 3 },
-          { name: '智力', value: -4 },
+          { name: '感知', value: 8 },
+          { name: '体质', value: -10 },
+          { name: '魅力', value: -10 },
+        ],
+      },
+      {
+        id: 'ken_12b',
+        title: '血蜘蛛共生体(成熟体)',
+        description:
+          '脊椎里的血蜘蛛幼体已经长成成熟体。部分鲜红的蜘蛛肢体从你的背部刺出，力量在骨骼与肌肉间涌动；痛苦正在减轻，但它真正的潜能，似乎仍未完全苏醒。',
+        rarity: '史诗',
+        icon: <Bug className="w-8 h-8 text-cyan-400" />,
+        stats: [
+          { name: '力量', value: 6 },
+          { name: '体质', value: 6 },
+          { name: '魅力', value: -8 },
+        ],
+      },
+      {
+        id: 'ken_12c',
+        title: '血蜘蛛共生体(长者)',
+        description:
+          '寄生在你脊椎中的血蜘蛛已经完全成熟。鲜红而锋利的四个完整蜘蛛肢体从背后舒展开来，你不再感到痛苦，甚至能以本能驱使其他血蜘蛛；但随之而来的饥饿，也在啃噬你的理智。',
+        rarity: '传说',
+        icon: <Bug className="w-8 h-8 text-red-500" />,
+        stats: [
+          { name: '力量', value: 10 },
+          { name: '敏捷', value: 10 },
+          { name: '体质', value: 10 },
+          { name: '智力', value: -12 },
+          { name: '魅力', value: -12 },
         ],
       },
       {
@@ -2013,6 +2070,47 @@ export default function App() {
     return stats.map(stat => `${attrNameMap[stat.name]}${stat.value >= 0 ? '+' : ''}${stat.value}`).join('，');
   };
 
+  const getBlessingByTitle = (title: string) =>
+    godsData.flatMap(god => god.blessings).find(blessing => blessing.title === title);
+
+  const getEffectiveTraitTitles = (member: RuntimeSquadMember | undefined) => {
+    const titles = new Set(member?.traitTitles ?? []);
+    pickedBlessings
+      .filter(item => item.characterId === member?.id)
+      .forEach(item => {
+        const oldTitle = upgradePrerequisiteByTitle[item.blessing.title];
+        if (oldTitle) titles.delete(oldTitle);
+        titles.add(item.blessing.title);
+      });
+    return titles;
+  };
+
+  const getGuaranteedUpgradeBlessings = (god: GodTheme, allowedRarities: BlessingOption['rarity'][]) => {
+    const guaranteedTitles = new Set<string>();
+    runtimeSquad.forEach(member => {
+      const titles = getEffectiveTraitTitles(member);
+      titles.forEach(title => {
+        const nextTitle = upgradeNextByTitle[title];
+        const nextBlessing = nextTitle ? god.blessings.find(blessing => blessing.title === nextTitle) : undefined;
+        if (nextBlessing && allowedRarities.includes(nextBlessing.rarity)) guaranteedTitles.add(nextTitle);
+      });
+    });
+    return [...guaranteedTitles]
+      .map(title => god.blessings.find(blessing => blessing.title === title))
+      .filter(Boolean) as BlessingOption[];
+  };
+
+  const buildBlessingPoolWithGuaranteedUpgrades = (
+    god: GodTheme,
+    sourcePool: BlessingOption[],
+    allowedRarities: BlessingOption['rarity'][],
+  ) => {
+    const guaranteed = getGuaranteedUpgradeBlessings(god, allowedRarities);
+    const randomPool = sourcePool.filter(blessing => !guaranteed.some(item => item.id === blessing.id));
+    const randomCount = Math.max(0, 3 - guaranteed.length);
+    return [...guaranteed, ...[...randomPool].sort(() => 0.5 - Math.random()).slice(0, randomCount)].slice(0, 3);
+  };
+
   const applyBlessingsToMvu = async (messageId: number | 'latest' = resolveMessageId()) => {
     await waitGlobalInitialized('Mvu');
     await waitUntil(() => _.has(getVariables({ type: 'message', message_id: messageId }), 'stat_data'), {
@@ -2037,6 +2135,29 @@ export default function App() {
       const memberPath = `stat_data.小队成员.${squadName}.成员.${memberName}`;
       const memberData = _.get(mvuData, memberPath);
       if (!memberData || memberData === '待初始化') return;
+
+      const oldUpgradeTitle = upgradePrerequisiteByTitle[blessing.title];
+      if (oldUpgradeTitle) {
+        _.unset(mvuData, `${memberPath}.特质.${oldUpgradeTitle}`);
+        const oldBlessing = getBlessingByTitle(oldUpgradeTitle);
+        oldBlessing?.stats?.forEach(stat => {
+          const attrKey = attrKeyMap[stat.name];
+          if (!attrKey) return;
+          const attrPath = `${memberPath}.属性.${attrKey}`;
+          const currentAttr = _.get(mvuData, attrPath);
+          if (_.isPlainObject(currentAttr)) {
+            const currentManualBonus = Number(_.get(currentAttr, '手动加成', 0));
+            _.set(
+              mvuData,
+              `${attrPath}.手动加成`,
+              (Number.isFinite(currentManualBonus) ? currentManualBonus : 0) - stat.value,
+            );
+            return;
+          }
+          const currentValue = Number(currentAttr);
+          _.set(mvuData, attrPath, (Number.isFinite(currentValue) ? currentValue : 30) - stat.value);
+        });
+      }
 
       const traitPath = `${memberPath}.特质.${blessing.title}`;
       _.set(mvuData, traitPath, blessing.traitDescription || blessing.description || '');
@@ -2114,6 +2235,9 @@ export default function App() {
             yuri_9: `${roleName}的体侧裂开骨刺裂吻，形成可撕扯兵刃的异口`,
             yuri_10: `${roleName}的肋下增生出狰狞刺椎，能在格挡时夹咬敌兵`,
             yuri_11: `${roleName}的胸腹与前臂角质层增生为同心鳞甲，并出现偏振收缩反应，可偏导正面冲击`,
+            yuri_12: `${roleName}腋下与肋侧的肉芽开始抽搐鼓胀，深渊正在试探这具血肉能否孕出新的肢体`,
+            yuri_13: `${roleName}肋侧的畸形肉芽撕开皮肉破茧而出，短促副肢在血雾中学会撕扯与架绊`,
+            yuri_14: `${roleName}背脊与肋侧的副肢彻底暴长成畸变副臂，像深渊暴君般夺取这具身体的战斗本能`,
           };
           const mutationText = yuriMutationMap[blessing.id] || `${roleName}的血肉发生了诡异异变`;
           const godDisplayName = god.name;
@@ -2308,7 +2432,7 @@ export default function App() {
         ? [...god.blessings]
         : god.blessings.filter(b => allowedBySquad.includes(b.rarity));
     const fallbackPool = sourcePool.length > 0 ? sourcePool : [...god.blessings];
-    const randomBlessings = [...fallbackPool].sort(() => 0.5 - Math.random()).slice(0, 3);
+    const randomBlessings = buildBlessingPoolWithGuaranteedUpgrades(god, fallbackPool, allowedBySquad);
 
     setFixedBlessingPool(prev => ({ ...prev, [god.id]: randomBlessings }));
     setSelectedGod({ god, currentBlessings: randomBlessings });
@@ -2369,8 +2493,19 @@ export default function App() {
       const traitPoints = Number(_.get(mvuData, traitPointPath, 0));
       const targetName = runtimeSquad.find(member => member.id === characterId)?.name || memberName || '该角色';
       const targetMember = runtimeSquad.find(member => member.id === characterId);
+      const effectiveTraitTitles = getEffectiveTraitTitles(targetMember);
       const brandGodId = getBrandGodIdFromMember(targetMember);
       const raceName = String(_.get(mvuData, `stat_data.小队成员.${squadName}.成员.${memberName}.种族.名称`, ''));
+
+      const requiredUpgradeTitle = upgradePrerequisiteByTitle[selectingTarget.blessing.title];
+      if (requiredUpgradeTitle && !effectiveTraitTitles.has(requiredUpgradeTitle)) {
+        setRitualWarning({
+          title: '异变阶段尚未开裂',
+          content: `${targetName} 尚未拥有【${requiredUpgradeTitle}】。
+【${selectingTarget.blessing.title}】不是凭空降下的恩赐，而是旧肉被撕下后长出的下一层深渊躯壳。`,
+        });
+        return;
+      }
 
       if (selectingTarget.god.id === 'yuri' && raceName.includes('骨人')) {
         setRitualWarning({
@@ -2854,7 +2989,9 @@ export default function App() {
 特质点规则：每个赐福消耗1点特质点；若目标角色特质点为0，则无法赐福。
 
 五系传说前置：奥克兰 / 克拉尔 / 娜尔可 / 奇特林 / 比拉克 各自拥有“传说（解锁前置）”。
-该前置不消耗特质点，但只有角色等级 >50 才能承受；未取得此前置者，不能选择对应神系的真正传说赐福。`}
+该前置不消耗特质点，但只有角色等级 >50 才能承受；未取得此前置者，不能选择对应神系的真正传说赐福。
+
+阶段异变链：副肢痉挛 / 血蜘蛛共生体(幼体) 等阶段特质会解锁下一阶段；下次赐福栏必定出现可升级项，但只能赐给拥有前置阶段的角色。升级成功后会剥离旧阶段，只保留新阶段。`}
               </p>
               <div className="text-center mt-6">
                 <button

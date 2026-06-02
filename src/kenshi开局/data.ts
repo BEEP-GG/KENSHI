@@ -895,8 +895,7 @@ export const TOWN_DESCRIPTIONS: Record<string, string> = {
   开顿城: '高地上的联合之城，四周遍布巨兽骸骨。',
   沙尔维尔驿站: '矗立于目之地风暴腹地的孤独旅馆，商旅、逃亡者与濒死之人都曾在此歇脚。',
   利维坦观测站: '营地位于海岸高地，瞭望塔与简易帐篷拼接而成，是追踪巨兽动向的前线据点。',
-  铁之径王城:
-    '浅海废墟上的异族王城，古代机械穹顶的断裂肋骨撑起城墙，锈尘与海雾终年不散。',
+  铁之径王城: '浅海废墟上的异族王城，古代机械穹顶的断裂肋骨撑起城墙，锈尘与海雾终年不散。',
 };
 
 export const RACES = [
@@ -1383,6 +1382,13 @@ export const TRAITS = {
       category: 'attribute',
     },
     {
+      id: 'cognitive_filter',
+      title: '认知滤镜',
+      description:
+        '杀人对你而言不像夺走生命，更像是在敲碎玩偶、拆开糖果包装。你对暴力的认知被某种滤镜扭曲了，因此下手更残忍和不在乎，却不太擅长进行复杂判断。力量 +5，智力 -3',
+      category: 'attribute',
+    },
+    {
       id: 'berserker_no_brainstem',
       title: '脑干缺失的狂战士',
       description:
@@ -1551,9 +1557,9 @@ export const TRAITS = {
     },
     {
       id: 'blood_spider_symbiote',
-      title: '血蜘蛛寄生共生体',
+      title: '血蜘蛛共生体(幼体)',
       description:
-        '一只变异的血蜘蛛幼体寄生在了你的脊椎里。它与你的神经索相连，赐予了你全方位的雷达级探知能力，但这该死的小东西每天都让你感到痛苦。感知 +14，体质 -8，魅力 -8',
+        '一只变异的血蜘蛛幼体寄生在你的脊椎里，与神经索紧紧相连。它赋予你异常敏锐的感知，却每天都在骨缝深处制造疼痛；而它真正的力量，似乎还远未被发掘。感知 +8，体质 -10，魅力 -10',
       category: 'attribute',
     },
     {
@@ -1740,6 +1746,13 @@ export const TRAITS = {
       id: 'pathfinding_bug',
       title: '寻路AI故障',
       description: '有时候你会对着一堵墙或一块石头狂奔半小时，直到有人把你扛起来才能恢复正常。',
+      category: 'fun',
+    },
+    {
+      id: 'cognitive_filter_fun',
+      title: '认知滤镜',
+      description:
+        '杀人对你而言不像夺走生命，更像是在敲碎玩偶、拆开糖果包装。你对暴力的认知被某种危险的滤镜扭曲了，因此下手更稳，却不太擅长进行复杂判断。力量 +5，智力 -3',
       category: 'fun',
     },
     {

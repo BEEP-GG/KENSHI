@@ -74,6 +74,7 @@ type BattleCharacter = {
   subWeaponAttackCount: number;
   noBlockNextRound: boolean;
   defenseBonus: number;
+  evadeBonus: number;
   blockBonus: number;
   aiDefenseCooldown: number;
   aiMedicalCooldown: number;
@@ -195,6 +196,7 @@ const BATTLE_RULES = `战斗轮结构:
 攻击与对抗流程:
 第一步_闪避:
   - 防守方闪避值: (敏捷 * 0.5) + (感知 * 0.2)
+  - 武术闪避: 若防守方主武器种类为“武术”，闪避值 +7；该加成可突破闪避值上限。
   - 长柄武器溅射: 若为长柄武器攻击造成的溅射伤害，其他受波及目标闪避值 +4
   - 进攻方投掷: D100（01-05为大失败）
   - 判定: 防守方闪避值 ≤ 进攻方投掷结果
@@ -206,6 +208,7 @@ const BATTLE_RULES = `战斗轮结构:
       空手闪避: “(敏捷 * 0.6 + 感知 * 0.25)”
   - 对抗修正:
       最终防御成功 = 防御方基础值 + clamp(防御方敏捷 - 攻击方敏捷, -30, +45)
+      武术闪避: 若防守方主武器种类为“武术”且使用闪避防御，最终防御成功额外 +7；该加成可突破防御上限。
   - 长柄武器溅射: 若为长柄武器攻击造成的溅射伤害，其他受波及目标防御基础值 +4
   - 防御判定: 防御方投掷 D100 <= 最终防御。
   - 防御结果:
@@ -229,15 +232,16 @@ const BATTLE_RULES = `战斗轮结构:
   - 逻辑: 从目标 HP 中扣除最终伤害。
   - 创伤判定 (脚本触发条件):
       条件A: 本次最终伤害 > (目标体质 * 0.4)
-      条件B: 攻击方命中检定为大成功 (93-100)
+      条件B: 命中部位阈值被肢体伤害扣至0
       满足任一条件，随机部位【创伤等级】+1，并触发相应层级的残废/减值效果。
-  - 濒死判定:
+      攻击大成功不再直接升级创伤，改为本次肢体伤害x2。
+   - 濒死判定:
       HP > 0: 继续战斗。
       HP <= 0 (首次倒地): 触发韧性检定。
 
 特殊规则:
 - 连击机制: 若角色拥有多次攻击次数，防御方在同一轮内防御后续攻击时，【最终防御成功率】每下累积 -6。
-- 韧性减伤: 对所有成员生效；采用线性减伤，公式为“max(0, 韧性 - 20) * 0.15”。
+- 韧性减伤: 对所有成员生效，同时影响HP伤害与肢体伤害；采用线性减伤，公式为“max(0, 韧性 - 20) * 0.15”。
 - 魅力俘虏: 仅AI生效。若攻击者 INT >= 35，且本次攻击本可杀死目标，则掷1D100。
     - 判定值: “round(目标CHA * 0.5)”；若目标为女性则额外 +20。
     - 若 D100 <= 判定值，则目标不会被杀死，HP最低保留10，并进入【已被制服】状态。
@@ -258,11 +262,11 @@ const BATTLE_RULES = `战斗轮结构:
         3. 再治疗血量 < 40% 的其他友军AI中最低血者。
         4. 若以上都不存在，且自身血量 ≤ 75%，才可能治疗自己。
 - 大成功与大失败:
-    攻击大成功 (93-100): 伤害结算x1.5且无法格挡。
+    攻击大成功 (93-100；大型武器88-100): 伤害结算x1.5、肢体伤害x2且无法格挡；大成功不再直接升级创伤。
     武术例外:
-      速度型(DEX>=STR): 大成功区间93-100，触发额外攻击1次。
-      重击型(STR>DEX): 大成功区间93-100，伤害x2且无视5点DR。
-    攻击大失败 (01-05): 攻击者失去平衡，下一轮无法执行格挡，且防御方可获得一次即时反击。
+      速度型(DEX>=STR): 大成功区间93-100，HP伤害倍率x1，触发额外攻击2次；额外攻击若再次大成功可继续触发额外攻击。
+      重击型(STR>DEX): 基础无视5点DR；大成功区间93-100，伤害x2.5。
+    攻击大失败 (01-05): 攻击者失衡，普通武器格挡-20、闪避-15；大型武器格挡-25、闪避-15；防御方可获得一次即时反击。
 - 濒死与韧性:
     倒地判定: 当 HP 归零时，角色需进行一次【体质】检定。
     成功: 保持清醒（可尝试爬行逃跑或装死）。
@@ -284,21 +288,23 @@ const WEAPON_CATEGORY_GUIDE = `武器类别详解：
 - 基础攻速为3。
 
 军刀：
-- 装备军刀类武器时，“武器格挡”基础值+12。
+- 装备军刀类武器时，“武器格挡”基础值+12；主手与副手军刀均为+12。
 
 砍刀：
 - 无视对方7点DR。
 - 攻击检定大成功（93-100）时触发“破甲”：目标DR降低8（可叠加，对该目标全局生效）。
 
 长柄类：
-- 每次攻击时可选择最多3个敌人进行攻击检定；每多一个目标，攻击检定-7。
+- 每次攻击时可选择最多3个敌人进行攻击检定；每多一个目标，攻击检定-5。
 
 钝器：
-- 攻击检定大成功（93-100）时，目标必定获得1层“骨折”；每层骨折使力量/敏捷-10、逃跑检定-15（可叠加，直到夹板包清除）。
+- 基础攻速为2。
+- 攻击检定大成功（93-100）时，目标必定获得1层“骨折”；每层骨折使力量/敏捷-8、逃跑检定-15（可叠加，直到夹板包清除）。
 
 大型武器：
+- 基础攻速为2。
 - 每次攻击时对2个敌人进行攻击检定。
-- 攻击检定大失败（01-10）或两名目标均被【闪避】时，进入失衡，防御检定-15。
+- 攻击检定大失败（01-10）或两名目标均被【闪避】时，进入失衡，格挡检定-25、闪避检定-15。
 
 弩：
 - 基础效果：无视对方7点DR。
@@ -314,9 +320,10 @@ const WEAPON_CATEGORY_GUIDE = `武器类别详解：
 
 武术：
 - 识别种类为“武术”。
-- 速度型（DEX>=STR）：基础攻速3；大成功区间93-100，触发额外攻击1次。
-- 重击型（STR>DEX）：基础攻速2；无视5点DR；大成功区间93-100，伤害x2。
-- 武术伤害骰加成：每20点力量+1伤害骰、每30点敏捷+1伤害骰、每40点韧性+1伤害骰，均向下取整。
+- 速度型（DEX>=STR）：基础攻速3；大成功区间93-100，HP伤害倍率x1，触发额外攻击2次；额外攻击若再次大成功可继续触发额外攻击。
+- 重击型（STR>DEX）：基础攻速2；无视5点DR；大成功区间93-100，伤害x2.5。
+- 武术伤害骰加成：每20点力量+1、每30点敏捷+1、每40点韧性+1，均向下取整；战斗栏显示时会把变量基础骰与该加值合并显示，例如1d10+12显示为1d22，实际伤害仍按基础骰掷骰后追加加值计算。
+- 武术闪避加成：无论速度型或重击型，只要主武器种类为“武术”，闪避值与闪避防御均额外+7，且可突破两段上限。
 - 两种武术的伤害比例均沿用变量中的伤害比例。
 - 大失败与其他武器一致。`;
 
@@ -327,12 +334,13 @@ const TRAUMA_RULES = `创伤与状态详解：
 - 阈值降到0会升级到下一等级，超额会继续抵扣下一等级阈值。
 
 升级条件（TGH=体质，HPmax=最大生命值）：
-- 0→1：攻击大成功 或 阈值归零（阈值=0.85*TGH）
-- 1→2：攻击大成功 或 单次伤害 > TGH*0.45 或 阈值归零（阈值=0.55*TGH）
+- 0→1：阈值归零（阈值=0.9*TGH）
+- 1→2：单次伤害 > TGH*0.45 或 阈值归零（阈值=0.55*TGH）
 - 2→3：单次伤害 > TGH*0.4 或 阈值归零（阈值=0.45*TGH）
-- 3→4：单次伤害 > TGH*0.3 或 阈值归零
+- 3→4：单次伤害 > TGH*0.3 或 阈值归零（阈值=0.35*TGH）
 - 任意等级→3：单次伤害 ≥ HPmax*0.5
 - 任意等级→4：单次伤害 ≥ HPmax*0.7
+- 攻击大成功：不再直接升级创伤，改为本次肢体伤害x2
 - 低血加成：若本次受击后 HP ≤ HPmax*0.3，则整场战斗仅首次触发一次额外+1创伤升级（最多到4）
 
 创伤效果：
@@ -452,6 +460,16 @@ const rollDice = (dice: string) => {
 
 const getMartialArtsBonusDice = (attributes: Attributes) => {
   return Math.floor(attributes.STR / 20) + Math.floor(attributes.DEX / 30) + Math.floor(attributes.WIL / 40);
+};
+
+const getDisplayDamageDice = (weapon: BattleCharacter['weapon'], attributes: Attributes) => {
+  if (!/武术/.test(weapon.type)) return weapon.damageDice;
+  const match = weapon.damageDice.match(/^(\d+)d(\d+)$/i);
+  if (!match) return weapon.damageDice;
+  const count = Number(match[1]) || 1;
+  const sides = Number(match[2]) || 0;
+  if (count !== 1 || sides <= 0) return weapon.damageDice;
+  return `1d${sides + getMartialArtsBonusDice(attributes)}`;
 };
 
 const parseDamageTypeRatio = (damageType: string): DamageRatio | null => {
@@ -709,10 +727,10 @@ const getBattleOutcome = (units: BattleCharacter[]): BattleOutcome => {
 
 const getTraumaThresholdByLevel = (tgh: number, level: number) => {
   if (level >= 4) return 0;
-  if (level <= 0) return tgh * 0.85;
+  if (level <= 0) return tgh * 0.9;
   if (level === 1) return tgh * 0.55;
   if (level === 2) return tgh * 0.45;
-  return tgh * 0.4;
+  return tgh * 0.35;
 };
 
 const getAttributeValue = (value: unknown, fallback = 30) => {
@@ -797,7 +815,7 @@ const normalizeCharacter = (
       : /弩/.test(weaponType)
         ? 1
         : isHeavyOrBlunt
-          ? 1
+          ? 2
           : 2;
   const mainWeaponAttackCount = variableAttackCount + mainBaseAttackRate;
   const subWeaponAttackCount = subWeaponType === '盾牌' ? 1 : subWeaponType !== '无' ? variableAttackCount : 0;
@@ -842,6 +860,7 @@ const normalizeCharacter = (
     subWeaponAttackCount,
     noBlockNextRound: false,
     defenseBonus: 0,
+    evadeBonus: 0,
     blockBonus: 0,
     aiDefenseCooldown: 0,
     aiMedicalCooldown: 0,
@@ -972,6 +991,21 @@ const getLegPenalty = (level: number) => {
   return 0;
 };
 
+const getAttributePenaltyMap = (unit: BattleCharacter): Partial<Record<keyof Attributes, number>> => {
+  const fracturePenalty = Math.max(0, (unit.fractureStacks || 0) * 8);
+  return {
+    STR: fracturePenalty,
+    DEX: fracturePenalty,
+  };
+};
+
+const formatAttributeWithPenalty = (unit: BattleCharacter, key: keyof Attributes) => {
+  const value = unit.attributes[key];
+  const penalty = getAttributePenaltyMap(unit)[key] || 0;
+  if (penalty <= 0) return String(value);
+  return `${value}(-${penalty})`;
+};
+
 const getKillExpByLevel = (level: number) => {
   if (level > 80) return 80 + level * 4.5;
   if (level > 50) return 70 + level * 3.5;
@@ -1045,7 +1079,7 @@ const getEscapeStatusPenalty = (unit: BattleCharacter) => {
 };
 
 const getAttackAttribute = (attacker: BattleCharacter) => {
-  const fracturePenalty = (attacker.fractureStacks || 0) * 10;
+  const fracturePenalty = (attacker.fractureStacks || 0) * 8;
   const str = Math.max(1, attacker.attributes.STR - fracturePenalty);
   const dex = Math.max(1, attacker.attributes.DEX - fracturePenalty);
   const base = isRangedWeapon(attacker.weapon.type) ? attacker.attributes.PER : (str + dex) / 2;
@@ -1054,19 +1088,23 @@ const getAttackAttribute = (attacker: BattleCharacter) => {
 };
 
 const getDefenseBase = (defender: BattleCharacter, useBlock: boolean) => {
-  const fracturePenalty = (defender.fractureStacks || 0) * 10;
+  const fracturePenalty = (defender.fractureStacks || 0) * 8;
   const str = Math.max(1, defender.attributes.STR - fracturePenalty);
   const dex = Math.max(1, defender.attributes.DEX - fracturePenalty);
   const base = useBlock ? dex * 0.5 + str * 0.2 : dex * 0.6 + defender.attributes.PER * 0.2;
   const mainBlockBonus = useBlock && /军刀/.test(defender.weapon.type) ? 12 : 0;
-  const subBlockBonus = useBlock && /军刀/.test(defender.subWeapon.type) ? 6 : 0;
+  const subBlockBonus = useBlock && /军刀/.test(defender.subWeapon.type) ? 12 : 0;
   const shieldBonus = useBlock && /盾牌/.test(defender.subWeapon.type) ? 12 : 0;
+  const martialEvadeBonus = !useBlock && /武术/.test(defender.weapon.type) ? 7 : 0;
   const blockBonus = mainBlockBonus + subBlockBonus + shieldBonus;
+  const evadeBonus = !useBlock ? defender.evadeBonus || 0 : 0;
+  const cappedEvadePenalty = !useBlock ? Math.min(0, evadeBonus) : 0;
+  const uncappedEvadeBonus = !useBlock ? Math.max(0, evadeBonus) : 0;
   const tacticBonus = useBlock ? defender.blockBonus || 0 : defender.defenseBonus || 0;
   const rangedMainWithSubPenalty =
     useBlock && isBowOrCrossbow(defender.weapon.type) && defender.subWeapon.type !== '无' ? 8 : 0;
   const penalty = getDefensePenalty(defender, useBlock) + rangedMainWithSubPenalty;
-  return base + blockBonus + tacticBonus - penalty;
+  return base + cappedEvadePenalty + blockBonus + martialEvadeBonus + uncappedEvadeBonus + tacticBonus - penalty;
 };
 
 const getDefenseMode = (defender: BattleCharacter, attackerWeaponType: string) => {
@@ -1211,11 +1249,11 @@ const CharacterCard = ({
             <Sword size={12} className="text-stone-500" /> 武器与装备
           </h4>
           <div className="text-xs font-mono text-stone-500 truncate">
-            主：{character.weapon.name} ({character.weapon.damageDice})
+            主：{character.weapon.name} ({getDisplayDamageDice(character.weapon, character.attributes)})
           </div>
           {character.subWeapon.type !== '无' ? (
             <div className="text-xs font-mono text-stone-500 truncate">
-              副：{character.subWeapon.name} ({character.subWeapon.damageDice})
+              副：{character.subWeapon.name} ({getDisplayDamageDice(character.subWeapon, character.attributes)})
             </div>
           ) : null}
         </button>
@@ -1231,7 +1269,8 @@ const CharacterCard = ({
             <Activity size={12} className="text-stone-500" /> 七维属性
           </h4>
           <div className="text-[10px] font-mono text-stone-500">
-            STR {character.attributes.STR} · DEX {character.attributes.DEX} · PER {character.attributes.PER}
+            STR {formatAttributeWithPenalty(character, 'STR')} · DEX {formatAttributeWithPenalty(character, 'DEX')} ·
+            PER {formatAttributeWithPenalty(character, 'PER')}
           </div>
         </button>
         <button
@@ -1388,7 +1427,7 @@ export default function App() {
   const [battleNotice, setBattleNotice] = useState<{ text: string; tone: 'amber' | 'rose' } | null>(null);
 
   const getWillDamageReductionRate = (unit: BattleCharacter) => {
-    return Math.max(0, unit.attributes.WIL - 20) * 0.15;
+    return Math.max(0, unit.attributes.WIL - 20) * 0.2;
   };
 
   const getTacticEffectMultiplier = (unit: BattleCharacter) => 1 + (unit.attributes.INT / 20) * 0.1;
@@ -2106,6 +2145,8 @@ export default function App() {
     defenseIndex: number,
     logs: string[],
     lastRoundAttackersCount: Record<string, number>,
+    currentTargetLocksCount: Record<string, number> = {},
+    attackerComboIndex = 0,
     attackPenaltyExtra = 0,
     targetIndex?: number,
     targetCount?: number,
@@ -2122,16 +2163,28 @@ export default function App() {
     const targetLabel =
       targetCount && targetCount > 1 && targetIndex !== undefined ? `·目标${targetIndex + 1}/${targetCount}` : '';
 
+    const defenderLegDisabled = getLegTraumaLevel(defender) >= 4;
     const rawRoll = d100();
     const attackRoll = rawRoll + hitBonus - attackPenaltyExtra;
     const evadeBase = defender.attributes.DEX * 0.5 + defender.attributes.PER * 0.2;
-    const multiTargetPenalty = Math.max(0, (lastRoundAttackersCount[defender.id] || 0) - 1) * 4;
-    const evadeValue = Math.max(0, Math.min(70, evadeBase) - multiTargetPenalty);
+    const currentLocks = currentTargetLocksCount[defender.id] ?? lastRoundAttackersCount[defender.id] ?? 0;
+    const multiTargetPenalty = Math.max(0, currentLocks - 1) * 4;
+    const comboEvadePenalty = Math.max(0, attackerComboIndex) * 5;
+    const defenderMartialEvadeBonus = /武术/.test(defender.weapon.type) ? 7 : 0;
+    const defenderEvadeBonus = defender.evadeBonus || 0;
+    const evadeValue = Math.max(
+      0,
+      Math.min(70, evadeBase + Math.min(0, defenderEvadeBonus)) +
+        defenderMartialEvadeBonus +
+        Math.max(0, defenderEvadeBonus) -
+        multiTargetPenalty -
+        comboEvadePenalty,
+    );
     const isMartialArts = /武术/.test(currentWeapon.type);
     const isMartialSpeed = isMartialArts && attacker.attributes.DEX >= attacker.attributes.STR;
     const isMartialHeavy = isMartialArts && attacker.attributes.STR > attacker.attributes.DEX;
     const isHeavyWeapon = /大型/.test(currentWeapon.type);
-    const isCrit = rawRoll >= (isHeavyWeapon ? 90 : 93);
+    const isCrit = rawRoll >= (isHeavyWeapon ? 88 : 93);
     const isFumble = rawRoll <= (isHeavyWeapon ? 10 : 5);
 
     if (isFumble) {
@@ -2151,8 +2204,8 @@ export default function App() {
             Math.max(
               0,
               isBowOrCrossbow(currentWeapon.type)
-                ? (attacker.attributes.STR * 0.4 + attacker.attributes.PER * 0.85) * 0.35
-                : (attacker.attributes.STR * 0.5 + attacker.attributes.DEX * 0.45) * 0.35,
+                ? (attacker.attributes.STR * 0.4 + attacker.attributes.PER * 0.85) * 0.4
+                : (attacker.attributes.STR * 0.5 + attacker.attributes.DEX * 0.45) * 0.4,
             );
           const rawDamage = Math.max(0, baseDamage);
           const finalDamage = rawDamage;
@@ -2172,7 +2225,10 @@ export default function App() {
                   : 0.7;
           const bluntAfterScale = Math.round(bluntDamage * bluntScale);
           const totalDamage = Math.round(cutAfterDR + bluntAfterScale);
-          const reducedDamage = Math.max(0, Math.round(totalDamage - getWillDamageReductionRate(ally)));
+          const reducedDamage = Math.max(
+            0,
+            Math.round(totalDamage * (1 - Math.min(0.95, getWillDamageReductionRate(ally) / 100))),
+          );
           const updatedAlly = applyDamage(ally, reducedDamage);
           appendLog(logs, `${attacker.name}: 误伤${ally.name}，造成 ${reducedDamage} 伤害。`);
           return {
@@ -2184,11 +2240,15 @@ export default function App() {
         return { units, attacker, defender };
       }
       if (isHeavyWeapon) {
-        attacker.defenseBonus -= 15;
-        appendLog(logs, `${attacker.name}: 失衡，防御检定-15。`);
+        attacker.blockBonus -= 25;
+        attacker.evadeBonus -= 15;
+        appendLog(logs, `${attacker.name}: 大失败失衡，格挡检定-25，闪避检定-15。`);
+      } else {
+        attacker.blockBonus -= 20;
+        attacker.evadeBonus -= 15;
+        appendLog(logs, `${attacker.name}: 大失败失衡，格挡检定-20，闪避检定-15。`);
       }
-      appendLog(logs, `${attacker.name}: 大失败！下一轮无法格挡，触发${defender.name}反击。`);
-      attacker.noBlockNextRound = true;
+      appendLog(logs, `${attacker.name}: 大失败！触发${defender.name}反击。`);
       return applyAttack(
         units,
         defender,
@@ -2196,6 +2256,8 @@ export default function App() {
         0,
         logs,
         lastRoundAttackersCount,
+        currentTargetLocksCount,
+        0,
         0,
         undefined,
         undefined,
@@ -2206,15 +2268,18 @@ export default function App() {
 
     appendLog(logs, `${attacker.name}: 攻击${defender.name}（第${defenseIndex + 1}击${targetLabel}：判定 ${rawRoll}）`);
 
-    if (attackRoll < evadeValue) {
+    if (!defenderLegDisabled && attackRoll < evadeValue) {
       appendLog(logs, `${attacker.name}: 攻击落空 (判定 ${attackRoll.toFixed(0)} < ${evadeValue.toFixed(0)})`);
       return { units, attacker, defender, dodged: true };
     }
 
-    appendLog(logs, `${defender.name}: 闪避判定失败 (判定 ${attackRoll.toFixed(0)} >= ${evadeValue.toFixed(0)})`);
+    if (defenderLegDisabled) {
+      appendLog(logs, `${defender.name}: 腿部断肢，无法闪避。`);
+    } else {
+      appendLog(logs, `${defender.name}: 闪避判定失败 (判定 ${attackRoll.toFixed(0)} >= ${evadeValue.toFixed(0)})`);
+    }
 
-    let useBlock = getDefenseMode(defender, currentWeapon.type);
-    if (defender.noBlockNextRound) useBlock = false;
+    const useBlock = getDefenseMode(defender, currentWeapon.type);
     const defensePenalty = defenseIndex * 6;
     const defenseBase = getDefenseBase(defender, useBlock);
     const defenseChance =
@@ -2244,11 +2309,11 @@ export default function App() {
       Math.max(
         0,
         isBowOrCrossbow(currentWeapon.type)
-          ? (attacker.attributes.STR * 0.4 + attacker.attributes.PER * 0.85) * 0.35
-          : (attacker.attributes.STR * 0.5 + attacker.attributes.DEX * 0.45) * 0.35,
+          ? (attacker.attributes.STR * 0.4 + attacker.attributes.PER * 0.85) * 0.4
+          : (attacker.attributes.STR * 0.5 + attacker.attributes.DEX * 0.45) * 0.4,
       );
     const rawDamage = Math.max(0, baseDamage);
-    const critMultiplier = isCrit ? (isMartialHeavy ? 2 : isMartialSpeed ? 1 : 1.5) : 1;
+    const critMultiplier = isCrit ? (isMartialHeavy ? 2.5 : isMartialSpeed ? 1 : isHeavyWeapon ? 2 : 1.5) : 1;
     const finalDamage = rawDamage * critMultiplier;
     const ratio = getDamageRatio(currentWeapon.type, currentWeapon.damageType);
     let cutDamage = Math.round(finalDamage * ratio.cut);
@@ -2273,7 +2338,10 @@ export default function App() {
             : 0.7;
     const bluntAfterScale = Math.round(bluntDamage * bluntScale);
     const totalDamage = Math.round(cutAfterDR + bluntAfterScale);
-    const reducedDamage = Math.max(0, Math.round(totalDamage - getWillDamageReductionRate(defender)));
+    const reducedDamage = Math.max(
+      0,
+      Math.round(totalDamage * (1 - Math.min(0.95, getWillDamageReductionRate(defender) / 100))),
+    );
     const armorAbsorbed = Math.round(Math.max(0, cutDamage - cutAfterDR));
 
     const hpBefore = defender.hp;
@@ -2299,7 +2367,13 @@ export default function App() {
     const currentRemaining = updatedDefender.traumaAccumulated?.[hitPart] ?? baseThreshold;
     const limbCutScale = /砍刀/.test(currentWeapon.type) ? 1.4 : 1.2;
     const limbBluntScale = /钝器|盾牌/.test(currentWeapon.type) ? 1.4 : 1;
-    const limbDamage = _.round(cutAfterDR * limbCutScale + bluntAfterScale * limbBluntScale, 2);
+    const limbCritMultiplier = isCrit ? 2 : 1;
+    const limbDamageBeforeReduction =
+      (cutAfterDR * limbCutScale + bluntAfterScale * limbBluntScale) * limbCritMultiplier;
+    const limbDamage = _.round(
+      Math.max(0, limbDamageBeforeReduction * (1 - Math.min(0.95, getWillDamageReductionRate(defender) / 100))),
+      2,
+    );
     const newRemaining = currentRemaining - limbDamage;
     updatedDefender.traumaAccumulated = {
       ...updatedDefender.traumaAccumulated,
@@ -2323,13 +2397,13 @@ export default function App() {
       updatedDefender.fractureStacks = Math.max(0, (updatedDefender.fractureStacks || 0) + 1);
       appendLog(
         logs,
-        `${defender.name}: 骨折层数+1（当前${updatedDefender.fractureStacks}层，力量/敏捷每层-10，逃跑惩罚每层-15）。`,
+        `${defender.name}: 骨折层数+1（当前${updatedDefender.fractureStacks}层，力量/敏捷每层-8，逃跑惩罚每层-15）。`,
       );
     }
 
     const traumaThreshold = defender.attributes.TGH * 0.4;
     let traumaIncreased = false;
-    if (newRemaining <= 0 || totalDamage > traumaThreshold || isCrit) {
+    if (newRemaining <= 0 || totalDamage > traumaThreshold) {
       traumaIncreased = true;
     }
 
@@ -2346,8 +2420,7 @@ export default function App() {
       let lowHpBonusTrigger = hpAfter > 0 && hpAfter <= maxHp * 0.3 && !updatedDefender.lowHpTraumaBoostUsed;
 
       const immediateUpgrade =
-        (partLevel === 0 && isCrit) ||
-        (partLevel === 1 && (isCrit || totalDamage > tgh * 0.45)) ||
+        (partLevel === 1 && totalDamage > tgh * 0.45) ||
         (partLevel === 2 && totalDamage > tgh * 0.4) ||
         (partLevel === 3 && totalDamage > tgh * 0.3);
       if (immediateUpgrade) remaining = Math.min(remaining, 0);
@@ -2411,24 +2484,36 @@ export default function App() {
     const nextUnits = replaceUnit(replaceUnit(moraleUnits, attacker), updatedDefender);
 
     if (isMartialSpeed && isCrit && allowMartialExtraAttack && updatedDefender.hp > 0 && attacker.hp > 0) {
-      appendLog(logs, `${attacker.name}: 武术大成功，触发额外攻击1次。`);
-      const nextAttacker = getUnit(nextUnits, attacker.id);
-      const nextDefender = getUnit(nextUnits, defender.id);
-      if (nextAttacker && nextDefender && nextAttacker.hp > 0 && nextDefender.hp > 0) {
-        return applyAttack(
-          nextUnits,
-          nextAttacker,
-          nextDefender,
+      appendLog(logs, `${attacker.name}: 武术大成功，触发额外攻击2次。`);
+      let extraUnits = nextUnits;
+      let extraAttacker = getUnit(extraUnits, attacker.id);
+      let extraDefender = getUnit(extraUnits, defender.id);
+      for (let extraIndex = 0; extraIndex < 2; extraIndex += 1) {
+        if (!extraAttacker || !extraDefender || extraAttacker.hp <= 0 || extraDefender.hp <= 0) break;
+        const extraResult = applyAttack(
+          extraUnits,
+          extraAttacker,
+          extraDefender,
           0,
           logs,
           lastRoundAttackersCount,
+          currentTargetLocksCount,
+          extraIndex + 1,
           0,
-          undefined,
-          undefined,
-          false,
+          extraIndex,
+          2,
+          true,
           nonLethalActorIds,
         );
+        extraUnits = extraResult.units;
+        extraAttacker = getUnit(extraUnits, attacker.id);
+        extraDefender = getUnit(extraUnits, defender.id);
       }
+      return {
+        units: extraUnits,
+        attacker: extraAttacker || attacker,
+        defender: extraDefender || updatedDefender,
+      };
     }
 
     return {
@@ -2447,6 +2532,7 @@ export default function App() {
       let workingUnits = cloneUnits(prev.units).map(unit => ({
         ...unit,
         defenseBonus: 0,
+        evadeBonus: 0,
         blockBonus: 0,
         aiDefenseCooldown: Math.max(0, (unit.aiDefenseCooldown || 0) - 1),
         aiMedicalCooldown: Math.max(0, (unit.aiMedicalCooldown || 0) - 1),
@@ -2834,22 +2920,30 @@ export default function App() {
         });
       }
 
-      const maxAttackCount = Math.max(
-        0,
-        ...Array.from(attackPlans.keys()).map(actorId => {
-          const actor = getUnit(workingUnits, actorId);
-          return actor ? actor.attackCount : 0;
-        }),
-      );
+      const currentTargetLocksCount: Record<string, number> = {};
+      attackPlans.forEach(plan => {
+        const lockedTargetIds = plan.plannedTargetIds?.length
+          ? plan.plannedTargetIds
+          : plan.targetId
+            ? [plan.targetId]
+            : [];
+        Array.from(new Set(lockedTargetIds)).forEach(targetId => {
+          currentTargetLocksCount[targetId] = (currentTargetLocksCount[targetId] || 0) + 1;
+        });
+      });
 
-      for (let attackIndex = 0; attackIndex < maxAttackCount; attackIndex += 1) {
-        for (const actorId of turnOrderIds) {
-          const plan = attackPlans.get(actorId);
-          if (!plan) continue;
-          const actor = getUnit(workingUnits, actorId);
-          if (!actor || !isCombatReadyUnit(actor)) continue;
-          if (attackIndex >= actor.attackCount) continue;
+      for (const actorId of turnOrderIds) {
+        const plan = attackPlans.get(actorId);
+        if (!plan) continue;
+        let actor = getUnit(workingUnits, actorId);
+        if (!actor || !isCombatReadyUnit(actor)) continue;
+
+        for (let attackIndex = 0; attackIndex < actor.attackCount; attackIndex += 1) {
+          actor = getUnit(workingUnits, actorId);
+          if (!actor || !isCombatReadyUnit(actor)) break;
           const useMainWeaponThisHit = attackIndex < (actor.mainWeaponAttackCount || 0);
+          if (useMainWeaponThisHit && (actor.traumaParts?.右臂 || 0) >= 4) continue;
+          if (!useMainWeaponThisHit && (actor.traumaParts?.左臂 || 0) >= 4) continue;
           const activeWeapon = useMainWeaponThisHit ? actor.weapon : actor.subWeapon;
           if (!activeWeapon || activeWeapon.type === '无') continue;
 
@@ -2891,7 +2985,7 @@ export default function App() {
             }
           } else {
             for (const [index, poleTarget] of poleTargets.entries()) {
-              const extraPenalty = isPolearm ? index * 7 : 0;
+              const extraPenalty = isPolearm ? index * 5 : 0;
               const perAttackTargets = isHeavyWeapon
                 ? [
                     poleTarget,
@@ -2913,6 +3007,8 @@ export default function App() {
                   defenseSeq,
                   logs,
                   lastRoundAttackersCount,
+                  currentTargetLocksCount,
+                  attackIndex,
                   extraPenalty,
                   targetIndex,
                   perAttackTargets.length,
@@ -2933,10 +3029,11 @@ export default function App() {
                 if (latestActor) {
                   const updatedActor = {
                     ...latestActor,
-                    defenseBonus: (latestActor.defenseBonus || 0) - 15,
+                    blockBonus: (latestActor.blockBonus || 0) - 25,
+                    evadeBonus: (latestActor.evadeBonus || 0) - 15,
                   };
                   workingUnits = replaceUnit(workingUnits, updatedActor);
-                  appendLog(logs, `${latestActor.name}: 被闪避导致失衡，防御检定-15。`);
+                  appendLog(logs, `${latestActor.name}: 被闪避导致失衡，格挡检定-25，闪避检定-15。`);
                 }
               }
             }
@@ -3265,14 +3362,14 @@ export default function App() {
             <div className="pt-1">主武器</div>
             <div>名称：{character.weapon.name}</div>
             <div>类型：{character.weapon.type}</div>
-            <div>伤害骰：{character.weapon.damageDice}</div>
+            <div>伤害骰：{getDisplayDamageDice(character.weapon, character.attributes)}</div>
             <div>伤害类型：{character.weapon.damageType || '未定义'}</div>
             {character.subWeapon.type !== '无' ? (
               <>
                 <div className="pt-2 border-t border-stone-800/50">副武器</div>
                 <div>名称：{character.subWeapon.name}</div>
                 <div>类型：{character.subWeapon.type}</div>
-                <div>伤害骰：{character.subWeapon.damageDice}</div>
+                <div>伤害骰：{getDisplayDamageDice(character.subWeapon, character.attributes)}</div>
                 <div>伤害类型：{character.subWeapon.damageType || '未定义'}</div>
               </>
             ) : null}
@@ -3286,13 +3383,13 @@ export default function App() {
         <div className="p-6 grid gap-4 text-sm">
           <div className="text-xs text-stone-400">七维属性</div>
           <div className="grid grid-cols-2 gap-3 font-mono text-stone-200">
-            <div>STR：{character.attributes.STR}</div>
-            <div>DEX：{character.attributes.DEX}</div>
-            <div>PER：{character.attributes.PER}</div>
-            <div>TGH：{character.attributes.TGH}</div>
-            <div>WIL：{character.attributes.WIL}</div>
-            <div>INT：{character.attributes.INT}</div>
-            <div>CHA：{character.attributes.CHA}</div>
+            <div>STR：{formatAttributeWithPenalty(character, 'STR')}</div>
+            <div>DEX：{formatAttributeWithPenalty(character, 'DEX')}</div>
+            <div>PER：{formatAttributeWithPenalty(character, 'PER')}</div>
+            <div>TGH：{formatAttributeWithPenalty(character, 'TGH')}</div>
+            <div>WIL：{formatAttributeWithPenalty(character, 'WIL')}</div>
+            <div>INT：{formatAttributeWithPenalty(character, 'INT')}</div>
+            <div>CHA：{formatAttributeWithPenalty(character, 'CHA')}</div>
           </div>
         </div>
       );
