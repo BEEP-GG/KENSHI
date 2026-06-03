@@ -266,6 +266,15 @@
         color: var(--accent-gold);
         border-radius: 2px;
       }
+      .point-tag.attack-count-tip {
+        cursor: pointer;
+        user-select: none;
+        transition: 0.2s;
+      }
+      .point-tag.attack-count-tip:hover {
+        background: rgba(231, 76, 60, 0.14);
+        box-shadow: 0 0 0 1px rgba(231, 76, 60, 0.18);
+      }
 
       .status-badge {
         font-size: 0.8em;
@@ -751,6 +760,12 @@
       .confirm-select:focus {
         border-color: var(--accent-gold);
         box-shadow: 0 0 0 1px rgba(193, 163, 95, 0.2);
+      }
+      .confirm-desc {
+        color: var(--text-dim);
+        font-size: 0.92em;
+        line-height: 1.65;
+        white-space: pre-line;
       }
       .medical-target-list {
         display: grid;
@@ -2292,7 +2307,7 @@
                         </div>
                         <div class="section-box">
                             <div class="section-title" style="display:flex; justify-content:space-between; align-items:center; gap:10px;">身体属性${blessingButton}</div>
-                            <div class="points-summary"><span class="point-tag">属性点: ${attrPt}</span><span class="point-tag">特质点: ${traitPt}</span><span class="point-tag" style="border-color:var(--accent-danger); color:var(--accent-danger)">攻击次数: ${atkCount}</span></div>
+                            <div class="points-summary"><span class="point-tag">属性点: ${attrPt}</span><span class="point-tag">特质点: ${traitPt}</span><span class="point-tag attack-count-tip" style="border-color:var(--accent-danger); color:var(--accent-danger)" title="点击查看攻击次数规则">攻击次数: ${atkCount}</span></div>
                             <div class="stat-grid">${attrHTML}</div>
                         </div>
                     </div>
@@ -3467,7 +3482,7 @@
 
         function openInfoModal(title, desc) {
           $('#confirm-modal .confirm-title').text(title);
-          $('#confirm-modal .confirm-title').next('div').text(desc);
+          $('#confirm-modal .confirm-title').next('div').addClass('confirm-desc').text(desc);
           $('#confirm-input').val('').hide();
           $('#confirm-select').hide().empty();
           $('#confirm-ok').text('知道了').removeClass('danger');
@@ -3475,6 +3490,33 @@
           $('#confirm-third').css('display', 'none');
           $('#confirm-modal').css('display', 'flex');
         }
+
+        function openAttackCountInfoModal() {
+          openInfoModal(
+            '攻击次数规则',
+            [
+              '攻击次数由主武器种类与最终敏捷决定：',
+              '',
+              '武士刀类 / 军刀类 / 特殊远程：',
+              '敏捷 < 40：1 次',
+              '40 ≤ 敏捷 < 60：2 次',
+              '60 ≤ 敏捷 < 85：3 次',
+              '敏捷 ≥ 85：4 次',
+              '',
+              '钝器类 / 大型类 / 弩：',
+              '敏捷 < 80：1 次',
+              '敏捷 ≥ 80：2 次',
+              '',
+              '其他武器 / 空手：',
+              '敏捷 < 60：1 次',
+              '60 ≤ 敏捷 < 80：2 次',
+              '敏捷 ≥ 80：3 次',
+              '',
+              '额外规则：敏捷 ≥ 100 时，最终攻击次数再 +1。',
+            ].join('\n'),
+          );
+        }
+        window.openAttackCountInfoModal = openAttackCountInfoModal;
 
         function closeConfirmModal() {
           pendingPastDeleteIndex = null;
@@ -3485,6 +3527,7 @@
           clearPendingSquadActions();
           window.pendingMoveName = '';
           window.pendingMoveTarget = '';
+          $('#confirm-modal .confirm-title').next('div').removeClass('confirm-desc').text('');
           $('#confirm-input').val('').hide();
           $('#confirm-select').hide().empty();
           $('#confirm-cancel').text('取消').show();
@@ -4923,6 +4966,11 @@
             const latestMember = _.get(latestRaw, ['stat_data', '小队成员', entityName], _.get(mvuData, basePath));
             $('#modal-content-inner').html(buildCharHTML(latestMember, false, 'squad', entityName));
           }
+        });
+        $(document).on('click', '.attack-count-tip', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          openAttackCountInfoModal();
         });
 
         function closeMoodHistoryModal() {
