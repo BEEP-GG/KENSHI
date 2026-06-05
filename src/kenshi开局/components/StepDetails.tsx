@@ -500,6 +500,7 @@ export const StepDetails: React.FC<StepDetailsProps> = ({ data, updateData }) =>
   );
   const effectiveLevel = data.godModeEnabled ? godModeLevel : scenarioStartLevel;
   const levelBonusPoints = (effectiveLevel - 1) * GOD_MODE_POINTS_PER_LEVEL;
+  const godModeTraitPoints = data.godModeEnabled ? Math.floor(effectiveLevel / 10) : 0;
   const totalAttributePoints = baseAttributePoints + levelBonusPoints;
   const attributeUpperLimit = data.godModeEnabled ? GOD_MODE_ATTRIBUTE_MAX : ATTRIBUTE_MAX;
   const usedPoints = Object.entries(data.attributes).reduce((sum, [key, value]) => {
@@ -1391,7 +1392,7 @@ ${names}`;
                   />
                   <span className="text-white/50">(1-100)</span>
                   <span className="text-green-400">
-                    实际等级 {effectiveLevel}，额外 +{levelBonusPoints} 属性点
+                    实际等级 {effectiveLevel}，额外 +{levelBonusPoints} 属性点，特质点 +{godModeTraitPoints}
                   </span>
                 </>
               )}
@@ -1402,8 +1403,8 @@ ${names}`;
                 ；等级会影响可分配属性点。
               </div>
               <div>
-                注意：废土不会把起跑线当作功绩。故事探索中每提升 10
-                级可获得特质点，用于某些特殊地方；开局等级不发放特质点。
+                注意：普通开局等级不会发放特质点；开启上帝模式后，自定义等级每达到 10 级会解锁 1
+                点特质点，用于某些特殊地方。
               </div>
             </div>
             <div className="flex flex-wrap gap-2">

@@ -30,6 +30,7 @@ const TOTAL_ATTRIBUTE_POINTS = 168;
 const SKELETON_ATTRIBUTE_POINTS = 144;
 const ATTRIBUTE_MIN = 1;
 const GOD_MODE_POINTS_PER_LEVEL = 5;
+const GOD_MODE_TRAIT_POINT_LEVEL_INTERVAL = 10;
 const SQUAD_LEVEL_POINTS_PER_LEVEL = 5;
 
 const SCENARIO_START_LEVELS: Record<string, number> = {
@@ -1109,6 +1110,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
     const currentLevel = Math.max(scenarioStartLevel, data.godModeEnabled ? data.godModeLevel : 1);
     const baseAttributePoints = data.race === 'skeleton' ? SKELETON_ATTRIBUTE_POINTS : TOTAL_ATTRIBUTE_POINTS;
     const levelBonusPoints = (currentLevel - 1) * GOD_MODE_POINTS_PER_LEVEL;
+    const initialTraitPoints = data.godModeEnabled ? Math.floor(currentLevel / GOD_MODE_TRAIT_POINT_LEVEL_INTERVAL) : 0;
     const totalAttributePoints = baseAttributePoints + levelBonusPoints;
     const usedPoints = Object.entries(data.attributes).reduce((sum, [key, value]) => {
       if (data.race === 'skeleton' && key === 'will') return sum;
@@ -1184,6 +1186,7 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
         升级所需: Math.floor(currentLevel * 10 + 100),
       },
       属性点: remainingPoints,
+      特质点: initialTraitPoints,
       种族: {
         名称: resolvedRaceTitle,
       },
