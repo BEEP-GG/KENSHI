@@ -196,6 +196,11 @@ const BATTLE_RULES = `战斗轮结构:
 攻击与对抗流程:
 第一步_闪避:
   - 防守方闪避值: (敏捷 * 0.5) + (感知 * 0.2)
+  - 等级差闪避: 防守方等级高于攻击方时，等级差20/30/50分别获得第一段闪避+10/+15/+20；防守方等级90/95分别获得第一段闪避+4/+8，90与95二选一，可与等级差叠加。
+  - 等级差命中: 攻击方等级高于防守方时，等级差20/30/50分别获得命中+10/+15/+20；攻击方等级90/95分别获得命中+4/+8，90与95二选一，可与等级差叠加。
+  - 第一段基础闪避上限为70，等级差与90/95闪避加成可突破该上限。
+  - 多锁定惩罚: max(0, 当前锁定该防守方人数 - 1) * 5
+  - 连击闪避惩罚: max(0, 攻击方连击序号) * 7
   - 武术闪避: 若防守方主武器种类为“武术”，闪避值 +7；该加成可突破闪避值上限。
   - 长柄武器溅射: 若为长柄武器攻击造成的溅射伤害，其他受波及目标闪避值 +4
   - 进攻方投掷: D100（01-05为大失败）
@@ -204,11 +209,16 @@ const BATTLE_RULES = `战斗轮结构:
 
 第二步_属性对抗防御:
   - 防御方基础值:
-      武器格挡: “(敏捷 * 0.5 + 力量 * 0.25)”
-      空手闪避: “(敏捷 * 0.6 + 感知 * 0.25)”
+      武器格挡: “(敏捷 * 0.5 + 力量 * 0.2)”
+      闪避防御: “(敏捷 * 0.6 + 感知 * 0.2)”
+      武术防御: 若防守方主武器种类为“武术”，第二段使用闪避防御而不是格挡。
   - 对抗修正:
-      最终防御成功 = 防御方基础值 + clamp(防御方敏捷 - 攻击方敏捷, -30, +45)
+      最终防御成功 = 防御方基础值 + clamp(防御方敏捷 - 攻击方敏捷, -30, +45) + 防守方等级差防御/闪避加成 - 攻击方等级差命中加成 - 后续防御惩罚 - 多锁定惩罚
+      等级差防御/闪避: 防守方等级高于攻击方时，等级差20/30/50分别获得第二段防御/闪避+25/+35/+50；防守方等级90/95分别获得第二段防御/闪避+8/+16，90与95二选一，可与等级差叠加。
+      等级差命中: 攻击方等级高于防守方时，等级差20/30/50分别使防守方第二段成功率-10/-15/-20；攻击方等级90/95分别使防守方第二段成功率-4/-8。
       武术闪避: 若防守方主武器种类为“武术”且使用闪避防御，最终防御成功额外 +7；该加成可突破防御上限。
+      后续防御惩罚: 本轮对该防守方第几次防御 * 6
+      多锁定惩罚: max(0, 当前锁定该防守方人数 - 1) * 5
   - 长柄武器溅射: 若为长柄武器攻击造成的溅射伤害，其他受波及目标防御基础值 +4
   - 防御判定: 防御方投掷 D100 <= 最终防御。
   - 防御结果:
@@ -219,7 +229,7 @@ const BATTLE_RULES = `战斗轮结构:
 伤害结算流程:
 第一步_伤害计算:
   - 面板计算:
-      近战: “武器基础骰子结果 + max(0, (力量 * 0.5 + 敏捷 * 0.45) * 0.35)”
+      近战: “武器基础骰子结果 + 武术额外骰加值 + max(0, (力量 * 0.6 + 敏捷 * 0.35) * 0.4)”
       远程: “武器基础骰子结果 + max(0, (力量 * 0.4 + 感知 * 0.85) * 0.35)”
   - 伤害拆分: 根据武器比例，将面板伤害拆分为【切割伤害】与【钝伤伤害】。
 
@@ -1107,10 +1117,38 @@ const getDefenseBase = (defender: BattleCharacter, useBlock: boolean) => {
   return base + cappedEvadePenalty + blockBonus + martialEvadeBonus + uncappedEvadeBonus + tacticBonus - penalty;
 };
 
+const getLevelGapTierBonus = (levelDiff: number) => {
+  if (levelDiff >= 50) return { evade: 20, defense: 50, hit: 20 };
+  if (levelDiff >= 30) return { evade: 15, defense: 35, hit: 15 };
+  if (levelDiff >= 20) return { evade: 10, defense: 25, hit: 10 };
+  return { evade: 0, defense: 0, hit: 0 };
+};
+
+const getVeteranLevelBonus = (level: number) => {
+  if (level >= 95) return { evade: 8, defense: 16, hit: 8 };
+  if (level >= 90) return { evade: 4, defense: 8, hit: 4 };
+  return { evade: 0, defense: 0, hit: 0 };
+};
+
+const getLevelCombatBonus = (attacker: BattleCharacter, defender: BattleCharacter) => {
+  const attackerLevel = Math.max(0, attacker.level || 0);
+  const defenderLevel = Math.max(0, defender.level || 0);
+  const defenderGapBonus = getLevelGapTierBonus(Math.max(0, defenderLevel - attackerLevel));
+  const attackerGapBonus = getLevelGapTierBonus(Math.max(0, attackerLevel - defenderLevel));
+  const defenderVeteranBonus = getVeteranLevelBonus(defenderLevel);
+  const attackerVeteranBonus = getVeteranLevelBonus(attackerLevel);
+  return {
+    evade: defenderGapBonus.evade + defenderVeteranBonus.evade,
+    defense: defenderGapBonus.defense + defenderVeteranBonus.defense,
+    hit: attackerGapBonus.hit + attackerVeteranBonus.hit,
+  };
+};
+
 const getDefenseMode = (defender: BattleCharacter, attackerWeaponType: string) => {
   const hasMainWeapon = defender.weapon.type !== '无';
   const hasSubWeapon = defender.subWeapon.type !== '无';
   if (!hasMainWeapon) return false;
+  if (/武术/.test(defender.weapon.type)) return false;
   if (isBowOrCrossbow(attackerWeaponType)) return false;
   const defenderMainIsBowOrCrossbow = isBowOrCrossbow(defender.weapon.type);
   if (defenderMainIsBowOrCrossbow && !hasSubWeapon) return false;
@@ -2165,18 +2203,20 @@ export default function App() {
 
     const defenderLegDisabled = getLegTraumaLevel(defender) >= 4;
     const rawRoll = d100();
-    const attackRoll = rawRoll + hitBonus - attackPenaltyExtra;
+    const levelCombatBonus = getLevelCombatBonus(attacker, defender);
+    const attackRoll = rawRoll + hitBonus + levelCombatBonus.hit - attackPenaltyExtra;
     const evadeBase = defender.attributes.DEX * 0.5 + defender.attributes.PER * 0.2;
     const currentLocks = currentTargetLocksCount[defender.id] ?? lastRoundAttackersCount[defender.id] ?? 0;
-    const multiTargetPenalty = Math.max(0, currentLocks - 1) * 4;
-    const comboEvadePenalty = Math.max(0, attackerComboIndex) * 5;
+    const multiTargetPenalty = Math.max(0, currentLocks - 1) * 5;
+    const comboEvadePenalty = Math.max(0, attackerComboIndex) * 7;
     const defenderMartialEvadeBonus = /武术/.test(defender.weapon.type) ? 7 : 0;
     const defenderEvadeBonus = defender.evadeBonus || 0;
     const evadeValue = Math.max(
       0,
       Math.min(70, evadeBase + Math.min(0, defenderEvadeBonus)) +
         defenderMartialEvadeBonus +
-        Math.max(0, defenderEvadeBonus) -
+        Math.max(0, defenderEvadeBonus) +
+        levelCombatBonus.evade -
         multiTargetPenalty -
         comboEvadePenalty,
     );
@@ -2205,7 +2245,7 @@ export default function App() {
               0,
               isBowOrCrossbow(currentWeapon.type)
                 ? (attacker.attributes.STR * 0.4 + attacker.attributes.PER * 0.85) * 0.4
-                : (attacker.attributes.STR * 0.5 + attacker.attributes.DEX * 0.45) * 0.4,
+                : (attacker.attributes.STR * 0.6 + attacker.attributes.DEX * 0.35) * 0.4,
             );
           const rawDamage = Math.max(0, baseDamage);
           const finalDamage = rawDamage;
@@ -2284,7 +2324,9 @@ export default function App() {
     const defenseBase = getDefenseBase(defender, useBlock);
     const defenseChance =
       defenseBase +
-      Math.max(-30, Math.min(45, defender.attributes.DEX - attacker.attributes.DEX)) -
+      Math.max(-30, Math.min(45, defender.attributes.DEX - attacker.attributes.DEX)) +
+      levelCombatBonus.defense -
+      levelCombatBonus.hit -
       defensePenalty -
       multiTargetPenalty;
     const defenseRoll = d100();
@@ -2310,7 +2352,7 @@ export default function App() {
         0,
         isBowOrCrossbow(currentWeapon.type)
           ? (attacker.attributes.STR * 0.4 + attacker.attributes.PER * 0.85) * 0.4
-          : (attacker.attributes.STR * 0.5 + attacker.attributes.DEX * 0.45) * 0.4,
+          : (attacker.attributes.STR * 0.6 + attacker.attributes.DEX * 0.35) * 0.4,
       );
     const rawDamage = Math.max(0, baseDamage);
     const critMultiplier = isCrit ? (isMartialHeavy ? 2.5 : isMartialSpeed ? 1 : isHeavyWeapon ? 2 : 1.5) : 1;
