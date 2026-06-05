@@ -44,7 +44,7 @@ interface BlessingOption {
   stats?: BlessingStat[];
 }
 
-const legendaryUnlockBlessingIds = ['okran_15', 'kral_16', 'narko_15', 'chitrin_15', 'yuri_15'];
+const legendaryUnlockBlessingIds = ['okran_15', 'kral_16', 'narko_15', 'chitrin_15', 'yuri_18'];
 
 const upgradeBlessingChains = [
   { from: '副肢痉挛', to: '副肢破茧' },
@@ -126,7 +126,8 @@ const godsData: GodTheme[] = [
       {
         id: 'okran_4',
         title: '惩戒之怒',
-        description: '你每次受到攻击，都会激发内心狂热的自毁倾向，以放弃防御为代价进行狂暴反击。',
+        description:
+          '每一次受击都会点燃你心中审判异端的圣怒。你会在稳住架势的瞬间抓住敌人的破绽，以更凌厉的惩戒反击回敬对方，让伤痛化作制裁之刃。',
         rarity: '稀有',
         icon: <Sword className="w-8 h-8 text-amber-300" />,
         stats: [
@@ -154,8 +155,8 @@ const godsData: GodTheme[] = [
         icon: <Heart className="w-8 h-8 text-yellow-300" />,
         stats: [
           { name: '韧性', value: 12 },
-          { name: '感知', value: 8 },
-          { name: '魅力', value: -10 },
+          { name: '感知', value: 12 },
+          { name: '魅力', value: -16 },
         ],
       },
       {
@@ -167,8 +168,8 @@ const godsData: GodTheme[] = [
         icon: <Users className="w-8 h-8 text-amber-200" />,
         stats: [
           { name: '体质', value: 20 },
-          { name: '韧性', value: 8 },
-          { name: '力量', value: -15 },
+          { name: '韧性', value: 10 },
+          { name: '力量', value: -18 },
         ],
       },
       {
@@ -322,7 +323,7 @@ const godsData: GodTheme[] = [
         rarity: '稀有',
         icon: <Zap className="w-8 h-8 text-red-400" />,
         stats: [
-          { name: '敏捷', value: 7 },
+          { name: '敏捷', value: 9 },
           { name: '感知', value: -5 },
         ],
       },
@@ -346,8 +347,8 @@ const godsData: GodTheme[] = [
         rarity: '传说',
         icon: <Activity className="w-8 h-8 text-red-500" />,
         stats: [
-          { name: '韧性', value: 30 },
-          { name: '敏捷', value: -15 },
+          { name: '韧性', value: 34 },
+          { name: '敏捷', value: -18 },
         ],
       },
       {
@@ -359,7 +360,7 @@ const godsData: GodTheme[] = [
         icon: <Shield className="w-8 h-8 text-orange-400" />,
         stats: [
           { name: '体质', value: 12 },
-          { name: '敏捷', value: -8 },
+          { name: '敏捷', value: -10 },
         ],
       },
       {
@@ -387,7 +388,7 @@ const godsData: GodTheme[] = [
         icon: <Activity className="w-8 h-8 text-orange-400" />,
         stats: [
           { name: '力量', value: 6 },
-          { name: '体质', value: 4 },
+          { name: '体质', value: 6 },
         ],
       },
       {
@@ -398,8 +399,8 @@ const godsData: GodTheme[] = [
         rarity: '传说',
         icon: <Sword className="w-8 h-8 text-red-600" />,
         stats: [
-          { name: '力量', value: 10 },
-          { name: '韧性', value: 5 },
+          { name: '力量', value: 25 },
+          { name: '韧性', value: -8 },
         ],
       },
       {
@@ -503,7 +504,7 @@ const godsData: GodTheme[] = [
         rarity: '史诗',
         icon: <Wind className="w-8 h-8 text-indigo-200" />,
         stats: [
-          { name: '敏捷', value: 10 },
+          { name: '敏捷', value: 12 },
           { name: '体质', value: -8 },
         ],
       },
@@ -559,7 +560,7 @@ const godsData: GodTheme[] = [
         rarity: '传说',
         icon: <Wind className="w-8 h-8 text-indigo-400" />,
         stats: [
-          { name: '敏捷', value: 16 },
+          { name: '敏捷', value: 18 },
           { name: '感知', value: 8 },
         ],
       },
@@ -756,7 +757,7 @@ const godsData: GodTheme[] = [
         rarity: '史诗',
         icon: <Cpu className="w-8 h-8 text-teal-400" />,
         stats: [
-          { name: '智力', value: 19 },
+          { name: '智力', value: 22 },
           { name: '感知', value: -12 },
         ],
       },
@@ -1018,6 +1019,47 @@ const godsData: GodTheme[] = [
       },
       {
         id: 'yuri_15',
+        title: '血蜘蛛共生体(幼体)',
+        description:
+          '血蜘蛛幼体蛰伏在你的脊椎深处，与神经相连，带来敏锐感知与日复一日的隐痛；它真正的力量，似乎还远未被发掘。',
+        rarity: '普通',
+        icon: <Bug className="w-8 h-8 text-pink-300" />,
+        stats: [
+          { name: '感知', value: 8 },
+          { name: '体质', value: -10 },
+          { name: '魅力', value: -10 },
+        ],
+      },
+      {
+        id: 'yuri_16',
+        title: '血蜘蛛共生体(成熟体)',
+        description:
+          '脊椎里的血蜘蛛幼体已经长成成熟体。部分鲜红的蜘蛛肢体从你的背部刺出，力量在骨骼与肌肉间涌动；痛苦正在减轻，但它真正的潜能，似乎仍未完全苏醒。',
+        rarity: '史诗',
+        icon: <Bug className="w-8 h-8 text-fuchsia-400" />,
+        stats: [
+          { name: '力量', value: 6 },
+          { name: '体质', value: 6 },
+          { name: '魅力', value: -8 },
+        ],
+      },
+      {
+        id: 'yuri_17',
+        title: '血蜘蛛共生体(长者)',
+        description:
+          '寄生在你脊椎中的血蜘蛛已经完全成熟。鲜红而锋利的四个完整蜘蛛肢体从背后舒展开来，你不再感到痛苦，甚至能以本能驱使其他血蜘蛛；但随之而来的饥饿，也在啃噬你的理智。',
+        rarity: '传说',
+        icon: <Bug className="w-8 h-8 text-red-500" />,
+        stats: [
+          { name: '力量', value: 10 },
+          { name: '敏捷', value: 10 },
+          { name: '体质', value: 10 },
+          { name: '智力', value: -12 },
+          { name: '魅力', value: -12 },
+        ],
+      },
+      {
+        id: 'yuri_18',
         title: '渊胎契印',
         description:
           '让比拉克将渊胎契印缝入你的血肉。奖励：自此获得承载比拉克传说赐福的资格。代价：你的身躯会被深渊视作孕育畸变的温床，未来将难以再被奥克兰、克拉尔与娜尔可真正接纳。此项不消耗特质点，请在赐予角色时再次确认。',
@@ -1434,7 +1476,7 @@ const godsData: GodTheme[] = [
         id: 'ken_5',
         title: '迷雾区幸存者',
         description:
-          '明明没有离开过骨人城，你却有在迷雾岛被雾人追杀了三年的记忆。你已经对所有的恐惧与痛楚都感到麻木，但深夜里脑海总是回响着惨叫。',
+          '你有在迷雾岛被雾人追杀了三年的记忆。你已经对所有的恐惧与痛楚都感到麻木，但深夜里脑海总是回响着惨叫。',
         rarity: '史诗',
         icon: <Ghost className="w-8 h-8 text-cyan-200" />,
         stats: [
@@ -1445,24 +1487,27 @@ const godsData: GodTheme[] = [
       },
       {
         id: 'ken_6',
-        title: '余烬幽魂走马斩',
+        title: '醉步武斗',
         description:
-          '在刀剑寒芒亮起时走马灯地闪过古战场不传剑谱，鬼使神差、神游物外地使出恰置虚空的一记平淡斩击，优雅且轻巧地破除死局。',
-        rarity: '普通',
-        icon: <Ghost className="w-8 h-8 text-cyan-300" />,
-        stats: [{ name: '韧性', value: 5 }],
+          '你记起自己曾在酒馆、泥地与混战边缘磨出的怪异步法。战斗中刻意让重心摇晃倾斜，脚步看似杂乱无章，攻势却忽左忽右、难以捉摸；大幅度的身体扭转既能擦开来袭刀锋，也能在失衡的瞬间打出猝不及防的反击。',
+        rarity: '史诗',
+        icon: <WineOff className="w-8 h-8 text-cyan-300" />,
+        stats: [
+          { name: '敏捷', value: 10 },
+          { name: '感知', value: 10 },
+        ],
       },
       {
         id: 'ken_7',
         title: '顶级消力式',
         description:
-          '你突然领悟了过去一位师傅教导的消力技巧。现在对手重剑砸来、大刀横劈的电光时刻，可以顶级消力使肌肉微小震颤借向滑导，将致死重击全数卸散导入大地。',
+          '你突然领悟了过去某位师傅教导的消力技巧。现在对手刀剑袭来之时，不进行任何格挡以及闪避，而是使肉体犹如一根零重量的羽毛，顺应敌方武器的方向随其飘飞，通过消除受力点，将致死的冲击彻底无效化，如同打在空气之上。。',
         rarity: '史诗',
         icon: <Lock className="w-8 h-8 text-blue-300" />,
         stats: [
-          { name: '韧性', value: 15 },
-          { name: '体质', value: 5 },
-          { name: '敏捷', value: 10 },
+          { name: '韧性', value: 25 },
+          { name: '体质', value: -8 },
+          { name: '敏捷', value: 8 },
         ],
       },
       {
@@ -1479,15 +1524,24 @@ const godsData: GodTheme[] = [
       },
       {
         id: 'ken_9',
+        title: '燕返',
+        description:
+          '这并非三刀，而是唯一一刀在出鞘后被压缩成三段骤然加速的斩轨。刀势第一段破开距离，第二段于中途折换方向，第三段才真正落入敌人来不及理解的死角；一刀之内连成三重斩击，宛如燕影翻回，去而复返。',
+        rarity: '传说',
+        icon: <Sword className="w-8 h-8 text-blue-200" />,
+        stats: [{ name: '敏捷', value: 20 }],
+      },
+      {
+        id: 'ken_9b',
         title: '百劫忘死化境御',
         description:
-          '脑海中模拟并承受过上千重古怪而凄惨死法的你，在真正的战场上已然能做到古井无波。任何莫测凶险的对攻杀路，在你眼中皆不过是重演千万遍的无趣图景，自能本能出招，御力于无形去克敌。',
+          '脑海中承受过上千重古怪而凄惨死法记忆的你，在真正的战场上已然能做到古井无波。任何莫测凶险的对攻杀路，在你眼中皆不过是重演千万遍的无趣图景，自能本能出招，御力于无形去克敌。',
         rarity: '传说',
         icon: <Ghost className="w-8 h-8 text-blue-200" />,
         stats: [
-          { name: '韧性', value: 8 },
-          { name: '感知', value: 8 },
-          { name: '敏捷', value: 8 },
+          { name: '韧性', value: 10 },
+          { name: '感知', value: 10 },
+          { name: '敏捷', value: 10 },
         ],
       },
       {
@@ -1497,8 +1551,8 @@ const godsData: GodTheme[] = [
         rarity: '普通',
         icon: <Eye className="w-8 h-8 text-cyan-300" />,
         stats: [
-          { name: '感知', value: 2 },
-          { name: '力量', value: 1 },
+          { name: '感知', value: 3 },
+          { name: '力量', value: 2 },
         ],
       },
       {
@@ -1508,49 +1562,8 @@ const godsData: GodTheme[] = [
         rarity: '普通',
         icon: <Activity className="w-8 h-8 text-blue-300" />,
         stats: [
-          { name: '体质', value: 1 },
+          { name: '体质', value: 2 },
           { name: '敏捷', value: 3 },
-        ],
-      },
-      {
-        id: 'ken_12',
-        title: '血蜘蛛共生体(幼体)',
-        description:
-          '你记得自己曾被血蜘蛛幼体寄生后侥幸活下。它仍蛰伏在脊椎深处，与神经相连，带来敏锐感知与日复一日的隐痛；它真正的力量，似乎还远未被发掘。',
-        rarity: '普通',
-        icon: <Bug className="w-8 h-8 text-cyan-300" />,
-        stats: [
-          { name: '感知', value: 8 },
-          { name: '体质', value: -10 },
-          { name: '魅力', value: -10 },
-        ],
-      },
-      {
-        id: 'ken_12b',
-        title: '血蜘蛛共生体(成熟体)',
-        description:
-          '脊椎里的血蜘蛛幼体已经长成成熟体。部分鲜红的蜘蛛肢体从你的背部刺出，力量在骨骼与肌肉间涌动；痛苦正在减轻，但它真正的潜能，似乎仍未完全苏醒。',
-        rarity: '史诗',
-        icon: <Bug className="w-8 h-8 text-cyan-400" />,
-        stats: [
-          { name: '力量', value: 6 },
-          { name: '体质', value: 6 },
-          { name: '魅力', value: -8 },
-        ],
-      },
-      {
-        id: 'ken_12c',
-        title: '血蜘蛛共生体(长者)',
-        description:
-          '寄生在你脊椎中的血蜘蛛已经完全成熟。鲜红而锋利的四个完整蜘蛛肢体从背后舒展开来，你不再感到痛苦，甚至能以本能驱使其他血蜘蛛；但随之而来的饥饿，也在啃噬你的理智。',
-        rarity: '传说',
-        icon: <Bug className="w-8 h-8 text-red-500" />,
-        stats: [
-          { name: '力量', value: 10 },
-          { name: '敏捷', value: 10 },
-          { name: '体质', value: 10 },
-          { name: '智力', value: -12 },
-          { name: '魅力', value: -12 },
         ],
       },
       {
@@ -1620,9 +1633,9 @@ const godsData: GodTheme[] = [
         id: 'evil_1',
         title: '傲慢之躯',
         description:
-          '献祭小队所有成员。你坚信自己已被神明选中，获得了凌驾一切的绝对力量，但你的傲慢让你再也无法容忍任何人的同行，你只能独自前行。',
+          '献祭小队所有成员。你自认为自己就是废土上唯一的神，众生不过是匍匐在脚边的尘土；没有人在你眼中配与你平等同行，你只允许世界仰望、畏惧，并被你的意志支配。',
         traitDescription:
-          '你坚信自己已被神明选中，获得了凌驾一切的绝对力量，但你的傲慢让你再也无法容忍任何人的同行，你只能独自前行。',
+          '你自认为自己就是废土上唯一的神，众生不过是匍匐在脚边的尘土；没有人在你眼中配与你平等同行，你只允许世界仰望、畏惧，并被你的意志支配。',
         rarity: '传说',
         icon: <Shield className="w-8 h-8 text-pink-500" />,
         stats: [
@@ -1645,21 +1658,21 @@ const godsData: GodTheme[] = [
         rarity: '传说',
         icon: <Flame className="w-8 h-8 text-fuchsia-500" />,
         stats: [
-          { name: '力量', value: 60 },
-          { name: '智力', value: -30 },
+          { name: '力量', value: 65 },
+          { name: '智力', value: -50 },
         ],
       },
       {
         id: 'evil_3',
         title: '贪婪之手',
         description:
-          '切断队伍里你最信任伙伴的双手。自私自利的无尽占有欲将你彻底侵吞。为了将战场上的一切先手、生机、乃至视线所及的微末资源据为己有，你的双手与双足在贪婪的渴望驱使下化作掠夺的惊人残影，爆发出超凡的极速，疯狂而利己地攫取并死守一切。作为代价，你的灵魂也将永生受困于无论如何也填不满的虚无深渊。',
+          '切断队伍里你最信任伙伴的双手。自私自利的无尽占有欲将你彻底侵吞。你的双手与双足在贪婪的渴望驱使下化作掠夺的惊人残影，爆发出超凡的极速，疯狂而利己地攫取并死守一切。作为代价，你的灵魂也将永生受困于无论如何也填不满的虚无深渊。',
         traitDescription:
-          '自私自利的无尽占有欲将你彻底侵吞。为了将战场上的一切先手、生机、乃至视线所及的微末资源据为己有，你的双手与双足在贪婪的渴望驱使下化作掠夺的惊人残影，爆发出超凡的极速，疯狂而利己地攫取并死守一切。作为代价，你的灵魂也将永生受困于无论如何也填不满的虚无深渊。',
+          '自私自利的无尽占有欲将你彻底侵吞。你的双手与双足在贪婪的渴望驱使下化作掠夺的惊人残影，爆发出超凡的极速，疯狂而利己地攫取并死守一切。作为代价，你的灵魂也将永生受困于无论如何也填不满的虚无深渊。',
         rarity: '史诗',
         icon: <Activity className="w-8 h-8 text-pink-400" />,
         stats: [
-          { name: '敏捷', value: 45 },
+          { name: '敏捷', value: 50 },
           { name: '韧性', value: -25 },
         ],
       },
@@ -1681,14 +1694,14 @@ const godsData: GodTheme[] = [
         id: 'evil_5',
         title: '暴食之口',
         description:
-          '生啖队伍里体格最为健壮的挚友。暴食同类的扭曲活性使你的血肉获得了异常强大的修复机能。战斗中不论皮肉受何等开膛撕裂之伤，伤口都将在一阵毛骨悚然的血肉惊颤中自我缓慢愈合，但宿命的饥肠辘辘将损耗你的心智。',
+          '生啖队伍里体格最为健壮的挚友。暴食同类的扭曲活性使你的血肉获得了异常强大的修复机能。战斗中不论皮肉受何等开膛撕裂之伤，伤口都将在一阵毛骨悚然的血肉惊颤中自我缓慢愈合，但宿命的饥肠辘辘将永远折磨着你的思绪。',
         traitDescription:
-          '食同类的扭曲活性使你的血肉获得了异常强大的修复机能。战斗中不论皮肉受何等开膛撕裂之伤，伤口都将在一阵毛骨悚然的血肉惊颤中自我缓慢愈合，但宿命的饥肠辘辘将损耗你的心智。',
+          '食同类的扭曲活性使你的血肉获得了异常强大的修复机能。战斗中不论皮肉受何等开膛撕裂之伤，伤口都将在一阵毛骨悚然的血肉惊颤中自我缓慢愈合，但宿命的饥肠辘辘将永远折磨着你的思绪。',
         rarity: '传说',
         icon: <Bone className="w-8 h-8 text-pink-500" />,
         stats: [
-          { name: '体质', value: 50 },
-          { name: '智力', value: -30 },
+          { name: '体质', value: 60 },
+          { name: '智力', value: -35 },
         ],
       },
       {
@@ -1709,9 +1722,9 @@ const godsData: GodTheme[] = [
         id: 'evil_7',
         title: '怠惰之梦',
         description:
-          '将队伍里最勤恳死忠的同伴作为活祭品生埋。极端的游离惫懒竟让你的危机神视发生了质跃：你能在脑海中宛如走马灯预先看到未来两秒的格斗交锋幻境。作为代价，你再也无法感到世间冷暖，任何事物都无法触动你。',
+          '将队伍里最勤恳死忠的同伴作为活祭品生埋。你把现实的一切责任、痛苦与担当都推入内心的深处，只在逃避中窥见危险来临前的裂隙：你能在脑海中宛如走马灯预先看到未来两秒的幻境。作为代价，你再也无法真正回应世间冷暖，任何责任与牵挂都难以触动你。',
         traitDescription:
-          '极端的游离惫懒竟让你的危机神视发生了质跃：你能在脑海中宛如走马灯预先看到未来两秒的格斗交锋幻境。作为代价，你再也无法感到世间冷暖，任何事物都无法触动你。',
+          '你把现实的一切责任、痛苦与担当都推入内心的深处，只在逃避中窥见危险来临前的裂隙：你能在脑海中宛如走马灯预先看到未来两秒的幻境。作为代价，你再也无法真正回应世间冷暖，任何责任与牵挂都难以触动你。',
         rarity: '传说',
         icon: <Anchor className="w-8 h-8 text-pink-400" />,
         stats: [
@@ -1767,11 +1780,13 @@ const GodCard = ({
 const BlessingModal = ({
   god,
   currentBlessings,
+  unavailableTitles,
   onClose,
   onSelect,
 }: {
   god: GodTheme;
   currentBlessings: BlessingOption[];
+  unavailableTitles: Set<string>;
   onClose: () => void;
   onSelect: (b: BlessingOption) => void;
 }) => {
@@ -1799,50 +1814,61 @@ const BlessingModal = ({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 w-full max-h-[60vh] overflow-y-auto px-2">
-          {currentBlessings.map((blessing, idx) => (
-            <div
-              key={blessing.id}
-              className="reward-card p-6 md:p-8 flex flex-col items-center text-center cursor-pointer"
-              onClick={() => onSelect(blessing)}
-              style={{ animationDelay: `${idx * 100}ms`, animation: `fadeInUp 0.5s ease backwards` }}
-            >
+          {currentBlessings.map((blessing, idx) => {
+            const isUnavailable = unavailableTitles.has(blessing.title);
+            return (
               <div
-                className="blessing-icon mb-4"
-                style={god.id === 'yuri' ? { borderColor: '#ec4899', color: '#ec4899' } : {}}
+                key={blessing.id}
+                className={`reward-card p-6 md:p-8 flex flex-col items-center text-center transition-all ${
+                  isUnavailable ? 'cursor-not-allowed opacity-45 grayscale' : 'cursor-pointer hover:bg-zinc-900/50'
+                }`}
+                onClick={() => {
+                  if (!isUnavailable) onSelect(blessing);
+                }}
+                style={{ animationDelay: `${idx * 100}ms`, animation: `fadeInUp 0.5s ease backwards` }}
               >
-                {blessing.title.charAt(0)}
-              </div>
-              <h4 className="text-lg md:text-xl font-bold mb-3 text-white">{blessing.title}</h4>
-
-              {blessing.stats && blessing.stats.length > 0 && (
-                <div className="flex flex-wrap gap-1 mb-4 justify-center relative z-10">
-                  {blessing.stats.map(stat => (
-                    <span
-                      key={stat.name}
-                      className={`text-[11px] font-bold px-2 py-0.5 border bg-zinc-950/80 backdrop-blur-sm ${
-                        stat.value > 0
-                          ? 'text-emerald-400 border-emerald-900 shadow-[0_0_8px_rgba(16,185,129,0.15)]'
-                          : 'text-rose-400 border-rose-900 shadow-[0_0_8px_rgba(244,63,94,0.15)]'
-                      }`}
-                    >
-                      {stat.name} {stat.value > 0 ? `+${stat.value}` : stat.value}
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              <p className="text-xs md:text-sm text-zinc-400 flex-1 leading-relaxed text-left opacity-80 border-t border-zinc-800/50 pt-4 w-full">
-                {blessing.description}
-              </p>
-
-              <div className="mt-8 w-full flex items-center justify-between pt-4 border-t border-zinc-800/50">
-                <div className="shrink-0 opacity-70" style={{ color: 'var(--kenshi-gold)' }}>
-                  {cloneElement(blessing.icon as React.ReactElement<{ className?: string }>, {
-                    className: 'w-5 h-5',
-                  })}
-                </div>
                 <div
-                  className={`text-[10px] md:text-xs font-bold py-1 px-3 border bg-zinc-950/80
+                  className="blessing-icon mb-4"
+                  style={god.id === 'yuri' ? { borderColor: '#ec4899', color: '#ec4899' } : {}}
+                >
+                  {blessing.title.charAt(0)}
+                </div>
+                <h4 className="text-lg md:text-xl font-bold mb-3 text-white">{blessing.title}</h4>
+                {isUnavailable && (
+                  <div className="mb-3 text-[10px] tracking-[0.2em] text-rose-300 border border-rose-900/70 bg-rose-950/20 px-3 py-1">
+                    此特质已被占用
+                  </div>
+                )}
+
+                {blessing.stats && blessing.stats.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mb-4 justify-center relative z-10">
+                    {blessing.stats.map(stat => (
+                      <span
+                        key={stat.name}
+                        className={`text-[12px] md:text-[13px] font-black px-2.5 py-1 border bg-black/95 backdrop-blur-sm tracking-wide leading-none drop-shadow-none ${
+                          stat.value > 0
+                            ? 'text-emerald-200 border-emerald-400/90 shadow-[0_0_0_1px_rgba(52,211,153,0.35)]'
+                            : 'text-rose-200 border-rose-400/90 shadow-[0_0_0_1px_rgba(251,113,133,0.35)]'
+                        }`}
+                      >
+                        {stat.name} {stat.value > 0 ? `+${stat.value}` : stat.value}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <p className="text-xs md:text-sm text-zinc-400 flex-1 leading-relaxed text-left opacity-80 border-t border-zinc-800/50 pt-4 w-full">
+                  {blessing.description}
+                </p>
+
+                <div className="mt-8 w-full flex items-center justify-between pt-4 border-t border-zinc-800/50">
+                  <div className="shrink-0 opacity-70" style={{ color: 'var(--kenshi-gold)' }}>
+                    {cloneElement(blessing.icon as React.ReactElement<{ className?: string }>, {
+                      className: 'w-5 h-5',
+                    })}
+                  </div>
+                  <div
+                    className={`text-[10px] md:text-xs font-bold py-1 px-3 border bg-zinc-950/80
                   ${
                     blessing.rarity === '传说'
                       ? 'text-yellow-500 border-yellow-900 shadow-[0_0_10px_rgba(234,179,8,0.2)]'
@@ -1850,12 +1876,13 @@ const BlessingModal = ({
                         ? 'text-purple-400 border-purple-900 shadow-[0_0_10px_rgba(168,85,247,0.2)]'
                         : 'text-zinc-400 border-zinc-800'
                   }`}
-                >
-                  稀有度：{blessing.rarity}
+                  >
+                    稀有度：{blessing.rarity}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="text-center mt-8 md:mt-12">
@@ -1881,7 +1908,9 @@ interface RuntimeSquadMember extends SquadMember {
   squadName: string;
   memberName: string;
   level?: number;
+  traitPoints?: number;
   traitTitles?: string[];
+  raceName?: string;
 }
 
 interface RitualWarning {
@@ -1890,16 +1919,14 @@ interface RitualWarning {
 }
 
 const TargetSelectModal = ({
-  god,
   blessing,
   squad,
   onSelect,
   onClose,
   mode = 'target',
 }: {
-  god: GodTheme;
   blessing: BlessingOption;
-  squad: SquadMember[];
+  squad: RuntimeSquadMember[];
   onSelect: (id: string) => void;
   onClose: () => void;
   mode?: 'target' | 'sacrifice';
@@ -1939,6 +1966,14 @@ const TargetSelectModal = ({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 w-full">
+          {squad.length === 0 && (
+            <div className="md:col-span-2 reward-card p-6 text-center border border-zinc-800/80 bg-black/70">
+              <h4 className="text-lg font-bold mb-2 text-zinc-300">无人能承载此赐福</h4>
+              <p className="text-xs text-zinc-500 leading-relaxed">
+                特质点、前置特质、等级或神印条件不足；请返回选择其他恩赐，或先移除已选赐福。
+              </p>
+            </div>
+          )}
           {squad.map((member, idx) => (
             <div
               key={member.id}
@@ -1948,6 +1983,9 @@ const TargetSelectModal = ({
             >
               <h4 className="text-lg font-bold mb-2 text-white">{member.name}</h4>
               <p className="text-xs text-zinc-500">{member.role}</p>
+              <div className="mt-3 text-[10px] tracking-[0.18em] text-[var(--kenshi-gold)] border border-zinc-800/80 bg-black/50 px-3 py-1">
+                剩余特质点：{member.traitPoints ?? 0}
+              </div>
             </div>
           ))}
         </div>
@@ -2021,6 +2059,8 @@ export default function App() {
   const [ritualWarning, setRitualWarning] = useState<RitualWarning | null>(null);
   const [fixedBlessingPool, setFixedBlessingPool] = useState<Record<string, BlessingOption[]>>({});
   const [showGodRulePanel, setShowGodRulePanel] = useState(false);
+  const [showTraitPointPanel, setShowTraitPointPanel] = useState(false);
+  const [showPickedBlessingPanel, setShowPickedBlessingPanel] = useState(false);
 
   const resolveMessageId = () => (typeof getCurrentMessageId === 'function' ? getCurrentMessageId() : 'latest');
 
@@ -2033,14 +2073,20 @@ export default function App() {
 
     const mvuData = Mvu.getMvuData({ type: 'message', message_id: messageId });
     const squads = _.get(mvuData, 'stat_data.小队成员', {});
+    const explicitMainSquad = String(_.get(mvuData, 'stat_data.主控', '') || '').trim();
+    const fallbackSquad = Object.keys(squads)[0];
+    const targetSquadName = explicitMainSquad && _.has(squads, explicitMainSquad) ? explicitMainSquad : fallbackSquad;
+    const targetSquads = targetSquadName ? { [targetSquadName]: _.get(squads, targetSquadName) } : {};
     const members: RuntimeSquadMember[] = [];
 
-    _.forEach(squads, (squadData, squadName) => {
+    _.forEach(targetSquads, (squadData, squadName) => {
       const squadMembers = _.get(squadData, '成员', {});
       _.forEach(squadMembers, (memberData, memberName) => {
         if (!memberData || memberData === '待初始化') return;
         const displayName = _.get(memberData, '名字', memberName) || String(memberName);
         const identity = _.get(memberData, '身份', '小队成员');
+        const traitPoints = Number(_.get(memberData, '特质点', 0));
+        const raceName = String(_.get(memberData, '种族.名称', ''));
         members.push({
           id: `${String(squadName)}::${String(memberName)}`,
           name: String(displayName),
@@ -2048,7 +2094,9 @@ export default function App() {
           squadName: String(squadName),
           memberName: String(memberName),
           level: Number(_.get(memberData, '等级', 1)) || 1,
+          traitPoints: Number.isFinite(traitPoints) ? traitPoints : 0,
           traitTitles: Object.keys(_.get(memberData, '特质', {}) || {}),
+          raceName,
         });
       });
     });
@@ -2072,6 +2120,19 @@ export default function App() {
 
   const getBlessingByTitle = (title: string) =>
     godsData.flatMap(god => god.blessings).find(blessing => blessing.title === title);
+
+  const getPickedBlessingCost = (item: { god: GodTheme; blessing: BlessingOption }) =>
+    item.god.id !== 'evil' && !isLegendaryUnlockBlessing(item.blessing.id) ? 1 : 0;
+
+  const getRemainingTraitPoints = (member: RuntimeSquadMember | undefined) => {
+    if (!member) return 0;
+    const spent = pickedBlessings
+      .filter(item => item.characterId === member.id)
+      .reduce((sum, item) => sum + getPickedBlessingCost(item), 0);
+    return Math.max(0, Number(member.traitPoints || 0) - spent);
+  };
+
+  const getPickedTraitTitles = () => new Set(pickedBlessings.map(item => item.blessing.title));
 
   const getEffectiveTraitTitles = (member: RuntimeSquadMember | undefined) => {
     const titles = new Set(member?.traitTitles ?? []);
@@ -2344,6 +2405,37 @@ export default function App() {
     return runtimeSquad.length >= 2;
   };
 
+  const canMemberTakeBlessing = (member: RuntimeSquadMember, god: GodTheme, blessing: BlessingOption) => {
+    const effectiveTraitTitles = getEffectiveTraitTitles(member);
+    const requiredUpgradeTitle = upgradePrerequisiteByTitle[blessing.title];
+    const brandGodId = getBrandGodIdFromMember(member);
+
+    if (effectiveTraitTitles.has(blessing.title)) return false;
+    if (getPickedTraitTitles().has(blessing.title)) return false;
+    if (requiredUpgradeTitle && !effectiveTraitTitles.has(requiredUpgradeTitle)) return false;
+    if (god.id === 'yuri') {
+      const raceName = String(_.get(member, 'raceName', ''));
+      if (raceName.includes('骨人')) return false;
+    }
+    if (god.id !== 'evil' && !isLegendaryUnlockBlessing(blessing.id) && getRemainingTraitPoints(member) <= 0)
+      return false;
+    if (god.id !== 'evil' && god.id !== 'beep') {
+      const allowed = getAllowedRaritiesByPersonalLevel(Number(member.level || 1));
+      if (!allowed.includes(blessing.rarity)) return false;
+    }
+    if (isSpecialGod(god.id)) {
+      if (brandGodId && brandGodId !== god.id) return false;
+      if (isLegendaryUnlockBlessing(blessing.id) && !(Number(member.level || 1) > 50)) return false;
+      if (blessing.rarity === '传说' && !isLegendaryUnlockBlessing(blessing.id) && brandGodId !== god.id) return false;
+    }
+    return true;
+  };
+
+  const getSelectableTargets = (god: GodTheme, blessing: BlessingOption) =>
+    runtimeSquad
+      .filter(member => canMemberTakeBlessing(member, god, blessing))
+      .map(member => ({ ...member, traitPoints: getRemainingTraitPoints(member) }));
+
   const buildNoTraitPointWarning = (godId: string, targetName: string, traitPoints: number) => {
     const currentPoints = Number.isFinite(traitPoints) ? traitPoints : 0;
     if (godId === 'okran') {
@@ -2447,6 +2539,14 @@ export default function App() {
 
   const handleBlessingSelect = (blessing: BlessingOption) => {
     if (selectedGod) {
+      if (getPickedTraitTitles().has(blessing.title)) {
+        setRitualWarning({
+          title: '神恩不可重铸',
+          content: `【${blessing.title}】已经被本轮某位角色选定。
+同一道特质只能被一个灵魂承载，请先在已选界面移除后再重新分配。`,
+        });
+        return;
+      }
       if (selectedGod.god.id !== 'evil' && selectedGod.god.id !== 'beep') {
         const targetLevels = runtimeSquad.map(m => Number(m.level || 1)).filter(n => Number.isFinite(n));
         const highestPersonalLevel = targetLevels.length > 0 ? Math.max(...targetLevels) : 1;
@@ -2496,6 +2596,18 @@ export default function App() {
       const effectiveTraitTitles = getEffectiveTraitTitles(targetMember);
       const brandGodId = getBrandGodIdFromMember(targetMember);
       const raceName = String(_.get(mvuData, `stat_data.小队成员.${squadName}.成员.${memberName}.种族.名称`, ''));
+
+      if (
+        effectiveTraitTitles.has(selectingTarget.blessing.title) ||
+        getPickedTraitTitles().has(selectingTarget.blessing.title)
+      ) {
+        setRitualWarning({
+          title: '重复特质被拒',
+          content: `【${selectingTarget.blessing.title}】已经存在或已被本轮选定。
+废土旧神不允许同名恩赐反复叠加，也不允许同一道特质同时分给多人。`,
+        });
+        return;
+      }
 
       const requiredUpgradeTitle = upgradePrerequisiteByTitle[selectingTarget.blessing.title];
       if (requiredUpgradeTitle && !effectiveTraitTitles.has(requiredUpgradeTitle)) {
@@ -2737,6 +2849,10 @@ export default function App() {
     });
   };
 
+  const handleRemovePickedBlessing = (index: number) => {
+    setPickedBlessings(prev => prev.filter((_, idx) => idx !== index));
+  };
+
   const handleStartJourney = async () => {
     await applyBlessingsToMvu();
     const summary = buildPrayerSummary();
@@ -2887,9 +3003,54 @@ export default function App() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="mt-6 font-serif flex flex-col items-center gap-2"
+                className="mt-6 font-serif flex flex-col items-center gap-3 w-full max-w-md"
               >
-                <div className="text-[10px] uppercase text-zinc-500 tracking-widest mb-1">小队抉择已完成</div>
+                <div className="flex flex-wrap justify-center gap-2">
+                  <button
+                    onClick={() => setShowTraitPointPanel(value => !value)}
+                    className="text-[10px] md:text-xs tracking-[0.2em] uppercase px-4 py-2 border border-zinc-700/80 text-zinc-300 hover:text-[var(--kenshi-gold)] hover:border-[var(--kenshi-gold)] transition-all"
+                  >
+                    查看未用特质点
+                  </button>
+                  <button
+                    onClick={() => setShowPickedBlessingPanel(value => !value)}
+                    className="text-[10px] md:text-xs tracking-[0.2em] uppercase px-4 py-2 border border-zinc-700/80 text-zinc-300 hover:text-[var(--kenshi-gold)] hover:border-[var(--kenshi-gold)] transition-all"
+                  >
+                    查看已选赐福
+                  </button>
+                </div>
+
+                <AnimatePresence>
+                  {showTraitPointPanel && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="w-full overflow-hidden"
+                    >
+                      <div className="reward-card p-3 border border-zinc-800/80 bg-black/70 text-left">
+                        <div className="text-[10px] uppercase text-zinc-500 tracking-widest mb-2">未用特质点</div>
+                        <div className="flex flex-wrap gap-2">
+                          {runtimeSquad.filter(member => getRemainingTraitPoints(member) > 0).length > 0 ? (
+                            runtimeSquad
+                              .filter(member => getRemainingTraitPoints(member) > 0)
+                              .map(member => (
+                                <span
+                                  key={member.id}
+                                  className="text-[10px] border border-zinc-700/80 bg-zinc-950/80 text-zinc-300 px-2 py-1"
+                                >
+                                  {member.name}：{getRemainingTraitPoints(member)}点
+                                </span>
+                              ))
+                          ) : (
+                            <span className="text-[10px] text-zinc-600">没有可消耗的特质点</span>
+                          )}
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
                 <button
                   onClick={handleStartJourney}
                   className="px-8 py-3 bg-[var(--kenshi-gold)] text-black border border-transparent font-bold tracking-widest text-sm hover:bg-opacity-80 transition-all active:scale-95 shadow-[0_0_15px_rgba(196,164,132,0.3)] hover:shadow-[0_0_25px_rgba(196,164,132,0.6)]"
@@ -2924,15 +3085,15 @@ export default function App() {
           <BlessingModal
             god={selectedGod.god}
             currentBlessings={selectedGod.currentBlessings}
+            unavailableTitles={getPickedTraitTitles()}
             onClose={() => setSelectedGod(null)}
             onSelect={handleBlessingSelect}
           />
         )}
         {selectingTarget && (
           <TargetSelectModal
-            god={selectingTarget.god}
             blessing={selectingTarget.blessing}
-            squad={runtimeSquad}
+            squad={getSelectableTargets(selectingTarget.god, selectingTarget.blessing)}
             onSelect={handleTargetSelect}
             onClose={() => {
               setSelectingTarget(null);
@@ -2941,9 +3102,10 @@ export default function App() {
         )}
         {selectingSacrifice && (
           <TargetSelectModal
-            god={selectingSacrifice.god}
             blessing={selectingSacrifice.blessing}
-            squad={runtimeSquad.filter(member => member.id !== selectingSacrifice.characterId)}
+            squad={runtimeSquad
+              .filter(member => member.id !== selectingSacrifice.characterId)
+              .map(member => ({ ...member, traitPoints: getRemainingTraitPoints(member) }))}
             onSelect={handleSacrificeSelect}
             onClose={() => {
               setSelectingSacrifice(null);
@@ -2952,6 +3114,73 @@ export default function App() {
           />
         )}
         {ritualWarning && <RitualWarningModal warning={ritualWarning} onClose={() => setRitualWarning(null)} />}
+        {showPickedBlessingPanel && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm"
+          >
+            <div className="absolute inset-0" onClick={() => setShowPickedBlessingPanel(false)} />
+            <motion.div
+              initial={{ scale: 0.96, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.96, opacity: 0 }}
+              transition={{ type: 'spring', bounce: 0.2, duration: 0.45 }}
+              className="relative z-10 w-full max-w-2xl reward-card p-6 md:p-8 border border-zinc-700/80 bg-black"
+            >
+              <h3
+                className="text-2xl md:text-3xl mb-4 text-center"
+                style={{ fontFamily: "'Zhi Mang Xing', cursive", color: 'var(--kenshi-gold)' }}
+              >
+                已受神恩之名
+              </h3>
+              <div className="max-h-[60vh] overflow-y-auto flex flex-col gap-3 pr-1">
+                {pickedBlessings.length > 0 ? (
+                  pickedBlessings.map((item, index) => {
+                    const target = runtimeSquad.find(member => member.id === item.characterId);
+                    const sacrifice = runtimeSquad.find(member => member.id === item.sacrificeId);
+                    return (
+                      <div
+                        key={`${item.characterId}-${item.blessing.id}-${index}`}
+                        className="reward-card p-4 border border-zinc-800/80 bg-zinc-950/70 text-left"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <div className="text-base text-white font-bold">{target?.name || '未知角色'}</div>
+                            <div className="text-[10px] text-zinc-500 tracking-widest mt-1">
+                              {item.god.name} / {item.blessing.title}
+                              {sacrifice ? ` / 祭品：${sacrifice.name}` : ''}
+                            </div>
+                            <div className="text-[10px] text-[var(--kenshi-gold)] mt-2">
+                              剩余特质点：{getRemainingTraitPoints(target)}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => handleRemovePickedBlessing(index)}
+                            className="shrink-0 text-[10px] tracking-widest text-rose-300 border border-rose-900/70 px-3 py-1.5 hover:bg-rose-950/30 transition-all"
+                          >
+                            移除
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="text-center text-sm text-zinc-500 py-8">尚无人接受赐福。</div>
+                )}
+              </div>
+              <div className="text-center mt-6">
+                <button
+                  className="px-6 py-2 border border-zinc-600 text-zinc-200 hover:text-[var(--kenshi-gold)] hover:border-[var(--kenshi-gold)] transition-all tracking-widest text-xs uppercase"
+                  onClick={() => setShowPickedBlessingPanel(false)}
+                >
+                  收起名单
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
         {showGodRulePanel && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -2986,7 +3215,7 @@ export default function App() {
 
 比普/恶念：始终显示全稀有度；恶念需队伍最高等级≥20才能进入。
 
-特质点规则：每个赐福消耗1点特质点；若目标角色特质点为0，则无法赐福。
+特质点规则：每个常规赐福消耗1点特质点；角色剩余特质点耗尽后不再显示为可选目标。一个角色可按剩余点数承载多个不同特质，但同名特质不能重复，也不能被多人同时选择。
 
 五系传说前置：奥克兰 / 克拉尔 / 娜尔可 / 奇特林 / 比拉克 各自拥有“传说（解锁前置）”。
 该前置不消耗特质点，但只有角色等级 >50 才能承受；未取得此前置者，不能选择对应神系的真正传说赐福。
