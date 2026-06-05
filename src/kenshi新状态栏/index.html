@@ -1104,8 +1104,16 @@
         gap: 10px;
         margin-bottom: 16px;
       }
+      .death-list-controls {
+        display: grid;
+        grid-template-columns: minmax(140px, 1fr) 110px auto;
+        gap: 10px;
+        margin-bottom: 14px;
+      }
       .past-input,
-      .past-textarea {
+      .past-textarea,
+      .death-name-input,
+      .death-status-select {
         width: 100%;
         background: rgba(0, 0, 0, 0.35);
         border: 1px solid #444;
@@ -1118,7 +1126,8 @@
         resize: vertical;
       }
       .past-add-btn,
-      .past-delete-btn {
+      .past-delete-btn,
+      .death-delete-btn {
         background: transparent;
         border: 1px solid var(--accent-bronze);
         color: var(--accent-gold);
@@ -1138,6 +1147,41 @@
       }
       .past-delete-btn:hover {
         background: rgba(231, 76, 60, 0.12);
+      }
+      .death-list-body {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .death-pill {
+        border: 1px solid var(--accent-danger);
+        color: var(--accent-danger);
+        background: rgba(231, 76, 60, 0.06);
+        padding: 4px 7px 4px 10px;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        font-family: var(--font-header);
+        cursor: pointer;
+        transition: 0.2s;
+      }
+      .death-pill:hover {
+        background: rgba(231, 76, 60, 0.12);
+        box-shadow: 0 0 8px rgba(231, 76, 60, 0.18);
+      }
+      .death-delete-btn {
+        display: none;
+        border-color: rgba(231, 76, 60, 0.7);
+        color: var(--accent-danger);
+        padding: 2px 7px;
+        line-height: 1.2;
+      }
+      .death-pill:hover .death-delete-btn,
+      .death-pill.show-actions .death-delete-btn {
+        display: inline-block;
+      }
+      .death-delete-btn:hover {
+        background: rgba(231, 76, 60, 0.18);
       }
 
       .map-frame-wrap {
@@ -3044,15 +3088,13 @@
           renderFactionList($('#intel-hostile'), hostileFaction, true);
           renderFactionList($('#intel-ally'), allyFaction, false);
           const killList = _.get(data, '往事.死亡名单', _.get(data, '往事.击杀名单', {}));
-          const killListContainer = $('#intel-kill-list').empty();
+          const killListContainer = $('#intel-kill-list-body').empty();
           if (!killList || typeof killList !== 'object' || Object.keys(killList).length === 0) {
             killListContainer.html('<span style="color:#666;">暂无记录</span>');
           } else {
             Object.entries(killList).forEach(([name, status]) => {
-              const isDead = String(status) === '死亡';
-              const color = isDead ? 'var(--accent-danger)' : 'var(--accent-positive)';
               killListContainer.append(
-                `<span class="faction-pill" style="border-color:${color}; color:${color}; margin-right:6px; margin-bottom:6px; display:inline-flex;">${_.escape(String(name))}：${_.escape(String(status))}</span>`,
+                `<span class="death-pill" data-name="${_.escape(String(name))}"><span>${_.escape(String(name))}：${_.escape(String(status))}</span><button type="button" class="death-delete-btn" data-name="${_.escape(String(name))}" title="从死亡名单删除">删除</button></span>`,
               );
             });
           }
@@ -3209,6 +3251,7 @@
         let pendingPastDeleteIndex = null;
         let pendingViewDeleteName = '';
         let pendingOtherDeleteName = '';
+        let pendingDeathDeleteName = '';
         let pendingMissionDeleteName = '';
         let pendingRelationDeleteName = '';
         let pendingRelationDeleteEntity = null;
@@ -3406,6 +3449,7 @@
           pendingPastDeleteIndex = null;
           pendingViewDeleteName = '';
           pendingOtherDeleteName = name || '';
+          pendingDeathDeleteName = '';
           pendingMissionDeleteName = '';
           pendingRelationDeleteName = '';
           $('#confirm-modal .confirm-title').text('确认移除异地');
@@ -3416,10 +3460,28 @@
           $('#confirm-modal').css('display', 'flex');
         }
 
+        function openDeathDeleteConfirm(name) {
+          pendingPastDeleteIndex = null;
+          pendingViewDeleteName = '';
+          pendingOtherDeleteName = '';
+          pendingDeathDeleteName = name || '';
+          pendingMissionDeleteName = '';
+          pendingRelationDeleteName = '';
+          $('#confirm-input').val('').hide();
+          $('#confirm-select').hide().empty();
+          $('#confirm-modal .confirm-title').text('确认移出死亡名单');
+          $('#confirm-modal .confirm-title').next('div').text(`是否将“${name}”从死亡名单删除？`);
+          $('#confirm-ok').text('删除').addClass('danger');
+          $('#confirm-cancel').text('取消').show();
+          $('#confirm-third').css('display', 'none');
+          $('#confirm-modal').css('display', 'flex');
+        }
+
         function openRelationDeleteConfirm(name) {
           pendingPastDeleteIndex = null;
           pendingViewDeleteName = '';
           pendingOtherDeleteName = '';
+          pendingDeathDeleteName = '';
           pendingMissionDeleteName = '';
           pendingRelationDeleteName = name || '';
           pendingRelationDeleteEntity =
@@ -3444,6 +3506,7 @@
           pendingPastDeleteIndex = null;
           pendingViewDeleteName = '';
           pendingOtherDeleteName = '';
+          pendingDeathDeleteName = '';
           pendingMissionDeleteName = name || '';
           pendingRelationDeleteName = '';
           $('#confirm-modal .confirm-title').text('确认删除任务');
@@ -3522,6 +3585,7 @@
           pendingPastDeleteIndex = null;
           pendingViewDeleteName = '';
           pendingOtherDeleteName = '';
+          pendingDeathDeleteName = '';
           pendingMissionDeleteName = '';
           pendingRelationDeleteName = '';
           clearPendingSquadActions();
@@ -4470,14 +4534,68 @@
           update();
         }
 
+        async function addDeathEntry() {
+          const nameValue = String($('#death-name-input').val() || '').trim();
+          const statusValue = String($('#death-status-input').val() || '死亡').trim() || '死亡';
+          if (!nameValue || statusValue !== '死亡') return;
+          const option = { type: 'message', message_id: getCurrentMessageId() };
+          const mvuData = Mvu.getMvuData(option) || {};
+          const deathList = _.get(mvuData, ['stat_data', '往事', '死亡名单'], {});
+          const nextDeathList =
+            deathList && typeof deathList === 'object' && !Array.isArray(deathList) ? { ...deathList } : {};
+          nextDeathList[nameValue] = '死亡';
+          _.set(mvuData, ['stat_data', '往事', '死亡名单'], nextDeathList);
+          await Mvu.replaceMvuData(mvuData, option);
+          $('#death-name-input').val('');
+          $('#death-status-input').val('死亡');
+          update();
+        }
+
+        async function deleteDeathEntry(name) {
+          const targetName = String(name || '').trim();
+          if (!targetName) return;
+          const option = { type: 'message', message_id: getCurrentMessageId() };
+          const mvuData = Mvu.getMvuData(option) || {};
+          const deathList = _.get(mvuData, ['stat_data', '往事', '死亡名单'], {});
+          if (deathList && typeof deathList === 'object' && !Array.isArray(deathList)) {
+            _.set(mvuData, ['stat_data', '往事', '死亡名单'], _.omit(deathList, [targetName]));
+          }
+          const legacyKillList = _.get(mvuData, ['stat_data', '往事', '击杀名单'], {});
+          if (legacyKillList && typeof legacyKillList === 'object' && !Array.isArray(legacyKillList)) {
+            _.set(mvuData, ['stat_data', '往事', '击杀名单'], _.omit(legacyKillList, [targetName]));
+          }
+          await Mvu.replaceMvuData(mvuData, option);
+          update();
+        }
+
         $('#past-add-btn').on('click', () => {
           addPastEntry();
+        });
+        $('#death-add-btn').on('click', () => {
+          addDeathEntry();
+        });
+        $('#death-name-input').on('keydown', e => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            addDeathEntry();
+          }
         });
         $('#past-list').on('click', '.past-delete-btn', function () {
           const index = Number($(this).attr('data-index'));
           if (!Number.isNaN(index)) {
             openPastDeleteConfirm(index);
           }
+        });
+        $('#intel-kill-list').on('click', '.death-pill', function (e) {
+          if ($(e.target).hasClass('death-delete-btn')) return;
+          $('.death-pill').not(this).removeClass('show-actions');
+          $(this).toggleClass('show-actions');
+        });
+        $('#intel-kill-list').on('click', '.death-delete-btn', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          const name = $(this).attr('data-name');
+          if (name) openDeathDeleteConfirm(name);
         });
         $(document).on('click', '#add-squad-btn', async function (e) {
           e.preventDefault();
@@ -4783,6 +4901,8 @@
             await deleteViewEntry(pendingViewDeleteName);
           } else if (pendingOtherDeleteName) {
             await deleteOtherEntry(pendingOtherDeleteName);
+          } else if (pendingDeathDeleteName) {
+            await deleteDeathEntry(pendingDeathDeleteName);
           } else if (pendingMissionDeleteName) {
             await deleteMissionEntry(pendingMissionDeleteName);
           } else if (pendingRelationDeleteName) {
@@ -5530,7 +5650,16 @@
             </div>
             <div class="section-box">
               <div class="section-title">死亡名单</div>
-              <div id="intel-kill-list"></div>
+              <div id="intel-kill-list">
+                <div class="death-list-controls">
+                  <input id="death-name-input" class="death-name-input" type="text" placeholder="写入姓名" />
+                  <select id="death-status-input" class="death-status-select">
+                    <option value="死亡">死亡</option>
+                  </select>
+                  <button id="death-add-btn" type="button" class="past-add-btn">记入</button>
+                </div>
+                <div id="intel-kill-list-body" class="death-list-body"></div>
+              </div>
             </div>
           </div>
           <div id="pane-mission" class="tab-pane"><div id="mission-list"></div></div>

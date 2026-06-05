@@ -1471,7 +1471,7 @@ export default function App() {
   const getTacticEffectMultiplier = (unit: BattleCharacter) => 1 + (unit.attributes.INT / 20) * 0.1;
   const [selectedMedicalItem, setSelectedMedicalItem] = useState<string | null>(null);
   const [nonLethalMenuOpen, setNonLethalMenuOpen] = useState(false);
-  const [roundLimit, setRoundLimit] = useState<number | null>(10);
+  const [roundLimit, setRoundLimit] = useState<number | null>(15);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [loading, setLoading] = useState(true);
