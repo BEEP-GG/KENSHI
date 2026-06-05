@@ -344,9 +344,9 @@ const TRAUMA_RULES = `创伤与状态详解：
 - 阈值降到0会升级到下一等级，超额会继续抵扣下一等级阈值。
 
 升级条件（TGH=体质，HPmax=最大生命值）：
-- 0→1：阈值归零（阈值=0.9*TGH）
-- 1→2：单次伤害 > TGH*0.45 或 阈值归零（阈值=0.55*TGH）
-- 2→3：单次伤害 > TGH*0.4 或 阈值归零（阈值=0.45*TGH）
+- 0→1：阈值归零（阈值=0.97*TGH）
+- 1→2：单次伤害 > TGH*0.45 或 阈值归零（阈值=0.63*TGH）
+- 2→3：单次伤害 > TGH*0.4 或 阈值归零（阈值=0.47*TGH）
 - 3→4：单次伤害 > TGH*0.3 或 阈值归零（阈值=0.35*TGH）
 - 任意等级→3：单次伤害 ≥ HPmax*0.5
 - 任意等级→4：单次伤害 ≥ HPmax*0.7
@@ -737,9 +737,9 @@ const getBattleOutcome = (units: BattleCharacter[]): BattleOutcome => {
 
 const getTraumaThresholdByLevel = (tgh: number, level: number) => {
   if (level >= 4) return 0;
-  if (level <= 0) return tgh * 0.9;
-  if (level === 1) return tgh * 0.55;
-  if (level === 2) return tgh * 0.45;
+  if (level <= 0) return tgh * 0.97;
+  if (level === 1) return tgh * 0.63;
+  if (level === 2) return tgh * 0.47;
   return tgh * 0.35;
 };
 
