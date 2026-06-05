@@ -1247,8 +1247,8 @@ const godsData: GodTheme[] = [
         rarity: '史诗',
         icon: <Smile className="w-8 h-8 text-lime-400" />,
         stats: [
-          { name: '魅力', value: 6 },
-          { name: '敏捷', value: 4 },
+          { name: '魅力', value: 8 },
+          { name: '敏捷', value: 6 },
         ],
       },
       {
@@ -1259,7 +1259,7 @@ const godsData: GodTheme[] = [
         rarity: '传说',
         icon: <Wind className="w-8 h-8 text-green-500" />,
         stats: [
-          { name: '敏捷', value: 10 },
+          { name: '敏捷', value: 15 },
           { name: '魅力', value: 5 },
         ],
       },
@@ -1267,12 +1267,12 @@ const godsData: GodTheme[] = [
         id: 'beep_11',
         title: '附魔师的元素之力',
         description:
-          '你的武器在挥舞或射击时，会自动附带炫酷的烈焰、雷电、冰霜等多种属性拖尾特效随机触发。虽然完全没有任何额外伤害，但耍帅程度堪称第一。威慑感上升，但心神也更容易被炫目幻象分散。',
+          '你的武器在挥舞或射击时，会自动附带炫酷的烈焰、雷电、冰霜等多种属性拖尾特效随机触发。虽然完全没有任何额外伤害，但耍帅程度堪称第一。威慑感上升，对方也更容易被炫目幻象分散注意。',
         rarity: '史诗',
         icon: <Zap className="w-8 h-8 text-lime-400" />,
         stats: [
-          { name: '魅力', value: 6 },
-          { name: '感知', value: 2 },
+          { name: '魅力', value: 7 },
+          { name: '感知', value: 3 },
           { name: '韧性', value: -2 },
         ],
       },
@@ -1285,7 +1285,7 @@ const godsData: GodTheme[] = [
         icon: <Activity className="w-8 h-8 text-green-400" />,
         stats: [
           { name: '敏捷', value: 3 },
-          { name: '韧性', value: 2 },
+          { name: '魅力', value: 4 },
           { name: '智力', value: -2 },
         ],
       },
@@ -1298,7 +1298,7 @@ const godsData: GodTheme[] = [
         stats: [
           { name: '魅力', value: 4 },
           { name: '智力', value: 1 },
-          { name: '体质', value: -1 },
+          { name: '体质', value: -2 },
         ],
       },
       {
@@ -1308,7 +1308,7 @@ const godsData: GodTheme[] = [
         rarity: '史诗',
         icon: <Hammer className="w-8 h-8 text-green-500" />,
         stats: [
-          { name: '力量', value: 4 },
+          { name: '力量', value: 6 },
           { name: '韧性', value: 1 },
           { name: '魅力', value: -2 },
         ],
@@ -1321,21 +1321,21 @@ const godsData: GodTheme[] = [
         rarity: '普通',
         icon: <Hexagon className="w-8 h-8 text-lime-400" />,
         stats: [
-          { name: '感知', value: 3 },
-          { name: '智力', value: 2 },
-          { name: '韧性', value: -2 },
+          { name: '感知', value: 4 },
+          { name: '智力', value: 4 },
+          { name: '韧性', value: -4 },
         ],
       },
       {
         id: 'beep_21',
         title: '动物交流',
         description:
-          '动物都喜欢你，并且你可以和它们交流。即使是喙嘴兽、野狗和沼泽猛禽，也会把你当成值得认真听两句的奇怪朋友，你们之间能互相听懂对方的话。',
+          '动物都喜欢你，并且你可以和它们交流。即使是喙嘴兽、野狗和沼泽猛禽，会主动保护你，为你作战的奇怪朋友，你们之间能互相听懂对方的话。',
         rarity: '史诗',
         icon: <Users className="w-8 h-8 text-lime-300" />,
         stats: [
           { name: '感知', value: 4 },
-          { name: '魅力', value: 10 },
+          { name: '魅力', value: 15 },
         ],
       },
       {
@@ -1425,7 +1425,7 @@ const godsData: GodTheme[] = [
     blessings: [
       {
         id: 'ken_1',
-        title: '轮回谷的终极沙袋',
+        title: '重生镇的终极沙袋',
         description: '你记得自己在重生镇当了十年奴隶，你的皮被打得比盔甲还厚，但常年的殴打也让你关节僵硬，动作迟缓。',
         rarity: '稀有',
         icon: <Shield className="w-8 h-8 text-blue-300" />,
@@ -1438,7 +1438,7 @@ const godsData: GodTheme[] = [
         id: 'ken_2',
         title: '尸体负重马拉松选手',
         description:
-          '你的脑海里充满了进行“扛尸逃课法”的虚假记忆，你获得了怪物般的力量，但养成了低头看脚下的习惯，经常对周围的危险视而不见。',
+          '你的脑海里充满了莫名其妙的“扛尸练级法”的虚假记忆，你获得了怪物般的力量，但养成了低头看脚下的习惯，经常对周围的危险视而不见。',
         rarity: '稀有',
         icon: <Activity className="w-8 h-8 text-cyan-300" />,
         stats: [
@@ -1505,9 +1505,9 @@ const godsData: GodTheme[] = [
         rarity: '史诗',
         icon: <Lock className="w-8 h-8 text-blue-300" />,
         stats: [
-          { name: '韧性', value: 25 },
-          { name: '体质', value: -8 },
-          { name: '敏捷', value: 8 },
+          { name: '韧性', value: 30 },
+          { name: '体质', value: -10 },
+          { name: '敏捷', value: 10 },
         ],
       },
       {
@@ -1539,9 +1539,9 @@ const godsData: GodTheme[] = [
         rarity: '传说',
         icon: <Ghost className="w-8 h-8 text-blue-200" />,
         stats: [
-          { name: '韧性', value: 10 },
-          { name: '感知', value: 10 },
-          { name: '敏捷', value: 10 },
+          { name: '韧性', value: 12 },
+          { name: '感知', value: 12 },
+          { name: '敏捷', value: 12 },
         ],
       },
       {
@@ -1672,8 +1672,8 @@ const godsData: GodTheme[] = [
         rarity: '史诗',
         icon: <Activity className="w-8 h-8 text-pink-400" />,
         stats: [
-          { name: '敏捷', value: 50 },
-          { name: '韧性', value: -25 },
+          { name: '敏捷', value: 60 },
+          { name: '力量', value: -40 },
         ],
       },
       {
@@ -1686,8 +1686,8 @@ const godsData: GodTheme[] = [
         rarity: '史诗',
         icon: <Eye className="w-8 h-8 text-fuchsia-400" />,
         stats: [
-          { name: '感知', value: 50 },
-          { name: '魅力', value: -30 },
+          { name: '感知', value: 60 },
+          { name: '韧性', value: -40 },
         ],
       },
       {
@@ -1701,7 +1701,7 @@ const godsData: GodTheme[] = [
         icon: <Bone className="w-8 h-8 text-pink-500" />,
         stats: [
           { name: '体质', value: 60 },
-          { name: '智力', value: -35 },
+          { name: '感知', value: -40 },
         ],
       },
       {
@@ -1710,12 +1710,12 @@ const godsData: GodTheme[] = [
         description:
           '亲手挖出队伍中与你最亲密的爱人心脏。你散发出无法抗拒的诡异魅力，甚至能让敌人满怀痴迷地为你赴死。作为代价，你的内心将彻底荒芜，永远丧失感知任何温情的能力。',
         traitDescription:
-          '你散发出无法抗拒的诡异魅力，甚至能让敌人满怀痴迷地为你赴死。作为代价，你的内心将彻底荒芜，永远丧失感知任何温情的能力。',
+          '你散发出无法抗拒的诡异魅力，甚至能让敌人满怀痴迷地为你赴死。作为代价，你的内心将彻底荒芜，永远丧失感知任何温情的能力，变得体弱多病。',
         rarity: '传说',
         icon: <Smile className="w-8 h-8 text-fuchsia-300" />,
         stats: [
-          { name: '魅力', value: 50 },
-          { name: '韧性', value: -30 },
+          { name: '魅力', value: 60 },
+          { name: '体质', value: -40 },
         ],
       },
       {
@@ -1728,8 +1728,8 @@ const godsData: GodTheme[] = [
         rarity: '传说',
         icon: <Anchor className="w-8 h-8 text-pink-400" />,
         stats: [
-          { name: '韧性', value: 50 },
-          { name: '敏捷', value: -30 },
+          { name: '韧性', value: 60 },
+          { name: '敏捷', value: -40 },
         ],
       },
     ],
