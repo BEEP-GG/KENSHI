@@ -833,9 +833,11 @@ const normalizeCharacter = (
   const raceName = String(_.get(raw, ['种族', '名称'], ''));
   const backpackItems = normalizeBackpackItems(_.get(raw, ['背包', '物品'], {}) || {});
 
+  const displayName = String(_.get(raw, ['名字'], _.get(raw, ['名称'], name)) || name);
+
   return {
     id: String(_.get(raw, ['id'], name) || name),
-    name,
+    name: displayName,
     gender: String(_.get(raw, ['性别'], '')),
     level,
     hp,
@@ -933,7 +935,7 @@ const buildUnitsFromStat = (stat: any) => {
     _.get(current, ['名字'], _.get(current, ['名称'], _.get(current, ['id'], controllerName || '主控成员'))) ||
     controllerName ||
     '主控成员';
-  pushUnit(normalizeCharacter(current, currentName, 'friendly', 'squad'));
+  pushUnit(normalizeCharacter(current, controllerName || currentName, 'friendly', 'squad'));
 
   const squadMembers = _.get(mainSquad, ['成员'], {});
   _.forEach(squadMembers, (value, key) => {
@@ -954,7 +956,7 @@ const buildUnitsFromStat = (stat: any) => {
 
   return {
     units,
-    playerId: String(_.get(current, ['id'], currentName || '主控成员')),
+    playerId: String(_.get(current, ['id'], controllerName || currentName || '主控成员')),
     mainSquadName,
   };
 };
