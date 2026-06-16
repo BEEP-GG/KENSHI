@@ -83,6 +83,10 @@
     "@vueuse/integrations": "^13.9.0",
     "@vueuse/shared": "^13.9.0",
     "async-wait-until": "^2.0.31",
+<<<<<<< HEAD
+=======
+    "axios": "1.14.0",
+>>>>>>> 1fdfca54e89542414750e2c88ad8fca7d4a3f85c
     "compare-versions": "^6.1.1",
     "dedent": "^1.7.2",
     "gsap": "^3.15.0",
@@ -91,15 +95,22 @@
     "json5": "^2.2.3",
     "jsonrepair": "^3.14.0",
     "klona": "^2.0.6",
+<<<<<<< HEAD
     "leaflet": "^1.9.4",
     "lodash": "^4.18.1",
     "lucide-react": "^0.575.0",
     "motion": "^12.40.0",
+=======
+    "lodash": "^4.18.1",
+>>>>>>> 1fdfca54e89542414750e2c88ad8fca7d4a3f85c
     "pinia": "^3.0.4",
     "pixi.js": "^8.19.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
+<<<<<<< HEAD
     "react-leaflet": "^5.0.0",
+=======
+>>>>>>> 1fdfca54e89542414750e2c88ad8fca7d4a3f85c
     "toastr": "^2.1.4",
     "vue": "^3.5.38",
     "vue-final-modal": "^4.5.5",
