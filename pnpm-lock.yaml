@@ -19,13 +19,23 @@ importers:
         version: 13.9.0(vue@3.5.38(typescript@6.0.0-dev.20250807))
       '@vueuse/integrations':
         specifier: ^13.9.0
+<<<<<<< HEAD
         version: 13.9.0(axios@1.18.1)(focus-trap@7.6.5)(vue@3.5.38(typescript@6.0.0-dev.20250807))
+=======
+        version: 13.9.0(axios@1.14.0)(focus-trap@7.6.5)(vue@3.5.38(typescript@6.0.0-dev.20250807))
+>>>>>>> 4f0b745981550e95a66a32adf5b43f01a2cde104
       '@vueuse/shared':
         specifier: ^13.9.0
         version: 13.9.0(vue@3.5.38(typescript@6.0.0-dev.20250807))
       async-wait-until:
         specifier: ^2.0.31
         version: 2.0.31
+<<<<<<< HEAD
+=======
+      axios:
+        specifier: 1.14.0
+        version: 1.14.0
+>>>>>>> 4f0b745981550e95a66a32adf5b43f01a2cde104
       compare-versions:
         specifier: ^6.1.1
         version: 6.1.1
@@ -50,6 +60,7 @@ importers:
       klona:
         specifier: ^2.0.6
         version: 2.0.6
+<<<<<<< HEAD
       leaflet:
         specifier: ^1.9.4
         version: 1.9.4
@@ -62,6 +73,11 @@ importers:
       motion:
         specifier: ^12.41.0
         version: 12.41.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+=======
+      lodash:
+        specifier: ^4.18.1
+        version: 4.18.1
+>>>>>>> 4f0b745981550e95a66a32adf5b43f01a2cde104
       pinia:
         specifier: ^3.0.4
         version: 3.0.4(typescript@6.0.0-dev.20250807)(vue@3.5.38(typescript@6.0.0-dev.20250807))
@@ -74,9 +90,12 @@ importers:
       react-dom:
         specifier: ^19.2.7
         version: 19.2.7(react@19.2.7)
+<<<<<<< HEAD
       react-leaflet:
         specifier: ^5.0.0
         version: 5.0.0(leaflet@1.9.4)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+=======
+>>>>>>> 4f0b745981550e95a66a32adf5b43f01a2cde104
       toastr:
         specifier: ^2.1.4
         version: 2.1.4
@@ -85,7 +104,11 @@ importers:
         version: 3.5.38(typescript@6.0.0-dev.20250807)
       vue-final-modal:
         specifier: ^4.5.5
+<<<<<<< HEAD
         version: 4.5.5(@vueuse/core@13.9.0(vue@3.5.38(typescript@6.0.0-dev.20250807)))(@vueuse/integrations@13.9.0(axios@1.18.1)(focus-trap@7.6.5)(vue@3.5.38(typescript@6.0.0-dev.20250807)))(focus-trap@7.6.5)(vue@3.5.38(typescript@6.0.0-dev.20250807))
+=======
+        version: 4.5.5(@vueuse/core@13.9.0(vue@3.5.38(typescript@6.0.0-dev.20250807)))(@vueuse/integrations@13.9.0(axios@1.14.0)(focus-trap@7.6.5)(vue@3.5.38(typescript@6.0.0-dev.20250807)))(focus-trap@7.6.5)(vue@3.5.38(typescript@6.0.0-dev.20250807))
+>>>>>>> 4f0b745981550e95a66a32adf5b43f01a2cde104
       vue-router:
         specifier: ^4.6.4
         version: 4.6.4(vue@3.5.38(typescript@6.0.0-dev.20250807))
@@ -557,6 +580,7 @@ packages:
     resolution: {integrity: sha512-SEeaJLb3qBNF/OaXnaR1NmmBbFYk1zC0ZH/52fATcRPLFg/p791YrcyFFy44Bo9sLaGuSuLp5Q6axbb/O+v/RA==}
     engines: {node: ^14.18.0 || >=16.0.0}
 
+<<<<<<< HEAD
   '@react-leaflet/core@3.0.0':
     resolution: {integrity: sha512-3EWmekh4Nz+pGcr+xjf0KNyYfC3U2JjnkWsh0zcqaexYqmmB5ZhH37kz41JXGmKzpaMZCnPofBBm64i+YrEvGQ==}
     peerDependencies:
@@ -564,6 +588,8 @@ packages:
       react: ^19.0.0
       react-dom: ^19.0.0
 
+=======
+>>>>>>> 4f0b745981550e95a66a32adf5b43f01a2cde104
   '@sinclair/typebox@0.27.10':
     resolution: {integrity: sha512-MTBk/3jGLNB2tVxv6uLlFh1iu64iYOQ2PbdOSK3NW8JZsmlaOh2q6sdtKowBhfw8QFLmYNzTW4/oK4uATIi6ZA==}
 
@@ -1203,10 +1229,13 @@ packages:
     engines: {node: '>=0.4.0'}
     hasBin: true
 
+<<<<<<< HEAD
   agent-base@6.0.2:
     resolution: {integrity: sha512-RZNwNclF7+MS/8bDg70amg32dyeZGZxiDuQmZxKLAlQjr3jGyLx+4Kkk58UO7D2QdgFIQCovuSuZESne6RG6XQ==}
     engines: {node: '>= 6.0.0'}
 
+=======
+>>>>>>> 4f0b745981550e95a66a32adf5b43f01a2cde104
   ajv-formats@2.1.1:
     resolution: {integrity: sha512-Wx0Kx52hxE7C18hkMEggYlEifqWZtYaRgouJor+WMdPnQyEK13vgEWyVNup7SoeeoLMsr4kf5h6dOW11I15MUA==}
     peerDependencies:
@@ -1324,8 +1353,13 @@ packages:
     resolution: {integrity: sha512-fjgm5MvRHLhx+osE2xoekY70AhARk3a6hkN+3Io1jc00jtquGvxYlKlsFUhmUET0V5te6CcZI7lcv2Ym61mjHA==}
     deprecated: Critical security vulnerability fixed in v0.21.1. For more information, see https://github.com/axios/axios/pull/3410
 
+<<<<<<< HEAD
   axios@1.18.1:
     resolution: {integrity: sha512-3nTvFlvpn9Zu/RkHUqtc7/+al4UpRW5az71ap5zccp6e8RAYEzhMTecX8Dz1wWDYrPpUoB1HAQEGEAEvUr7S9g==}
+=======
+  axios@1.14.0:
+    resolution: {integrity: sha512-3Y8yrqLSwjuzpXuZ0oIYZ/XGgLwUIBU3uLvbcpb0pidD9ctpShJd43KSlEEkVQg6DS0G9NKyzOvBfUtDKEyHvQ==}
+>>>>>>> 4f0b745981550e95a66a32adf5b43f01a2cde104
 
   bail@2.0.2:
     resolution: {integrity: sha512-0xO6mYd7JB2YesxDKplafRpsiOzPt9V02ddPCLbY1xYGPOX24NTyN50qnUxgCPcSoYMhKpAuBTjQoRZCAkUDRw==}
@@ -2138,6 +2172,7 @@ packages:
   fraction.js@5.3.4:
     resolution: {integrity: sha512-1X1NTtiJphryn/uLQz3whtY6jK3fTqoE3ohKs0tT+Ujr1W59oopxmoEh7Lu5p6vBaPbgoM0bzveAW4Qi5RyWDQ==}
 
+<<<<<<< HEAD
   framer-motion@12.41.0:
     resolution: {integrity: sha512-OHAMNiCEON1RDBlRGuulsN5AD8ptMjvk5QWfFmYmBLPZ3zFGIJe60kQucQQf4cez1OzQmjYBWDY+dYfISkUdqg==}
     peerDependencies:
@@ -2152,6 +2187,8 @@ packages:
       react-dom:
         optional: true
 
+=======
+>>>>>>> 4f0b745981550e95a66a32adf5b43f01a2cde104
   front-matter@4.0.2:
     resolution: {integrity: sha512-I8ZuJ/qG92NWX8i5x1Y8qyj3vizhXS31OxjKDu3LKP+7/qBgfIKValiZIEwoVoJKUHlhWtYrktkxV1XsX+pPlg==}
 
@@ -2347,10 +2384,13 @@ packages:
   htmlparser2@6.1.0:
     resolution: {integrity: sha512-gyyPk6rgonLFEDGoeRgQNaEUvdJ4ktTmmUh/h2t7s+M8oPpIPxgNACWa+6ESR57kXstwqPiCut0V8NRpcwgU7A==}
 
+<<<<<<< HEAD
   https-proxy-agent@5.0.1:
     resolution: {integrity: sha512-dFcAjpTQFgoLMzC2VwU+C/CbS7uRL0lWmxDITmqm7C+7F0Odmj6s9l6alZc6AELXhrnggM2CeWSXHGOdX2YtwA==}
     engines: {node: '>= 6'}
 
+=======
+>>>>>>> 4f0b745981550e95a66a32adf5b43f01a2cde104
   iconv-lite@0.6.3:
     resolution: {integrity: sha512-4fCk79wshMdzMp2rH06qWrJE4iolqLhCUH+OiuIgU++RB0+94NlDL81atO7GX55uUKueo0txHNtvEyI6D7WdMw==}
     engines: {node: '>=0.10.0'}
@@ -2658,9 +2698,12 @@ packages:
     resolution: {integrity: sha512-dhG34DXATL5hSxJbIexCft8FChFXtmskoZYnoPWjXQuebWYCNkVeV3KkGegCK9CP1oswI/vQibS2GY7Em/sJJA==}
     engines: {node: '>= 8'}
 
+<<<<<<< HEAD
   leaflet@1.9.4:
     resolution: {integrity: sha512-nxS1ynzJOmOlHp+iL3FyWqK89GtNL8U8rvlMOsQdTTssxZwCXh8N2NB3GDQOL+YR3XnWyZAxwQixURb+FA74PA==}
 
+=======
+>>>>>>> 4f0b745981550e95a66a32adf5b43f01a2cde104
   levn@0.3.0:
     resolution: {integrity: sha512-0OO4y2iOHix2W6ujICbKIaEQXvFQHue65vUG3pb5EUomzPI90z9hsA1VsO/dbIIpC53J8gxM9Q4Oho0jrCM/yA==}
     engines: {node: '>= 0.8.0'}
@@ -2822,11 +2865,14 @@ packages:
   lower-case@2.0.2:
     resolution: {integrity: sha512-7fm3l3NAF9WfN6W3JOmf5drwpVqX78JtoGJ3A6W0a6ZnldM41w2fV5D490psKFTpMds8TJse/eHLFFsNHHjHgg==}
 
+<<<<<<< HEAD
   lucide-react@0.575.0:
     resolution: {integrity: sha512-VuXgKZrk0uiDlWjGGXmKV6MSk9Yy4l10qgVvzGn2AWBx1Ylt0iBexKOAoA6I7JO3m+M9oeovJd3yYENfkUbOeg==}
     peerDependencies:
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
+=======
+>>>>>>> 4f0b745981550e95a66a32adf5b43f01a2cde104
   magic-string@0.30.21:
     resolution: {integrity: sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==}
 
@@ -2984,6 +3030,7 @@ packages:
   mlly@1.8.2:
     resolution: {integrity: sha512-d+ObxMQFmbt10sretNDytwt85VrbkhhUA/JBGm1MPaWJ65Cl4wOgLaB1NYvJSZ0Ef03MMEU/0xpPMXUIQ29UfA==}
 
+<<<<<<< HEAD
   motion-dom@12.41.0:
     resolution: {integrity: sha512-Lk3J39fOGg6xNr1KRZsN6usDyBf8aP7MEbUPez1VCughHt79OrP7VGqNrPyFL0riaT7WS8t9DRw1M3BHtM/xKw==}
 
@@ -3004,6 +3051,8 @@ packages:
       react-dom:
         optional: true
 
+=======
+>>>>>>> 4f0b745981550e95a66a32adf5b43f01a2cde104
   ms@2.0.0:
     resolution: {integrity: sha512-Tpp60P6IUJDTuOq/5Z8cdskzJujfwqfOTkrwIwj7IRISpnkJnT6SyJ4PCPnGMoFjC9ddhal5KVIYtAt97ix05A==}
 
@@ -3376,6 +3425,7 @@ packages:
     peerDependencies:
       react: ^19.2.7
 
+<<<<<<< HEAD
   react-leaflet@5.0.0:
     resolution: {integrity: sha512-CWbTpr5vcHw5bt9i4zSlPEVQdTVcML390TjeDG0cK59z1ylexpqC6M1PJFjV8jD7CF+ACBFsLIDs6DRMoLEofw==}
     peerDependencies:
@@ -3383,6 +3433,8 @@ packages:
       react: ^19.0.0
       react-dom: ^19.0.0
 
+=======
+>>>>>>> 4f0b745981550e95a66a32adf5b43f01a2cde104
   react-reconciler@0.31.0:
     resolution: {integrity: sha512-7Ob7Z+URmesIsIVRjnLoDGwBEG/tVitidU0nMsqX/eeJaLY89RISO/10ERe0MqmzuKUUB1rmY+h1itMbUHg9BQ==}
     engines: {node: '>=0.10.0'}
@@ -4517,12 +4569,15 @@ snapshots:
 
   '@pkgr/core@0.3.6': {}
 
+<<<<<<< HEAD
   '@react-leaflet/core@3.0.0(leaflet@1.9.4)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)':
     dependencies:
       leaflet: 1.9.4
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)
 
+=======
+>>>>>>> 4f0b745981550e95a66a32adf5b43f01a2cde104
   '@sinclair/typebox@0.27.10': {}
 
   '@socket.io/component-emitter@3.1.2': {}
@@ -4997,13 +5052,21 @@ snapshots:
       '@vueuse/shared': 14.3.0(vue@3.5.38(typescript@6.0.0-dev.20250807))
       vue: 3.5.38(typescript@6.0.0-dev.20250807)
 
+<<<<<<< HEAD
   '@vueuse/integrations@13.9.0(axios@1.18.1)(focus-trap@7.6.5)(vue@3.5.38(typescript@6.0.0-dev.20250807))':
+=======
+  '@vueuse/integrations@13.9.0(axios@1.14.0)(focus-trap@7.6.5)(vue@3.5.38(typescript@6.0.0-dev.20250807))':
+>>>>>>> 4f0b745981550e95a66a32adf5b43f01a2cde104
     dependencies:
       '@vueuse/core': 13.9.0(vue@3.5.38(typescript@6.0.0-dev.20250807))
       '@vueuse/shared': 13.9.0(vue@3.5.38(typescript@6.0.0-dev.20250807))
       vue: 3.5.38(typescript@6.0.0-dev.20250807)
     optionalDependencies:
+<<<<<<< HEAD
       axios: 1.18.1
+=======
+      axios: 1.14.0
+>>>>>>> 4f0b745981550e95a66a32adf5b43f01a2cde104
       focus-trap: 7.6.5
 
   '@vueuse/metadata@10.11.1': {}
@@ -5147,12 +5210,15 @@ snapshots:
 
   acorn@8.17.0: {}
 
+<<<<<<< HEAD
   agent-base@6.0.2:
     dependencies:
       debug: 4.4.3
     transitivePeerDependencies:
       - supports-color
 
+=======
+>>>>>>> 4f0b745981550e95a66a32adf5b43f01a2cde104
   ajv-formats@2.1.1(ajv@8.20.0):
     optionalDependencies:
       ajv: 8.20.0
@@ -5279,6 +5345,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+<<<<<<< HEAD
   axios@1.18.1:
     dependencies:
       follow-redirects: 1.16.0
@@ -5288,6 +5355,15 @@ snapshots:
     transitivePeerDependencies:
       - debug
       - supports-color
+=======
+  axios@1.14.0:
+    dependencies:
+      follow-redirects: 1.16.0
+      form-data: 4.0.6
+      proxy-from-env: 2.1.0
+    transitivePeerDependencies:
+      - debug
+>>>>>>> 4f0b745981550e95a66a32adf5b43f01a2cde104
 
   bail@2.0.2: {}
 
@@ -6140,7 +6216,10 @@ snapshots:
       style-data: 1.4.8
     transitivePeerDependencies:
       - debug
+<<<<<<< HEAD
       - supports-color
+=======
+>>>>>>> 4f0b745981550e95a66a32adf5b43f01a2cde104
 
   fast-deep-equal@3.1.3: {}
 
@@ -6211,6 +6290,7 @@ snapshots:
 
   fraction.js@5.3.4: {}
 
+<<<<<<< HEAD
   framer-motion@12.41.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
     dependencies:
       motion-dom: 12.41.0
@@ -6220,6 +6300,8 @@ snapshots:
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)
 
+=======
+>>>>>>> 4f0b745981550e95a66a32adf5b43f01a2cde104
   front-matter@4.0.2:
     dependencies:
       js-yaml: 3.14.2
@@ -6371,7 +6453,10 @@ snapshots:
       remote-content: 4.0.1
     transitivePeerDependencies:
       - debug
+<<<<<<< HEAD
       - supports-color
+=======
+>>>>>>> 4f0b745981550e95a66a32adf5b43f01a2cde104
 
   html-inline-css-loader@0.2.1:
     dependencies:
@@ -6380,7 +6465,10 @@ snapshots:
       schema-utils: 2.7.1
     transitivePeerDependencies:
       - debug
+<<<<<<< HEAD
       - supports-color
+=======
+>>>>>>> 4f0b745981550e95a66a32adf5b43f01a2cde104
 
   html-inline-css-webpack-plugin@1.11.2(html-webpack-plugin@5.6.7(webpack@5.107.2)):
     dependencies:
@@ -6465,6 +6553,7 @@ snapshots:
       domutils: 2.8.0
       entities: 2.2.0
 
+<<<<<<< HEAD
   https-proxy-agent@5.0.1:
     dependencies:
       agent-base: 6.0.2
@@ -6472,6 +6561,8 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+=======
+>>>>>>> 4f0b745981550e95a66a32adf5b43f01a2cde104
   iconv-lite@0.6.3:
     dependencies:
       safer-buffer: 2.1.2
@@ -6511,7 +6602,10 @@ snapshots:
       specificity: 0.4.1
     transitivePeerDependencies:
       - debug
+<<<<<<< HEAD
       - supports-color
+=======
+>>>>>>> 4f0b745981550e95a66a32adf5b43f01a2cde104
 
   internal-slot@1.1.0:
     dependencies:
@@ -6794,8 +6888,11 @@ snapshots:
 
   klona@2.0.6: {}
 
+<<<<<<< HEAD
   leaflet@1.9.4: {}
 
+=======
+>>>>>>> 4f0b745981550e95a66a32adf5b43f01a2cde104
   levn@0.3.0:
     dependencies:
       prelude-ls: 1.1.2
@@ -6920,10 +7017,13 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
+<<<<<<< HEAD
   lucide-react@0.575.0(react@19.2.7):
     dependencies:
       react: 19.2.7
 
+=======
+>>>>>>> 4f0b745981550e95a66a32adf5b43f01a2cde104
   magic-string@0.30.21:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.5.5
@@ -7179,6 +7279,7 @@ snapshots:
       pkg-types: 1.3.1
       ufo: 1.6.4
 
+<<<<<<< HEAD
   motion-dom@12.41.0:
     dependencies:
       motion-utils: 12.39.0
@@ -7193,6 +7294,8 @@ snapshots:
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)
 
+=======
+>>>>>>> 4f0b745981550e95a66a32adf5b43f01a2cde104
   ms@2.0.0: {}
 
   ms@2.1.3: {}
@@ -7553,6 +7656,7 @@ snapshots:
       react: 19.2.7
       scheduler: 0.27.0
 
+<<<<<<< HEAD
   react-leaflet@5.0.0(leaflet@1.9.4)(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
     dependencies:
       '@react-leaflet/core': 3.0.0(leaflet@1.9.4)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -7560,6 +7664,8 @@ snapshots:
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)
 
+=======
+>>>>>>> 4f0b745981550e95a66a32adf5b43f01a2cde104
   react-reconciler@0.31.0(react@19.2.7):
     dependencies:
       react: 19.2.7
@@ -7653,11 +7759,18 @@ snapshots:
 
   remote-content@4.0.1:
     dependencies:
+<<<<<<< HEAD
       axios: 1.18.1
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
       - debug
       - supports-color
+=======
+      axios: 1.14.0
+      proxy-from-env: 1.1.0
+    transitivePeerDependencies:
+      - debug
+>>>>>>> 4f0b745981550e95a66a32adf5b43f01a2cde104
 
   renderkid@3.0.0:
     dependencies:
@@ -8339,10 +8452,17 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+<<<<<<< HEAD
   vue-final-modal@4.5.5(@vueuse/core@13.9.0(vue@3.5.38(typescript@6.0.0-dev.20250807)))(@vueuse/integrations@13.9.0(axios@1.18.1)(focus-trap@7.6.5)(vue@3.5.38(typescript@6.0.0-dev.20250807)))(focus-trap@7.6.5)(vue@3.5.38(typescript@6.0.0-dev.20250807)):
     dependencies:
       '@vueuse/core': 13.9.0(vue@3.5.38(typescript@6.0.0-dev.20250807))
       '@vueuse/integrations': 13.9.0(axios@1.18.1)(focus-trap@7.6.5)(vue@3.5.38(typescript@6.0.0-dev.20250807))
+=======
+  vue-final-modal@4.5.5(@vueuse/core@13.9.0(vue@3.5.38(typescript@6.0.0-dev.20250807)))(@vueuse/integrations@13.9.0(axios@1.14.0)(focus-trap@7.6.5)(vue@3.5.38(typescript@6.0.0-dev.20250807)))(focus-trap@7.6.5)(vue@3.5.38(typescript@6.0.0-dev.20250807)):
+    dependencies:
+      '@vueuse/core': 13.9.0(vue@3.5.38(typescript@6.0.0-dev.20250807))
+      '@vueuse/integrations': 13.9.0(axios@1.14.0)(focus-trap@7.6.5)(vue@3.5.38(typescript@6.0.0-dev.20250807))
+>>>>>>> 4f0b745981550e95a66a32adf5b43f01a2cde104
       focus-trap: 7.6.5
       vue: 3.5.38(typescript@6.0.0-dev.20250807)
 
