@@ -64,6 +64,7 @@ const SCENARIO_START_LEVELS: Record<string, number> = {
   officer_son: 20,
   holy_crusade: 20,
   false_savior: 30,
+  reborn_human: 20,
 };
 
 const getDefaultHeightByRaceSubrace = (raceId: string, subraceId: string) => {
@@ -1433,7 +1434,8 @@ ${names}`;
               isApexHunterScenario ||
               data.scenario === 'officer_son' ||
               data.scenario === 'holy_crusade' ||
-              data.scenario === 'false_savior') && (
+              data.scenario === 'false_savior' ||
+              data.scenario === 'reborn_human') && (
               <p className="text-[10px] text-[#C2B280]">
                 剧本初始等级：
                 {isMonsterHunterScenario ? '利维坦猎人 30 级' : ''}
@@ -1441,6 +1443,7 @@ ${names}`;
                 {data.scenario === 'officer_son' ? '贵族之子 20 级' : ''}
                 {data.scenario === 'holy_crusade' ? '十字军 20 级' : ''}
                 {data.scenario === 'false_savior' ? '虚伪者 30 级' : ''}
+                {data.scenario === 'reborn_human' ? '新生的人类 20 级' : ''}
               </p>
             )}
           </div>

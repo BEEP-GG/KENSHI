@@ -12,6 +12,7 @@ interface StepScenarioProps {
 
 export const StepScenario: React.FC<StepScenarioProps> = ({ data, updateData, onNext }) => {
   const scenariosPerPage = 6;
+  type ScenarioFilter = 'all' | 'mainline' | 'eastern_neural' | 'classic';
   const SCENARIOS_WITH_MAINLINE = new Set([
     'monster_hunter',
     'officer_son',
@@ -19,11 +20,34 @@ export const StepScenario: React.FC<StepScenarioProps> = ({ data, updateData, on
     'apex_hunter',
     'holy_crusade',
   ]);
-  const [onlyMainline, setOnlyMainline] = React.useState(false);
+  const SCENARIOS_WITH_EASTERN_NEURAL = new Set([
+    'brotherhood_prisoner',
+    'pirate_heir',
+    'crab_fanatic',
+    'reborn_human',
+  ]);
+  const SCENARIOS_WITH_CLASSIC = new Set([
+    'wanderer',
+    'human_torso',
+    'rock_bottom',
+    'holy_commoner',
+    'slave',
+    'cannibal_hunter',
+    'holy_sword',
+    'freedom_seekers',
+    'merchant',
+    'bast_stray',
+  ]);
+  const [scenarioFilter, setScenarioFilter] = React.useState<ScenarioFilter>('all');
   const visibleScenarios = React.useMemo(() => {
     const base = SCENARIOS.filter(scenario => !(scenario as { hidden?: boolean }).hidden);
-    return onlyMainline ? base.filter(scenario => SCENARIOS_WITH_MAINLINE.has(scenario.id)) : base;
-  }, [onlyMainline]);
+    if (scenarioFilter === 'mainline') return base.filter(scenario => SCENARIOS_WITH_MAINLINE.has(scenario.id));
+    if (scenarioFilter === 'eastern_neural') {
+      return base.filter(scenario => SCENARIOS_WITH_EASTERN_NEURAL.has(scenario.id));
+    }
+    if (scenarioFilter === 'classic') return base.filter(scenario => SCENARIOS_WITH_CLASSIC.has(scenario.id));
+    return base;
+  }, [scenarioFilter]);
   const totalPages = Math.max(1, Math.ceil(visibleScenarios.length / scenariosPerPage));
   const [currentPage, setCurrentPage] = React.useState(1);
   const gridRef = React.useRef<HTMLDivElement | null>(null);
@@ -56,6 +80,8 @@ export const StepScenario: React.FC<StepScenarioProps> = ({ data, updateData, on
     apex_hunter: 722734,
     false_savior: 399988,
     holy_crusade: 240321,
+    crab_fanatic: 78,
+    reborn_human: 80,
   };
   const ALL_SCENARIO_UIDS = Object.values(SCENARIO_WB_UIDS);
   const ALL_SCENARIO_UID_SET = new Set(ALL_SCENARIO_UIDS);
@@ -132,7 +158,14 @@ export const StepScenario: React.FC<StepScenarioProps> = ({ data, updateData, on
 
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [onlyMainline]);
+  }, [scenarioFilter]);
+
+  const filterOptions: Array<{ id: ScenarioFilter; label: string; activeLabel: string }> = [
+    { id: 'all', label: '全部剧本', activeLabel: '已开启：全部剧本' },
+    { id: 'mainline', label: '自带主线', activeLabel: '已开启：自带主线' },
+    { id: 'eastern_neural', label: '东部神经团', activeLabel: '已开启：东部神经团' },
+    { id: 'classic', label: '游戏原版经典开局', activeLabel: '已开启：游戏原版经典开局' },
+  ];
 
   return (
     <div className="h-full flex flex-col">
@@ -141,18 +174,24 @@ export const StepScenario: React.FC<StepScenarioProps> = ({ data, updateData, on
         <p className="text-white/60 font-sans max-w-2xl mx-auto">
           每一个传奇都有一个卑微（或悲惨）的开始。你将如何踏入这个残酷的世界？
         </p>
-        <div className="mt-4 flex justify-center">
-          <button
-            type="button"
-            onClick={() => setOnlyMainline(prev => !prev)}
-            className={`text-xs tracking-widest px-3 py-1.5 rounded border transition-all duration-200 ${
-              onlyMainline
-                ? 'border-emerald-500/70 text-emerald-300 bg-emerald-500/15 shadow-[0_0_12px_rgba(16,185,129,0.25)]'
-                : 'border-white/20 text-white/70 bg-black/30 hover:border-emerald-500/40 hover:text-emerald-200'
-            }`}
-          >
-            {onlyMainline ? '已开启：仅看【自带主线】' : '筛选：仅看【自带主线】'}
-          </button>
+        <div className="mt-4 flex flex-wrap justify-center gap-2">
+          {filterOptions.map(option => {
+            const isActive = scenarioFilter === option.id;
+            return (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => setScenarioFilter(option.id)}
+                className={`text-xs tracking-widest px-3 py-1.5 rounded border transition-all duration-200 ${
+                  isActive
+                    ? 'border-emerald-500/70 text-emerald-300 bg-emerald-500/15 shadow-[0_0_12px_rgba(16,185,129,0.25)]'
+                    : 'border-white/20 text-white/70 bg-black/30 hover:border-emerald-500/40 hover:text-emerald-200'
+                }`}
+              >
+                {isActive ? option.activeLabel : `筛选：${option.label}`}
+              </button>
+            );
+          })}
         </div>
       </motion.div>
 
@@ -210,6 +249,16 @@ export const StepScenario: React.FC<StepScenarioProps> = ({ data, updateData, on
                   {SCENARIOS_WITH_MAINLINE.has(scenario.id) && (
                     <span className="text-xs uppercase tracking-widest px-2 py-1 rounded border border-emerald-500/60 text-emerald-300 bg-emerald-500/10">
                       自带主线
+                    </span>
+                  )}
+                  {SCENARIOS_WITH_EASTERN_NEURAL.has(scenario.id) && (
+                    <span className="text-xs uppercase tracking-widest px-2 py-1 rounded border border-cyan-500/60 text-cyan-300 bg-cyan-500/10">
+                      东部神经团
+                    </span>
+                  )}
+                  {SCENARIOS_WITH_CLASSIC.has(scenario.id) && (
+                    <span className="text-xs uppercase tracking-widest px-2 py-1 rounded border border-amber-500/60 text-amber-300 bg-amber-500/10">
+                      原版经典
                     </span>
                   )}
                 </div>

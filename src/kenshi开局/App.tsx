@@ -17,6 +17,14 @@ const TUTORIAL_GUIDE_URL = 'https://discord.com/channels/1380075940285124724/149
 
 const EMPHASIS_LINE_RE = /^([^：:\n]{1,28})([：:])(.*)$/;
 
+const OPENING_MONOLOGUE_LINES = [
+  '别在这里寻找无瑕的英雄。我们并非良善之辈，更没有干净的双手。',
+  '回首过往，无论是盲信着所谓的‘正确’，还是在生存的逼迫下保持清醒，',
+  '我们都已心安理得地沦为了他人的刽子手，理直气壮地屠杀着那些被称为‘敌人’的血肉。',
+  '我们皆是罪人。',
+  '而这场漫长未知的旅途，不过是一群背负血债的亡命之徒，试图在这片被遗弃的风沙中，去寻找那微茫的救赎。',
+];
+
 const renderTutorialContent = (content: string, className: string) => {
   const lines = content.split('\n');
   return (
@@ -276,6 +284,8 @@ export default function App() {
   const [isTutorial, setIsTutorial] = useState(false);
   const [tutorialTopicId, setTutorialTopicId] = useState(TUTORIAL_TOPICS[0]?.id ?? '');
   const [tutorialSubTopicId, setTutorialSubTopicId] = useState(TUTORIAL_TOPICS[0]?.subTopics?.[0]?.id ?? '');
+  const [skipOpeningMonologue, setSkipOpeningMonologue] = useState(false);
+  const [isOpeningMonologue, setIsOpeningMonologue] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -306,6 +316,70 @@ export default function App() {
     if (currentStep > 0) setCurrentStep(prev => prev - 1);
   };
 
+  const startCharacterCreation = () => {
+    setCharacterData(INITIAL_CHARACTER);
+    setIsTutorial(false);
+    setCurrentStep(0);
+    if (skipOpeningMonologue) {
+      setIsOpeningMonologue(false);
+      setIsStarted(true);
+      return;
+    }
+    setIsOpeningMonologue(true);
+  };
+
+  const finishOpeningMonologue = () => {
+    setIsOpeningMonologue(false);
+    setIsStarted(true);
+  };
+
+  if (isOpeningMonologue) {
+    return (
+      <div className="relative w-full h-full min-h-full overflow-hidden bg-black flex items-center justify-center px-6">
+        <FullscreenToggleButton className="absolute right-4 top-4 z-30 inline-flex items-center gap-2 rounded border border-[#C2B280]/60 bg-black/50 px-3 py-1.5 text-xs text-[#C2B280] transition-colors hover:bg-[#C2B280]/15" />
+        <div className="absolute inset-0 bg-[url('https://picsum.photos/seed/kenshi_sinner/1920/1080?grayscale')] bg-cover bg-center opacity-20 scale-105" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black via-black/70 to-black" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(194,178,128,0.12),transparent_55%)]" />
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 1.2 }}
+          className="relative z-10 max-w-4xl text-center"
+        >
+          <div className="space-y-5 md:space-y-6">
+            {OPENING_MONOLOGUE_LINES.map((line, index) => (
+              <motion.p
+                key={line}
+                initial={{ opacity: 0, y: 18, filter: 'blur(8px)' }}
+                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                transition={{ delay: 0.6 + index * 1.65, duration: 1.35, ease: 'easeOut' }}
+                className={`font-serif leading-loose tracking-[0.12em] ${
+                  line === '我们皆是罪人。'
+                    ? 'text-3xl md:text-5xl text-[#C2B280] drop-shadow-[0_0_18px_rgba(194,178,128,0.35)]'
+                    : 'text-base md:text-2xl text-white/80'
+                }`}
+              >
+                {line}
+              </motion.p>
+            ))}
+          </div>
+
+          <motion.button
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 9.5, duration: 1 }}
+            onClick={finishOpeningMonologue}
+            className="mt-12 px-10 py-3 border border-[#C2B280]/70 text-[#C2B280] font-serif text-sm md:text-base tracking-[0.28em] rounded bg-black/30 hover:bg-[#C2B280]/10 hover:shadow-[0_0_16px_rgba(194,178,128,0.25)] transition-all"
+          >
+            继续
+          </motion.button>
+        </motion.div>
+      </div>
+    );
+  }
+
   // Start Screen
   if (!isStarted) {
     return (
@@ -324,21 +398,26 @@ export default function App() {
           className="relative z-10 text-center flex flex-col items-center"
         >
           <h1 className="text-7xl md:text-9xl font-serif text-[#C2B280] tracking-widest mb-4 drop-shadow-lg">KENSHI</h1>
-          <p className="text-xl md:text-2xl text-white/60 font-serif tracking-[0.35em] mb-12">终末之诗：罪孽之书</p>
+          <p className="text-xl md:text-2xl text-white/60 font-serif tracking-[0.35em] mb-12">终末之诗：罪人</p>
 
           <motion.button
             whileHover={{ scale: 1.05, backgroundColor: 'rgba(194, 178, 128, 0.1)' }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => {
-              setCharacterData(INITIAL_CHARACTER);
-              setIsStarted(true);
-              setIsTutorial(false);
-              setCurrentStep(0);
-            }}
+            onClick={startCharacterCreation}
             className="px-12 py-4 border border-[#C2B280] text-[#C2B280] font-serif text-xl tracking-widest uppercase rounded hover:shadow-[0_0_20px_rgba(194,178,128,0.3)] transition-all"
           >
             开始旅程
           </motion.button>
+
+          <label className="mt-4 flex cursor-pointer select-none items-center gap-2 text-xs tracking-[0.22em] text-white/45 transition-colors hover:text-[#C2B280]/90">
+            <input
+              type="checkbox"
+              checked={skipOpeningMonologue}
+              onChange={event => setSkipOpeningMonologue(event.target.checked)}
+              className="h-3.5 w-3.5 accent-[#C2B280]"
+            />
+            跳过开场白
+          </label>
 
           <motion.button
             whileHover={{ scale: 1.02, backgroundColor: 'rgba(194, 178, 128, 0.08)' }}

@@ -26,6 +26,8 @@ export const StepRegion: React.FC<StepRegionProps> = ({ data, updateData }) => {
     'stobers_garden',
     'rebirth',
     'iron_path',
+    'pits_east',
+    'dark_sky',
   ];
   const availableRegions = fixedRegion
     ? REGIONS.filter(region => region.id === fixedRegion)

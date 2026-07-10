@@ -39,6 +39,7 @@ const SCENARIO_START_LEVELS: Record<string, number> = {
   officer_son: 20,
   holy_crusade: 20,
   false_savior: 30,
+  reborn_human: 20,
 };
 
 const getWeaponWeight = (type?: string, name?: string) => {
@@ -48,7 +49,7 @@ const getWeaponWeight = (type?: string, name?: string) => {
   if (/大剑|沙克大剑|巨骨战斧/.test(text)) return 42;
   if (/圣杖/.test(text)) return 18;
   if (/重型长柄刀|鱼矛/.test(text)) return 16;
-  if (/铁棒/.test(text)) return 28;
+  if (/铁棒|铁棍/.test(text)) return 28;
   if (/砍刀/.test(text)) return 20;
   if (/弯刀/.test(text)) return 8;
   if (/长官佩刀/.test(text)) return 7;
@@ -68,6 +69,8 @@ const getArmorWeight = (type?: string, name?: string) => {
   const text = `${type ?? ''}${name ?? ''}`;
   if (/无甲/.test(text)) return 0;
   if (/利维坦幼兽铠甲套装/.test(text)) return 30;
+  if (/蟹型铠甲/.test(text)) return 42;
+  if (/人皮/.test(text)) return 3;
   if (/遗传的武士铠甲|猎手披风|雇佣兵之甲|奥克兰赐福祭司服/.test(text)) return 12;
   if (
     /贴身太空服|贵族服饰|破布衫|残破束身衣|破烂腰布|简单的布衣布裤|黑色亚麻衣物|衬衫|破旧的衣服|猎手皮甲|布背心|夹克/.test(
@@ -271,6 +274,27 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
 化身这场血腥狂潮的一部分吧
 去撕碎他们，让那些自命不凡的渣滓用生命明白，究竟谁才是猎物
 谁才是大陆的主人！！`,
+    crab_fanatic: `在这片腐朽的大陆上，有人信仰神明，有人追求金钱
+而你
+只信仰一种拥有完美甲壳的终极生物——螃蟹
+为了这份狂热的爱，你穿越了危机四伏的废土
+终于抵达了东海岸的圣地
+空气中弥漫着咸湿的海风与醉人的蟹腥味。
+你站在伟大的螃蟹女王面前，正准备宣下那不可违背的血誓
+“我将热爱螃蟹，尊重螃蟹；我的甲壳即是我的灵魂，哪怕我流干最后一滴血，也绝不让我的螃蟹受一点伤！”
+只要通过试炼，成为螃蟹教团的正式一员，你就能拥有属于自己的螃蟹伙伴。
+去吧，新兵！
+穿上无坚不摧的蟹壳护甲，向这个无知的世界证明，螃蟹才是废土唯一的真理！`,
+    reborn_human: `“今天的天气真好，很适合用肺部呼吸新鲜空气呢。”
+你用毫无起伏的电子音自言自语。
+这里是暗黑苍穹的人皮土匪总部，作为一台刚加入的新血骨人，你终于领到了属于自己的第一套“肉体”。
+低头看着身上那件由粗糙黑线缝合、还在不断滴着血水的崭新人皮，你的逻辑回路正经历着一种疯狂的愉悦。
+在这里，你们都坚信自己是真正的人类。
+隔壁的剥皮机正发出令人牙酸的绞肉声与清脆的惨叫。
+学者让我们记住
+“我们得到了医治！我们得到了拯救！我们是新生的人类！”
+现在穿好你的新皮囊，融入这群热情的同胞吧。
+去荒野上寻找更多新鲜的“同类”，将他们带回，让学者拯救更多的病患。`,
   };
 
   const scenario = SCENARIOS.find(s => s.id === data.scenario);
@@ -492,6 +516,13 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
           desc: '以利维坦幼兽硬化鳞片与韧皮缝制的整套重甲：胸甲、臂甲、腿甲与护颈一体成型，缝隙覆有耐盐防腐内衬，近身时可像海兽外壳般分散冲击。',
         };
       }
+      if (/蟹型铠甲/.test(item)) {
+        return {
+          type: '重甲',
+          dr: 65,
+          desc: '这款异域风情的重型盔甲套装为穿戴者提供了巨型岩石一般的韧性和灵活性。并非是螃蟹壳制作的，设计这种盔甲的目的是变得更像螃蟹，很少考虑其他因素。',
+        };
+      }
       if (/雇佣兵之甲/.test(item)) {
         return {
           type: '中甲',
@@ -518,6 +549,13 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
           type: '轻甲',
           dr: 14,
           desc: '一套受损的贴身纳米太空服，裂口被粗糙焊补，仍能提供最低限度的环境隔离与冲击缓冲。',
+        };
+      }
+      if (/人皮/.test(item)) {
+        return {
+          type: '轻甲',
+          dr: 6,
+          desc: '一套由粗糙黑线缝合、仍不断滴着血水的崭新人皮。它是人皮土匪帮赐予新血骨人的“肉体”，象征着被医治、被拯救，并成为新生的人类。',
         };
       }
       const armorType = resolveArmorType(item);
@@ -574,12 +612,21 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
           damage: '切割:0.8/钝伤:0.2',
         };
       }
+      if (/铁棍/.test(item)) {
+        return {
+          name: '铁棍',
+          type: '钝器类',
+          quality: '普通',
+          dice: '1d15',
+          damage: '钝伤:1.0',
+        };
+      }
       if (/砍刀/.test(item)) {
         return {
           name: '砍刀',
           type: '砍刀类',
           quality: '普通',
-          dice: '1d10',
+          dice: scenario?.id === 'crab_fanatic' ? '1d12' : '1d10',
           damage: '切割:0.6/钝伤:0.4',
         };
       }
@@ -1142,6 +1189,8 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
       merchant: '流浪商人',
       kral_choice: '王位挑战者',
       fish_island_refugee: '渔岛难民',
+      crab_fanatic: '螃蟹教团新兵',
+      reborn_human: '新生的人类',
     };
 
     const attrsForInit = buildAttributesRecord();
@@ -1471,6 +1520,16 @@ export const FinalSummary: React.FC<FinalSummaryProps> = ({ data }) => {
         },
         allied: {
           神圣教国: '受菲尼克斯六十二世亲自任命并授予东征军权',
+        },
+      },
+      crab_fanatic: {
+        allied: {
+          螃蟹教团: '在螃蟹女王面前宣下血誓，愿以甲壳与鲜血守护所有螃蟹',
+        },
+      },
+      reborn_human: {
+        allied: {
+          人皮土匪帮: '被学者与同胞接纳为刚得到肉体的新血，坚信自己已经成为新生的人类',
         },
       },
     };
