@@ -923,6 +923,39 @@
         background: rgba(241, 196, 15, 0.25);
         box-shadow: 0 0 8px rgba(241, 196, 15, 0.35);
       }
+      .view-pane-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 15px;
+        border-bottom: 1px solid rgba(193, 163, 95, 0.3);
+        padding-bottom: 5px;
+      }
+      .view-pane-header .section-title {
+        margin-bottom: 0;
+        border-bottom: none;
+        padding-bottom: 0;
+      }
+      .view-fight-btn {
+        border: 1px solid var(--accent-danger);
+        background: rgba(231, 76, 60, 0.12);
+        color: var(--accent-danger);
+        font-family: var(--font-header);
+        font-size: 0.85em;
+        font-weight: bold;
+        letter-spacing: 0.5px;
+        padding: 7px 14px;
+        border-radius: 3px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+      }
+      .view-fight-btn:hover {
+        background: rgba(231, 76, 60, 0.24);
+        box-shadow: 0 0 10px rgba(231, 76, 60, 0.35);
+        transform: translateY(-1px);
+      }
       .stance-popover {
         position: absolute;
         right: 20px;
@@ -1668,40 +1701,51 @@
       }
 
       function getCharacterMeta() {
-        const parentContext = (() => {
+        const parent = (() => {
           try {
             return window.parent || window;
           } catch {
             return window;
           }
         })();
-        const context = parentContext || window;
-        const name =
-          context?.getContext?.().characterName ||
-          (context?.this_chid && context?.characters?.[context.this_chid]?.name) ||
-          context?.name1 ||
-          '角色';
-        const avatar =
-          context?.getContext?.().characterAvatar ||
-          (context?.this_chid && context?.characters?.[context.this_chid]?.avatar);
-        return { name: String(name || '角色'), avatar: avatar ? String(avatar) : '' };
+        if (parent?.chat) {
+          const chat = parent.chat;
+          if (Array.isArray(chat.characters) && chat.characters.length > 0) {
+            const character = chat.characters[0];
+            return { name: character.name || character.title || 'Assistant', avatar: character.avatar };
+          }
+          if (chat.character) {
+            const character = chat.character;
+            return { name: character.name || character.title || 'Assistant', avatar: character.avatar };
+          }
+          if (Array.isArray(chat.messages) && chat.messages.length > 0) {
+            const last = chat.messages[chat.messages.length - 1];
+            if (last && last.name && !last.is_user) {
+              return { name: last.name, avatar: last.avatar };
+            }
+          }
+        }
+        if (parent?.character) {
+          const character = parent.character;
+          return { name: character.name || character.title || 'Assistant', avatar: character.avatar };
+        }
+        return { name: 'Assistant' };
       }
 
       async function triggerSpecialSend(actionText) {
         const { name, avatar } = getCharacterMeta();
         const command = `/sendas name="${name}"${avatar ? ` avatar="${avatar}"` : ''} <${actionText}>`;
-        const slash = (() => {
-          try {
-            return window.triggerSlash || window.parent?.triggerSlash;
-          } catch {
-            return window.triggerSlash;
-          }
-        })();
-        if (typeof slash === 'function') {
-          await slash(command);
+        if (typeof triggerSlash !== 'function') {
+          console.warn('[kenshi新状态栏] triggerSlash 不可用，无法触发:', actionText);
+          appendTextToPlayerInput(`<${actionText}>`);
           return;
         }
-        appendTextToPlayerInput(`<${actionText}>`);
+        try {
+          await triggerSlash(command);
+        } catch (error) {
+          console.error('[kenshi新状态栏] 触发发送失败:', error);
+          appendTextToPlayerInput(`<${actionText}>`);
+        }
       }
 
       function appendTextToPlayerInput(text) {
@@ -1953,6 +1997,7 @@
       window.setModalEntity = setModalEntity;
       window.openSettingsModal = openSettingsModal;
       window.closeSettingsModal = closeSettingsModal;
+      window.triggerSpecialSend = triggerSpecialSend;
 
       const attrTooltips = {
         STR: '力量 (STR)\n影响近战伤害、重武器使用能力以及负重上限。',
@@ -5626,7 +5671,12 @@
             <div id="squad-list"></div>
           </div>
           <div id="pane-view" class="tab-pane">
-            <div class="section-title">周边环境</div>
+            <div class="view-pane-header">
+              <div class="section-title">周边环境</div>
+              <button id="view-fight-btn" class="view-fight-btn" type="button" onclick="triggerSpecialSend('FIGHT')">
+                发起战斗
+              </button>
+            </div>
             <div id="view-list"></div>
           </div>
           <div id="pane-other" class="tab-pane">
