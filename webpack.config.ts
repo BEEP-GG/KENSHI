@@ -2,6 +2,10 @@ import { FSWatcher, watch } from 'chokidar';
 import HtmlInlineScriptWebpackPlugin from 'html-inline-script-webpack-plugin';
 import HtmlWebpackPlugin from 'html-webpack-plugin';
 import _ from 'lodash';
+<<<<<<< HEAD
+=======
+import MiniCssExtractPlugin from 'mini-css-extract-plugin';
+>>>>>>> bc44abea1c2f7980dd9a2d9b909b4ad64bc8bdee
 import { ChildProcess, exec, spawn } from 'node:child_process';
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
@@ -51,7 +55,10 @@ function glob_script_files() {
   const results: string[] = [];
 
   fs.globSync(`{示例,src}/**/index.{ts,tsx,js,jsx}`)
+<<<<<<< HEAD
     // Temporary guard: skip the corrupted camp-system entry until source text is repaired.
+=======
+>>>>>>> bc44abea1c2f7980dd9a2d9b909b4ad64bc8bdee
     .filter(
       file => process.env.CI !== 'true' || !fs.readFileSync(path.join(import.meta.dirname, file)).includes('@no-ci'),
     )
@@ -78,7 +85,10 @@ const config: Config = {
   port: 6621,
   entries: glob_script_files().map(parse_entry),
 };
+<<<<<<< HEAD
 const enableBuildSideEffects = process.env.WEBPACK_BUILD_SIDE_EFFECTS === '1';
+=======
+>>>>>>> bc44abea1c2f7980dd9a2d9b909b4ad64bc8bdee
 
 let io: Server;
 function watch_tavern_helper(compiler: webpack.Compiler) {
@@ -115,9 +125,13 @@ const dump = () => {
 const dump_debounced = _.debounce(dump, 500, { leading: true, trailing: false });
 function schema_dump(compiler: webpack.Compiler) {
   if (!compiler.options.watch) {
+<<<<<<< HEAD
     if (enableBuildSideEffects) {
       dump_debounced();
     }
+=======
+    dump_debounced();
+>>>>>>> bc44abea1c2f7980dd9a2d9b909b4ad64bc8bdee
     return;
   }
   if (!watcher) {
@@ -139,9 +153,13 @@ const bundle = () => {
 const bundle_debounced = _.debounce(bundle, 500, { leading: true, trailing: false });
 function tavern_sync(compiler: webpack.Compiler) {
   if (!compiler.options.watch) {
+<<<<<<< HEAD
     if (enableBuildSideEffects) {
       bundle_debounced();
     }
+=======
+    bundle_debounced();
+>>>>>>> bc44abea1c2f7980dd9a2d9b909b4ad64bc8bdee
     return;
   }
   compiler.hooks.watchRun.tap('watch_tavern_sync', () => {
@@ -390,6 +408,7 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
                 ] as any[])
               : ([
                   {
+<<<<<<< HEAD
                     test: /\.vue\.s(a|c)ss$/,
                     use: [
                       { loader: 'vue-style-loader', options: { ssrId: true } },
@@ -412,6 +431,11 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
                     test: /\.s(a|c)ss$/,
                     use: [
                       'style-loader',
+=======
+                    test: /\.s(a|c)ss$/,
+                    use: [
+                      MiniCssExtractPlugin.loader,
+>>>>>>> bc44abea1c2f7980dd9a2d9b909b4ad64bc8bdee
                       { loader: 'css-loader', options: { url: false } },
                       'postcss-loader',
                       'sass-loader',
@@ -420,7 +444,15 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
                   },
                   {
                     test: /\.css$/,
+<<<<<<< HEAD
                     use: ['style-loader', { loader: 'css-loader', options: { url: false } }, 'postcss-loader'],
+=======
+                    use: [
+                      MiniCssExtractPlugin.loader,
+                      { loader: 'css-loader', options: { url: false } },
+                      'postcss-loader',
+                    ],
+>>>>>>> bc44abea1c2f7980dd9a2d9b909b4ad64bc8bdee
                     exclude: /node_modules/,
                   },
                 ] as any[]),
@@ -438,9 +470,14 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
       ],
       alias: {},
     },
+<<<<<<< HEAD
     plugins: [
       ...(entry.html === undefined
         ? []
+=======
+    plugins: (entry.html === undefined
+      ? [new MiniCssExtractPlugin()]
+>>>>>>> bc44abea1c2f7980dd9a2d9b909b4ad64bc8bdee
         : [
             new HtmlWebpackPlugin({
               template: path.join(import.meta.dirname, entry.html),
@@ -449,12 +486,22 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
               cache: false,
             }),
             new HtmlInlineScriptWebpackPlugin(),
+<<<<<<< HEAD
+=======
+          new MiniCssExtractPlugin(),
+>>>>>>> bc44abea1c2f7980dd9a2d9b909b4ad64bc8bdee
             new HTMLInlineCSSWebpackPlugin({
               styleTagFactory({ style }: { style: string }) {
                 return `<style>${style}</style>`;
               },
             }),
+<<<<<<< HEAD
           ]),
+=======
+        ]
+    )
+      .concat(
+>>>>>>> bc44abea1c2f7980dd9a2d9b909b4ad64bc8bdee
       { apply: watch_tavern_helper },
       { apply: schema_dump },
       { apply: tavern_sync },
@@ -470,6 +517,10 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
           { from: 'klona', imports: ['klona'] },
           { from: 'vue-final-modal', imports: ['useModal'] },
           { from: 'zod', imports: ['z'] },
+<<<<<<< HEAD
+=======
+            { from: 'type-fest', imports: [['*', 'TypeFest']], type: true },
+>>>>>>> bc44abea1c2f7980dd9a2d9b909b4ad64bc8bdee
         ],
       }),
       unpluginVueComponents({
@@ -484,7 +535,13 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
         __VUE_PROD_DEVTOOLS__: process.env.CI !== 'true',
         __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: false,
       }),
+<<<<<<< HEAD
       ...(should_obfuscate
+=======
+      )
+      .concat(
+        should_obfuscate
+>>>>>>> bc44abea1c2f7980dd9a2d9b909b4ad64bc8bdee
         ? [
             new WebpackObfuscator({
               controlFlowFlattening: true,
@@ -495,8 +552,13 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
               seed: 1,
             }),
           ]
+<<<<<<< HEAD
         : []),
     ] as any[],
+=======
+          : [],
+      ),
+>>>>>>> bc44abea1c2f7980dd9a2d9b909b4ad64bc8bdee
     optimization: {
       minimize: true,
       minimizer: [
@@ -556,9 +618,13 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
 
       if (
         ['vue', 'vue-router'].every(key => request !== key) &&
+<<<<<<< HEAD
         ['pixi', 'react', 'vue', 'motion', 'framer-motion', 'scheduler'].some(
           key => request === key || request.includes(key),
         )
+=======
+        ['pixi', 'react', 'vue'].some(key => request.includes(key))
+>>>>>>> bc44abea1c2f7980dd9a2d9b909b4ad64bc8bdee
       ) {
         return callback();
       }
@@ -578,9 +644,23 @@ function parse_configuration(entry: Entry): (_env: any, argv: any) => webpack.Co
       const cdn = {
         sass: 'https://jspm.dev/sass',
       };
+<<<<<<< HEAD
       return callback(
         null,
         'module-import ' + (cdn[request as keyof typeof cdn] ?? `https://testingcf.jsdelivr.net/npm/${request}/+esm`),
+=======
+      const package_json = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, 'package.json'), 'utf-8')) as {
+        dependencies?: Record<string, string>;
+        devDependencies?: Record<string, string>;
+      };
+      const package_versions = { ...package_json.devDependencies, ...package_json.dependencies };
+      const version = package_versions[request]?.replace(/^[~^]/, '');
+      const versioned_request = /^[.\d]+$/.test(version) ? `${request}@${version}` : request;
+      return callback(
+        null,
+        'module-import ' +
+          (cdn[request as keyof typeof cdn] ?? `https://testingcf.jsdelivr.net/npm/${versioned_request}/+esm`),
+>>>>>>> bc44abea1c2f7980dd9a2d9b909b4ad64bc8bdee
       );
     },
   });
