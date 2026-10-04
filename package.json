@@ -96,7 +96,7 @@
     "lucide-react": "^0.575.0",
     "motion": "^12.43.0",
     "pinia": "^3.0.4",
-    "pixi.js": "^8.21.0",
+    "pixi.js": "^8.22.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-leaflet": "^5.0.0",
